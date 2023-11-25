@@ -1,4 +1,4 @@
-from util import read_config
+from Qlogger.util import Config
 from typing import Literal
 import threading
 import contextvars
@@ -21,28 +21,26 @@ class Logger(logging.Logger):
     # ------------------------------------------------------------------------ #
     def __init__(self, name:str, 
         color:Literal['red','green','yellow','blue']=None,
-        config:str = "log.ini"):
-        super().__init__(name, level=logging.NOTSET)
+        config:str = "log.ini", warning=False):
         """
-        name : name is section of config /else/ default
-        color : 'red','green','yellow','blue','purple','cyan','white'
-        config : project/config/<log.ini> /else/ defualt"""
+        #### name : name is section of config /else/ default
+        #### color : 'red','green','yellow','blue','purple','cyan','white'
+        #### config : project/config/<log.ini> /else/ defualt
+        """
+        super().__init__(name, level=logging.NOTSET)
+    
         # ---------------------------- config file --------------------------- #
-        conf = read_config(config, parser='rawconfig', location='project')
-        if conf is None:
-            conf = read_config('default.ini', parser='rawconfig',location='file')
+        conf = Config(config,'rawconfig',warning)
+        if conf.read_projdir(child_dir='config') is None:
+            conf.read_libdir(fallback_file='default.ini')
+        
+        if conf.is_section(name) is None:
+            conf.is_section('default')
 
-        if name in conf.sections():
-            section = name
-        else:
-            section = 'default'
-        print(f"sections {conf.sections()}")
-        print(f"name {name}")
-        print(f"section {section}")
-        log_lev = conf.get(section, 'level')
-        log_fmt = conf.get(section, 'fmt')
-        log_ymd = conf.get(section, 'datefmt', fallback=None)
-
+        log_lev = conf.config.get(conf.section, 'level')
+        log_fmt = conf.config.get(conf.section, 'fmt')
+        log_ymd = conf.config.get(conf.section, 'datefmt', fallback=None)
+        
         # ----------------------------- formatter ---------------------------- #
         if color is None : color = 'reset'
 
@@ -128,12 +126,17 @@ class _Async:
         self._level.set(value)
 
 if __name__ == "__main__":
-    logger = Logger('test', color='blue')
-    logger.info('test msg')
+    logger = Logger('test', 'blue', 'log.ini', False)
+    logger.info('info')
+    logger.debug('debug')
+    logger.warning('warn')
+    logger.error('error')
 
-    chain = Chain(logger, 'sync')
-    chain.debug.log('test chain')
-    chain.info.log('test chain')
-    chain.error.log('test chain')
-    chain.warning.log('test chain')
+    chain = Chain(logger, execution='sync')
+    chain.info.log('test')
+    chain.debug.log('debug')
+    chain.warning.log('warn')
+    chain.error.log('error')
 
+
+    

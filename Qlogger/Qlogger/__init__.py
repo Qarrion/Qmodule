@@ -1,1 +1,1 @@
-from logger import Logger, Chain
+from Qlogger.logger import Logger, Chain
