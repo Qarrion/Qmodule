@@ -14,23 +14,30 @@ cmap = dict(
     cyan = "\033[36m",
     white = "\033[37m")
 
-cmap_hint = Literal['reset','red','green','yellow','blue','purple','cyan','white']
-
+level = {
+    'WARNING':  cmap['yellow'],
+    'INFO':     cmap['green'],
+    'DEBUG':    cmap['blue'],
+    'CRITICAL': cmap['red'],
+    'ERROR':    cmap['red'],
+    'RESET':    cmap['reset'],
+}
 class Logger(logging.Logger):
 
     # ------------------------------------------------------------------------ #
     def __init__(self, name:str, 
         color:Literal['red','green','yellow','blue']=None,
-        config:str = "log.ini", warning=False):
+        config:str = "log.ini", debug=False):
         """
         #### name : name is section of config /else/ default
         #### color : 'red','green','yellow','blue','purple','cyan','white'
+        #### color : 'level', None
         #### config : project/config/<log.ini> /else/ defualt
         """
         super().__init__(name, level=logging.NOTSET)
     
         # ---------------------------- config file --------------------------- #
-        conf = Config(config,'rawconfig',warning)
+        conf = Config(config,'rawconfig',debug)
         if conf.read_projdir(child_dir='config') is None:
             conf.read_libdir(fallback_file='default.ini')
         
@@ -42,10 +49,13 @@ class Logger(logging.Logger):
         log_ymd = conf.config.get(conf.section, 'datefmt', fallback=None)
         
         # ----------------------------- formatter ---------------------------- #
-        if color is None : color = 'reset'
+        if color == 'level':
+            formatter = LevelFormatter(fmt=log_fmt, datefmt=log_ymd)
+        else:
+            if color is None : color = 'reset'
 
-        log_col = f"{cmap[color]}{log_fmt}{cmap['reset']}"
-        formatter = logging.Formatter(fmt=log_col, datefmt=log_ymd)
+            log_fmt_col = f"{cmap[color]}{log_fmt}{cmap['reset']}"
+            formatter = logging.Formatter(fmt=log_fmt_col, datefmt=log_ymd)
     
         # -------------------------- stream_handler -------------------------- #
         stream_handler = logging.StreamHandler()
@@ -55,16 +65,23 @@ class Logger(logging.Logger):
         if self.hasHandlers(): self.handlers.clear()        
         self.addHandler(stream_handler)  
 
+class LevelFormatter(logging.Formatter):
+    def format(self, record):
+        levelname = record.levelname
+        if levelname in level:
+            levelname_color = level[levelname] + levelname + level['RESET']
+            record.levelname = levelname_color
+        return logging.Formatter.format(self, record)
 
 class Chain:
     def __init__(self, logger:logging.Logger,
-                 execution:Literal['sync', 'thread', 'async'] = 'sync'):
+                 context:Literal['sync', 'thread', 'async'] = 'sync'):
         self.logger = logger
-        if execution == 'sync':
+        if context == 'sync':
             self.method = _Sync()
-        elif execution =='thread':
+        elif context =='thread':
             self.method = _Thread()
-        elif execution == 'async':
+        elif context == 'async':
             self.method = _Async()
     
     def log(self, msg):
@@ -132,11 +149,15 @@ if __name__ == "__main__":
     logger.warning('warn')
     logger.error('error')
 
-    chain = Chain(logger, execution='sync')
+    chain = Chain(logger, context='sync')
     chain.info.log('test')
     chain.debug.log('debug')
     chain.warning.log('warn')
     chain.error.log('error')
 
-
+    logger = Logger('test', 'level', 'log.ini', False)
+    logger.info('info')
+    logger.debug('debug')
+    logger.warning('warn')
+    logger.error('error')
     
