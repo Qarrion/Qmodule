@@ -4,4 +4,7 @@ setup(
     name='Qlogger',
     version='0.0.1',
     packages=find_packages(include=['Qlogger']),
+    package_data={
+        'Qlogger':['default.ini']
+    }
 )
