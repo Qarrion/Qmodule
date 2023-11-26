@@ -73,7 +73,7 @@ class _LevelFormatter(logging.Formatter):
             record.levelname = levelname_color
         return logging.Formatter.format(self, record)
 
-class Chain:
+class CustomLog:
     def __init__(self, logger:logging.Logger,
                  context:Literal['sync', 'thread', 'async'] = 'sync'):
         self.logger = logger
@@ -160,13 +160,13 @@ if __name__ == "__main__":
     logger.error('error')
 
     logger = Logger('test_chain', 'green', 'log.ini', False)
-    chain = Chain(logger, 'async')
+    chain = CustomLog(logger, 'async')
     chain.info.msg('info')
     chain.debug.msg('debug')
     chain.warning.msg('warning')
     chain.error.msg('error')
 
-    class CsutomMsg(Chain):
+    class CsutomMsg(CustomLog):
         def custom_msg(self, module, status, msg):
             header=f":: {module:<10} {status:<10}"
             self.msg(header + msg)

@@ -1,4 +1,4 @@
-from Qlogger import Logger, Chain
+from Qlogger import Logger, CustomLog
 
 logger = Logger('test', 'blue', 'log.ini', False)
 logger.info('info')
@@ -6,7 +6,7 @@ logger.debug('debug')
 logger.warning('warn')
 logger.error('error')
 
-chain = Chain(logger)
+chain = CustomLog(logger)
 chain.info.log('test')
 chain.debug.log('debug')
 chain.warning.log('warn')
