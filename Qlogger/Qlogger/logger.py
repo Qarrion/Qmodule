@@ -166,7 +166,7 @@ if __name__ == "__main__":
     chain.warning.msg('warning')
     chain.error.msg('error')
 
-    class CsutomMsg(CustomLog):
+    class Log(CustomLog):
         def custom_msg(self, module, status, msg):
             header=f":: {module:<10} {status:<10}"
             self.msg(header + msg)
@@ -178,6 +178,6 @@ if __name__ == "__main__":
             self.custom_msg('mod02', 'start', 'test_custom')
     
 
-    cmsg = CsutomMsg(logger, 'sync')
-    cmsg.info._module01_init()
-    cmsg.debug._module02_start()
+    mylogger = Log(logger, 'sync')
+    mylogger.info._module01_init()
+    mylogger.debug._module02_start()
