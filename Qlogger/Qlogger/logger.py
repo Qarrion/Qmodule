@@ -26,7 +26,7 @@ class Logger(logging.Logger):
 
     # ------------------------------------------------------------------------ #
     def __init__(self, name:str, 
-        color:Literal['red','green','yellow','blue']=None,
+        color:Literal['level','red','green','yellow','blue']=None,
         config:str = "log.ini", debug=False):
         """
         #### name : name is section of config /else/ default
@@ -50,7 +50,7 @@ class Logger(logging.Logger):
         
         # ----------------------------- formatter ---------------------------- #
         if color == 'level':
-            formatter = LevelFormatter(fmt=log_fmt, datefmt=log_ymd)
+            formatter = _LevelFormatter(fmt=log_fmt, datefmt=log_ymd)
         else:
             if color is None : color = 'reset'
 
@@ -65,7 +65,7 @@ class Logger(logging.Logger):
         if self.hasHandlers(): self.handlers.clear()        
         self.addHandler(stream_handler)  
 
-class LevelFormatter(logging.Formatter):
+class _LevelFormatter(logging.Formatter):
     def format(self, record):
         levelname = record.levelname
         if levelname in level:
@@ -84,6 +84,10 @@ class Chain:
         elif context == 'async':
             self.method = _Async()
     
+    def msg(self, msg):
+        if self.logger is not None:
+            self.log(msg=msg)
+
     def log(self, msg):
         self.logger.log(level=self.method.level, msg=msg)
 
@@ -143,21 +147,37 @@ class _Async:
         self._level.set(value)
 
 if __name__ == "__main__":
-    logger = Logger('test', 'blue', 'log.ini', False)
+    logger = Logger('test_fix_logger', 'blue', 'log.ini', True)
     logger.info('info')
     logger.debug('debug')
     logger.warning('warn')
     logger.error('error')
 
-    chain = Chain(logger, context='sync')
-    chain.info.log('test')
-    chain.debug.log('debug')
-    chain.warning.log('warn')
-    chain.error.log('error')
-
-    logger = Logger('test', 'level', 'log.ini', False)
+    logger = Logger('test_lev_logger', 'level', 'log.ini', True)
     logger.info('info')
     logger.debug('debug')
     logger.warning('warn')
     logger.error('error')
+
+    logger = Logger('test_chain', 'green', 'log.ini', False)
+    chain = Chain(logger, 'async')
+    chain.info.msg('info')
+    chain.debug.msg('debug')
+    chain.warning.msg('warning')
+    chain.error.msg('error')
+
+    class CsutomMsg(Chain):
+        def custom_msg(self, module, status, msg):
+            header=f":: {module:<10} {status:<10}"
+            self.msg(header + msg)
+
+        def _module01_init(self):
+            self.custom_msg('mod01', 'init', 'test_custom')
+
+        def _module02_start(self):
+            self.custom_msg('mod02', 'start', 'test_custom')
     
+
+    cmsg = CsutomMsg(logger, 'sync')
+    cmsg.info._module01_init()
+    cmsg.debug._module02_start()
