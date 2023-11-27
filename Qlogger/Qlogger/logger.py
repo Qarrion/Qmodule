@@ -171,13 +171,13 @@ if __name__ == "__main__":
             header=f":: {module:<10} {status:<10}"
             self.msg(header + msg)
 
-        def _module01_init(self):
+        def msg_module01_init(self):
             self.custom_msg('mod01', 'init', 'test_custom')
 
-        def _module02_start(self):
+        def msg_module02_start(self):
             self.custom_msg('mod02', 'start', 'test_custom')
     
 
     mylogger = Log(logger, 'sync')
-    mylogger.info._module01_init()
-    mylogger.debug._module02_start()
+    mylogger.info.msg_module01_init()
+    mylogger.debug.msg_module02_start()
