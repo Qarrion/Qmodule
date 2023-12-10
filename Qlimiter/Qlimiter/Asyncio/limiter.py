@@ -1,50 +1,51 @@
 import logging
-import threading
-import time
-
 import asyncio
-from typing import Callable, Literal
-from functools import wraps
+import signal
 
-from Qlimiter.Asyncio import CustomMsg
-from Qlimiter.Asyncio import Task
+from typing import  Literal, List, Coroutine
+
+from Qlimiter.Asyncio import Msg
+from Qlimiter.Asyncio import Job
+
 
 class Limiter:
     def __init__(self, max_calls:int, seconds:float,
                  limit:Literal['inflow','outflow'],
                  logger:logging.Logger=None):
-        self.task = Task(max_calls,seconds,limit,logger)
+        
+        self.job = Job(max_calls,seconds,limit,logger)
 
-        self.msg=CustomMsg(logger, "async")
+        self.msg = Msg(logger, "async")
         self.msg.info.strm_initiate(max_calls, seconds)
 
         self._max_calls = max_calls
         self._stop_event = asyncio.Event()
-
-    # async def _start_taskgroup(self):
-    #     self.msg.debug.strm_workerpool('start')
-    #     async with asyncio.TaskGroup() as tg:
-    #         self.tasks = [tg.create_task(self.worker()) for _ in range(self._max_calls)]
-
-    async def start_async_task_workers(self):
-        self.workers = [asyncio.create_task(self.worker_coroutine()) for i in range(self._max_calls)]
-        for worker in self.workers:
-            await worker
-
-    async def worker_coroutine(self):
+        
+    # -------------------------------- worker -------------------------------- #
+    def worker_coros(self, max_worker:int)->List[Coroutine]:
+        """>>> tasks = asyncio.gather(*worker_coros(max_woker))
+        >>> await tasks"""
+        return [self.worker_coro() for _ in range(max_worker)]
+    
+    async def worker_coro(self):
         self.msg.debug.strm_worker('start')
+        # try: 
         while not self._stop_event.is_set():
             try:
-                fname, args, kwargs = await asyncio.wait_for(self.task.func_queue.get(), timeout=1)
-                assert fname in self.task.func_dict.keys()
-                await self.task.func_dict[fname](*args, **kwargs)
-                self.task.func_queue.task_done()
+                fname, args, kwargs = await asyncio.wait_for(self.job.queue.get(), timeout=1)
+                assert fname in self.job.registry.keys(), 'no fname'
+                result = await self.job.handler(fname,*args, **kwargs)
+                self.job.queue.task_done()
 
             except asyncio.TimeoutError:
-                continue
+                continue # wait_for(time_out)
 
         print("a worker quit")
-                
+    
+    async def shutdown(self):
+        self._stop_event.set()
+        # await self._queue.join()
+
 if __name__ == "__main__":
     from Qlogger import Logger
     logger = Logger('test', 'level', debug=True)
@@ -57,23 +58,58 @@ if __name__ == "__main__":
         raise Exception("raise Error")
 
     async def main():
-        limiter.task.register(myfunc1)
-        limiter.task.register(myfunc2)
 
-        # await limiter.task.func_dict['myfunc1'](1)
-        # await limiter.task.func_dict['myfunc2'](1)
-        # await limiter.start_async_task_workers()
-        task = asyncio.create_task(limiter.worker_coroutine())
-        await task
-        await limiter.task.enqueue('myfunc1',0.1)
-        # await limiter.task.enqueue('myfunc1',0.1)
-        # await limiter.task.enqueue('myfunc2',0.1)
-        # await limiter.task.enqueue('myfunc1',0.1)
-        # await limiter.task.enqueue('myfunc1',0.1)
-        # await limiter.task.enqueue('myfunc1',0.1)
-        # await limiter.task.enqueue('myfunc1',0.1)
+        limiter.job.register_sync(myfunc1)
+        limiter.job.register_sync(myfunc2)
+        # -------------------------------------------------------------------- #
+        # await limiter.job.handlers('myfunc1', 1)
+        # await limiter.job.handlers('myfunc2', 1)
+        # -------------------------------------------------------------------- #
+        # await asyncio.gather(limiter.consume_coro(), limiter.dispatch_coro('myfunc1', 1))
+        # -------------------------------------------------------------------- #
+        dispatches = [
+            limiter.job.enqueue_coro('myfunc1',0.1),
+            limiter.job.enqueue_coro('myfunc1',0.1),
+            limiter.job.enqueue_coro('myfunc2',0.1),
+            limiter.job.enqueue_coro('myfunc1',0.1),
+            limiter.job.enqueue_coro('myfunc1',0.1),
+            limiter.job.enqueue_coro('myfunc1',0.1),
+        ]
+        coros = limiter.worker_coros(2)
 
-        # asyncio.gather()
+        try:
+            async with asyncio.TaskGroup() as tg:
+                tasks = [tg.create_task(coro) for coro in coros]
+                puts = [tg.create_task(disp) for disp in dispatches]
 
-    asyncio.run(main())
+        except asyncio.CancelledError:
+            limiter._stop_event.is_set()
+            print("cancel")
+
+        finally:
+            for t in tasks:
+                print(t)
+            for p in puts:
+                print(p)
+        # except KeyboardInterrupt:
+        #     print("interrupt")
+
+     
+        # except asyncio.CancelledError:
+        #     print("?>")
+
+        # limiter._stop_event.set()
+
+    # def signal_handler(sig, frame):
+    #     logger.info("KeyboardInterrupt가 감지되었습니다, stop_event를 설정합니다.")
+
+
+    #     all_tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+    #     for task in all_tasks:
+    #         task.cancel()
+
         
+    # signal.signal(signal.SIGINT, signal_handler)
+    # try :
+    asyncio.run(main())
+    # except KeyboardInterrupt:

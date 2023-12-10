@@ -3,71 +3,81 @@ from datetime import datetime
 from typing import Literal
 import threading
 from Qlimiter.util import CustomLog
+import inspect
 
-
-class CustomMsg(CustomLog):
+class Msg(CustomLog):
     def __init__(self, logger: logging.Logger, context: Literal['sync', 'thread', 'async'] = 'sync'):
         super().__init__(logger, context)
 
     def _str_from_tsp(self, time):
         datetime_time = datetime.fromtimestamp(time)
         return datetime_time.strftime("%S.%f")[:-3]
-
+    
+    # ------------------------------------------------------------------------ #
+    #                            base stream formma                            #
+    # ------------------------------------------------------------------------ #
     def stream(self, status, *args):
-        header = f'/{status:<10} ::: '
+        frame = f'{inspect.stack()[2].function}.{status}'
+        header = f'/{frame:<20} ::: '
         body = ''.join([f"{arg:<12}, " for arg in args]) +" :::"
         self.msg(header + body)
 
+    # ------------------------------------------------------------------------ #
     def strm_initiate(self, max_calls, seconds):
-        status = 'initiate'
+        status = ''
         var01 = f'max_calls({max_calls})'
         var02 = f'seconds({seconds})'
         self.stream(status,var01,var02,"")
 
-    def strm_semaphore_acquire(self, sema:threading.Semaphore, max_calls):
-        status = 'semaphore+'
-        method = f">s({sema._value}/{max_calls})"
-        var01 = f"{method:<12}"
-        self.stream(status,"","",var01)
-
-    def strm_semaphore_release(self, sema:threading.Semaphore, max_calls):
-        status = 'semaphore-'
-        method = f"s({sema._value+1}/{max_calls})<"
-        var01 = f"{method:>12}"
-        self.stream(status,"","",var01)
-
-    def strm_waitfor_expire(self, tsp_ref, seconds):
-        status = 'throttle'
-        var01 = f'ref({self._str_from_tsp(tsp_ref)})'
-        var02 = f'sec({seconds:.3f})'
-        self.stream(status, var01, var02,"")
-
-    def strm_task_error(self,fname, args, kwargs):
-        status = 'exception'
-        var01 = f'func({fname})'
-        var02 = f'args({args})'
-        var03 = f'kwargs({kwargs})'
-        self.stream(status, var01, var02, var03)
-
-    def strm_workerpool(self,text):
-        status = 'workerpool'
-        self.stream(status,text,"","")
-
-    def strm_worker(self, text):
-        status = 'worker'
-        self.stream(status,text,"","")        
-
     def strm_register(self, limit, name):
-        status = 'register'
-        self.stream(status,limit,name,"")
+        self.stream(limit,name,"","")
 
     def strm_enqueue(self, fname, args, kwargs):
-        status = 'enqueue'
+        status = ''
         var01 = f"{fname}"
         var02 = f"{args}"
         var03 = f"{kwargs}"
         self.stream(status,var01,var02,var03)
-    # -------------------------------- message ------------------------------- #
+        
+    def strm_handler(self, fname, args, kwargs):
+        status = ''
+        var01 = f"{fname}"
+        var02 = f"{args}"
+        var03 = f"{kwargs}"
+        self.stream(status,var01,var02,var03)
+
+    def strm_semaphore(self, context:Literal['acquire','release'], fname, sema:threading.Semaphore, max_calls):
+        if context=="acquire":
+            status = 'semaphore+'
+            queue = f">s({sema._value}/{max_calls})"
+            var01 = f"{queue:<11}<"
+        elif context =="release":
+            status = 'semaphore-'
+            queue = f"s({sema._value+1}/{max_calls})<"
+            var01 = f">{queue:>11}"
+        self.stream(status,fname,"",var01)
+
+    def strm_wait_expire(self, tsp_ref, seconds,limit):
+        status = limit
+        var02 = f'ref({self._str_from_tsp(tsp_ref)})'
+        var01 = f'sec({seconds:.3f})'
+        self.stream(status, var01, var02, "")
+
+    def strm_job_error(self,fname, args, kwargs):
+        status = 'exception#'
+        var01 = f'{fname}'
+        var02 = f'{args}'
+        var03 = f'{kwargs}'
+        self.stream(status, var01, var02, var03)
+
+    def strm_workerpool(self):
+        status = 'start'
+        self.stream(status,"","","")
+
+    def strm_worker(self):
+        status = 'start'
+        self.stream(status,"","","")        
+    # ------------------------------------------------------------------------ #
 
 if __name__ == "__main__":
     from Qlogger import Logger
@@ -76,10 +86,10 @@ if __name__ == "__main__":
     log.info('test info msg')
     log.debug('test debug msg')
 
-    msg = CustomMsg(log, 'thread')
+    msg = Msg(log, 'thread')
     msg.info.stream("msg")
     msg.debug.stream("msg")
 
-    msg = CustomMsg(None, 'thread')
+    msg = Msg(None, 'thread')
     msg.debug.stream("msg")
  

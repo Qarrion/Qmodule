@@ -1,3 +1,3 @@
-from Qlimiter.Thread.msg import CustomMsg
-from Qlimiter.Thread.task import Task
+from Qlimiter.Thread.msg import Msg
+from Qlimiter.Thread.job import Job
 from Qlimiter.Thread.limiter import Limiter
