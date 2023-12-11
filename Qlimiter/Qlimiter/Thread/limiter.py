@@ -21,10 +21,13 @@ class Limiter:
         self._stop_event = threading.Event()
         
     # -------------------------------- worker -------------------------------- #
-    def worker_pool(self):
+    def worker_poolexecutor(self, interrupt=True, result=True):
         self.msg.debug.strm_workerpool()
         self.executor = ThreadPoolExecutor(max_workers=self._max_calls, thread_name_prefix="Worker")
         self.futures = [self.executor.submit(self.worker) for _ in range(self._max_calls)]
+
+        if interrupt:
+            self.interrupt_loop(result=result)
 
     def worker(self):
         self.msg.debug.strm_worker()
@@ -38,10 +41,21 @@ class Limiter:
                 
             except Empty as e:
                 continue
-
         print("a worker quit")
 
-    def interrupt(self):
+    def manager_sample(self, fname):
+        from random import randint
+        for i in range(10):
+            x = randint(0,15)/10
+            time.sleep(x)
+            self.job.queue(fname, x)
+
+    def interrupt_loop(self, result=True):
+        """>>> # after worker_pool
+        limiter.worker_pool(interrupt=False)
+        ... other works ...
+        limiter.interrupt_loop()
+        """
         try:
             while True:
                 time.sleep(1)
@@ -50,9 +64,10 @@ class Limiter:
             self._stop_event.set()
             self.executor.shutdown(wait=True)
             print("WorkerPool Quit!")
-            self.result()
+            if result:
+                self.result_as_completed()
 
-    def result(self):
+    def result_as_completed(self):
         for future in as_completed(self.futures):
             try:
                 future.result()
@@ -85,7 +100,8 @@ if __name__ == "__main__":
     limiter.job.enqueue('myfunc1',0.1)
     limiter.job.enqueue('myfunc1',0.1)
 
-    limiter.worker_pool()
-
-    limiter.interrupt()
-    # limiter.result()
+    # ------------------------------------------------------------------------ #
+    # limiter.worker_pool(interrupt=False)
+    # limiter.interrupt_roop()
+    # ------------------------------------------------------------------------ #
+    limiter.worker_poolexecutor(interrupt = True)

@@ -22,11 +22,22 @@ class Limiter:
         self._stop_event = asyncio.Event()
         
     # -------------------------------- worker -------------------------------- #
-    def worker_coros(self, max_worker:int)->List[Coroutine]:
-        """>>> tasks = asyncio.gather(*worker_coros(max_woker))
-        >>> await tasks"""
-        return [self.worker_coro() for _ in range(max_worker)]
+    # def worker_coros(self, max_worker:int)->List[Coroutine]:
+    #     """>>> tasks = asyncio.gather(*worker_coros(max_woker))
+    #     >>> await tasks"""
+    #     return [self.worker_coro() for _ in range(max_worker)]
     
+    
+    async def worker_taskgroup(self, interrupt=True):
+
+        if interrupt:
+            signal.signal(signal.SIGINT, self.signal_handler)
+
+        async with asyncio.TaskGroup() as tg:
+            self.tasks = [tg.create_task(self.worker_coro()) for i in range(self._max_calls)]
+
+        print("TaskGroup Quit!")
+
     async def worker_coro(self):
         self.msg.debug.strm_worker('start')
         # try: 
@@ -41,10 +52,10 @@ class Limiter:
                 continue # wait_for(time_out)
 
         print("a worker quit")
-    
-    async def shutdown(self):
+
+    def signal_handler(self, sig, frame):
+        print('Ctrl + C Keyboard Interrupted')
         self._stop_event.set()
-        # await self._queue.join()
 
 if __name__ == "__main__":
     from Qlogger import Logger
@@ -58,7 +69,6 @@ if __name__ == "__main__":
         raise Exception("raise Error")
 
     async def main():
-
         limiter.job.register_sync(myfunc1)
         limiter.job.register_sync(myfunc2)
         # -------------------------------------------------------------------- #
@@ -67,30 +77,34 @@ if __name__ == "__main__":
         # -------------------------------------------------------------------- #
         # await asyncio.gather(limiter.consume_coro(), limiter.dispatch_coro('myfunc1', 1))
         # -------------------------------------------------------------------- #
-        dispatches = [
-            limiter.job.enqueue_coro('myfunc1',0.1),
-            limiter.job.enqueue_coro('myfunc1',0.1),
-            limiter.job.enqueue_coro('myfunc2',0.1),
-            limiter.job.enqueue_coro('myfunc1',0.1),
-            limiter.job.enqueue_coro('myfunc1',0.1),
-            limiter.job.enqueue_coro('myfunc1',0.1),
-        ]
-        coros = limiter.worker_coros(2)
 
-        try:
-            async with asyncio.TaskGroup() as tg:
-                tasks = [tg.create_task(coro) for coro in coros]
-                puts = [tg.create_task(disp) for disp in dispatches]
+        await limiter.job.enqueue_coro('myfunc1',0.1),
+        await limiter.job.enqueue_coro('myfunc1',0.1),
+        await limiter.job.enqueue_coro('myfunc2',0.1),
+        await limiter.job.enqueue_coro('myfunc1',0.1),
+        await limiter.job.enqueue_coro('myfunc1',0.1),
+        await limiter.job.enqueue_coro('myfunc1',0.1),
+        await limiter.job.enqueue_coro('myfunc1',0.1),
 
-        except asyncio.CancelledError:
-            limiter._stop_event.is_set()
-            print("cancel")
+        await limiter.worker_taskgroup()
 
-        finally:
-            for t in tasks:
-                print(t)
-            for p in puts:
-                print(p)
+
+        # coros = limiter.worker_coros(2)
+
+        # try:
+        #     async with asyncio.TaskGroup() as tg:
+        #         tasks = [tg.create_task(coro) for coro in coros]
+        #         puts = [tg.create_task(disp) for disp in dispatches]
+
+        # except asyncio.CancelledError:
+        #     limiter._stop_event.is_set()
+        #     print("cancel")
+
+        # finally:
+        #     for t in tasks:
+        #         print(t)
+        #     for p in puts:
+        #         print(p)
         # except KeyboardInterrupt:
         #     print("interrupt")
 
