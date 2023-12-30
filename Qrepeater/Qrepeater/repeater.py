@@ -1,62 +1,125 @@
+import time
 import logging
-from typing import Literal
+import threading
+from typing import Literal, Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import partial
 
-from datetime import datetime, timedelta
-from Qrepeater import Msg
+import asyncio
+
+from Qrepeater.msg import Msg
+from Qrepeater.timer import Timer
 
 
-unit = Literal['second','minute']
+class ThreadRepeater:
 
-class Timer:
-    def __init__(self, value:float, unit:unit, logger:logging.Logger=None):
+    def __init__(self, value:float, unit:Literal['second','minute'], logger:logging.Logger):
         self.msg = Msg(logger, 'thread')
-        self.interval = value
-        self.unit = unit
+        self.timer = Timer(value, unit, logger)
 
-    def total_seconds(self):
-        # TODO  get
-        datetime_now = datetime.now()
-
-        unit_value_now = self._unit_value(datetime_now)
-        unit_value_next = int((unit_value_now/self.interval)+1)*self.interval
-
-        unit_delta_next = self._unit_timedelta(unit_value_next-unit_value_now)    #? from now to next
-        datetime_next = self._unit_floor(datetime_now+unit_delta_next)
-
-        timedelta_ms = datetime_next - datetime_now
-
-        self.log.info.wait(datetime_next, timedelta_ms, self.interval, self.unit)
-        return timedelta_ms.total_seconds()
-
-    def _unit_value(self,datetime_now:datetime)->int:
-        if self.unit == 'second':
-            unit_value = datetime_now.second
-        elif self.unit == 'minute':
-            unit_value = datetime_now.minute
-        return unit_value
-
-    def _unit_timedelta(self,unit_value:int)->timedelta:
-        if self.unit == 'second':
-            unit_delta = timedelta(seconds=unit_value)
-        elif self.unit == 'minute':
-            unit_delta = timedelta(minutes=unit_value)
-        return unit_delta
-
-    def _unit_floor(self, date_time:datetime)->datetime:
-        if self.unit == 'second':
-            on_time = date_time.replace(microsecond=0)
-        elif self.unit == 'minute':
-            on_time = date_time.replace(second=0,microsecond=0)
-        return on_time
-
-class Repeater:
-
-    def __init__(self, value:float, unit:unit, logger:logging.Logger):
-        self.msg = Msg(logger, 'thread')
-
+        self._stop_event = threading.Event()
+        self._jobs = list()
     
+    def register(self, func:Callable, *args):
+        if args:
+            self._jobs.append(partial(func,*args))
+        else:
+            self._jobs.append(func)
+
+    def start_with_thread(self):
+        executor = ThreadPoolExecutor(len(self._jobs), 'worker')
+        
+        try:
+            while not self._stop_event.wait(self.timer.remaining_seconds(debug=True)):
+                futures = [executor.submit(job) for job in self._jobs]
+            self.msg.info.strm_thread_alldone()
+                
+        except KeyboardInterrupt:
+            print('Keyboard Interrupted!')
+
+        finally:
+            self._stop_event.set()
+            executor.shutdown(wait=True)
+            for future in as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    print(e)
+
+class AscyncRepeater:
+    
+    def __init__(self, value:float, unit:Literal['second','minute'], logger:logging.Logger):
+        self.msg = Msg(logger, 'async')
+        self.timer = Timer(value, unit, logger)
+
+        self._stop_event = asyncio.Event()
+        self._jobs = list()
+
+    async def _wrapper_timeout(self, func:Callable, *args):
+        timeout = self.timer.remaining_seconds()-1
+        try:                            #! execution
+            await asyncio.wait_for(func(*args), timeout=timeout)
+        except asyncio.TimeoutError:    #! timeout 
+            self.msg.warning.strm_async_timeout(func.__name__, args, timeout)
+            
+    def register(self, func:Callable, *args):
+        if args:
+            self._jobs.append(partial(self._wrapper_timeout, func, *args))
+        else:
+            self._jobs.append(partial(self._wrapper_timeout, func))
+ 
+    async def start_with_async(self):
+        while not self._stop_event.is_set():
+            await asyncio.sleep(self.timer.remaining_seconds(debug=True))
+            async with asyncio.TaskGroup() as tg:
+                for job in self._jobs:
+                    tg.create_task(job())
+            print('all tasks done!')
+                
 
 
 
 if __name__ == "__main__":
-    rp = Repeater(20, 'second')
+    from Qlogger import Logger
+    logger = Logger('test','level')
+    logger2 = Logger('func','level')
+
+    # -------------------------------- thread -------------------------------- #
+    repeater = ThreadRepeater(10, 'second', logger)
+
+    def myfunc1(x):
+        logger2.warning(f'myfunc1 sleep ({x})')
+        time.sleep(x)
+        logger2.warning(f'myfunc1 done!')
+
+    def myfunc2(x):
+        logger2.warning(f'myfunc2 sleep ({x})')
+        time.sleep(x)
+        logger2.warning(f'myfunc2 done!')
+
+    from functools import partial
+    repeater.register(myfunc1, 1)
+    repeater.register(myfunc2, 2)
+
+    repeater.start_with_thread()
+    # -------------------------------- asyncio ------------------------------- #
+    # async def main():
+    #     repeater = AscyncRepeater(5, 'second', logger)
+
+    #     async def myfunc1(x):
+    #         logger2.warning(f'myfunc1 sleep ({x})')
+    #         await asyncio.sleep(x)
+    #         logger2.warning(f'myfunc1 done!')
+
+
+    #     async def myfunc2(x):
+    #         logger2.warning(f'myfunc2 sleep ({x})')
+    #         await asyncio.sleep(x)
+    #         logger2.warning(f'myfunc2 done!')
+
+    #     repeater.register(myfunc1, 4.2)
+    #     repeater.register(myfunc2, 4.1)
+
+    #     await repeater.start_with_async()
+    
+    # asyncio.run(main())
