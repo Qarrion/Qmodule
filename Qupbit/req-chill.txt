@@ -1,0 +1,6 @@
+requests
+websockets
+# certifi # Installed as dependency for requests
+# charset-normalizer # Installed as dependency for requests
+# idna # Installed as dependency for requests
+# urllib3 # Installed as dependency for requests

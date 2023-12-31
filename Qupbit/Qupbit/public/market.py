@@ -1,10 +1,10 @@
 import requests
-from Qupbit.util.config import Config
+from Qupbit.utils.config import Config
 from Qupbit.tools import parser
 from Qupbit.tools import parser
 
 config = Config('limit.ini', 'config', debug=True)
-config.read_projdir('config')
+config.read_proj('config')
 config.is_section('rest-default')
 # C:\Qarrion\Code\Qmodule\Qupbit\Qupbit\config\limit.ini
 

@@ -1,4 +1,7 @@
-from Qupbit import quotation
+# from Qupbit import quotation
+# print(quotation.market.get())
 
 
-print(quotation.market.get())
+
+import Qupbit
+

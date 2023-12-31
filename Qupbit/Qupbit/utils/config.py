@@ -30,7 +30,6 @@ class Config:
             self._debug_process(f'0 section ({section}) not in config', 'red')
             return 0
         else :
-
             self._debug_process(
                 f'1 section ({section}) items {self.config.options(section)}', 'green')
             return section
@@ -68,5 +67,6 @@ if __name__ == "__main__":
             pass
 
     if not config.is_section('test'):
-        config.is_section('default')
+        if not config.read_file(__file__):
+            config.is_section('default')
 
