@@ -1,24 +1,23 @@
 import requests
 from Qupbit.utils.config import Config
 from Qupbit.tools import parser
-from Qupbit.tools import parser
 
 config = Config('limit.ini', 'config', debug=True)
-config.read_proj('config')
+config.read_project('config')
 config.is_section('rest-default')
 # C:\Qarrion\Code\Qmodule\Qupbit\Qupbit\config\limit.ini
 
 
 """Quote-Base"""
 class Market:
-
+    """ test """
     url_market = "https://api.upbit.com/v1/market/all"
     params = {"isDetails": 'true'}
     headers = {"Accept": "application/json"}
     
     # def __init__(self):
 
-    def get(self, qoute:str=None, base:str=None, market:str=None):
+    def get(self):
         """ >>> # Quote-Base 
         rslt = market.get()
         rslt['status']
@@ -52,7 +51,7 @@ class Market:
 if __name__=='__main__':
     from datetime import datetime
     import time
-    market=Market()
+    market = Market()
 
     # rslt = market.get()
     # rslt_filtered = market.filter(rslt['payload'], qoute='KRW')

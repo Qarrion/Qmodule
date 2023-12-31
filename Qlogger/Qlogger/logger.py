@@ -25,9 +25,12 @@ level = {
 class Logger(logging.Logger):
 
     # ------------------------------------------------------------------------ #
-    def __init__(self, name:str, 
-        color:Literal['level','head','red','green','yellow','blue']=None,
-        config:str = "log.ini", debug=False):
+    def __init__(self, 
+            name:str, 
+            color:Literal['level','head','red','green','yellow','blue']=None,
+            config:str = "log.ini", 
+            debug=False
+        ):
         """
         #### name : name is section of config /else/ default
         #### color : 'red','green','yellow','blue','purple','cyan','white'
@@ -38,8 +41,8 @@ class Logger(logging.Logger):
     
         # ---------------------------- config file --------------------------- #
         conf = Config(config,'rawconfig',debug)
-        if conf.read_projdir(child_dir='config') is None:
-            conf.read_libdir(fallback_file='default.ini')
+        if not conf.read_project(child_dir='config'):
+            conf.read_written(fallback_file='default.ini')
         
         if conf.is_section(name) is None:
             conf.is_section('default')

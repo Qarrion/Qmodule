@@ -1,6 +1,0 @@
-setup.py
-Qupbit.egg-info/PKG-INFO
-Qupbit.egg-info/SOURCES.txt
-Qupbit.egg-info/dependency_links.txt
-Qupbit.egg-info/requires.txt
-Qupbit.egg-info/top_level.txt
