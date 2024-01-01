@@ -1,6 +1,6 @@
 import logging
 from typing import Literal
-from Qrepeater.util.customlog import CustomLog
+from Qrepeater.utils.customlog import CustomLog
 import inspect
 from datetime import datetime
 
@@ -9,8 +9,9 @@ class Msg(CustomLog):
         super().__init__(logger, context)
 
     def stream(self, status, *args):
-        frame = f'{inspect.stack()[2].function}.{status}'
-        header = f'/{frame:<20} ::: '
+        # frame = f'{inspect.stack()[2].function}.{status}'
+        frame = f'{inspect.currentframe().f_back.f_code.co_name}.{status}'
+        header = f'{frame:<20} ::: '
         body = ''.join([f"{arg:<12}, " for arg in args]) +" :::"
         self.msg(header + body) 
 
@@ -30,7 +31,6 @@ class Msg(CustomLog):
         var02 = f"{args}"
         var03 = timeout
         self.stream('', var01, var02, var03)
-
 
     def strm_thread_alldone(self):
         self.stream('all done!','','','')

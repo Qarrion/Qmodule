@@ -1,9 +1,8 @@
-import logging
 import threading
 import contextvars
+import inspect
 from typing import Literal
-
-# sub class in Qlogger
+import logging
 
 class CustomLog:
     def __init__(self, logger:logging.Logger,
@@ -15,9 +14,16 @@ class CustomLog:
             self.method = _Thread()
         elif context == 'async':
             self.method = _Async()
-    
+
+    def stream(self, status, *args):
+        """>>> #{func.status:<20} {arg:12}"""
+        # frame = f'{inspect.stack()[2].function}.{status}'
+        frame = f'{inspect.currentframe().f_back.f_code.co_name}.{status}'
+        header = f'{frame:<20} ::: '
+        body = ', '.join([f"{arg:<12}" for arg in args]) +" :::"
+        self.msg(header + body) 
+
     def msg(self, msg):
-        """if self.logger is not None:"""
         if self.logger is not None:
             self.log(msg=msg)
 
@@ -80,16 +86,23 @@ class _Async:
         self._level.set(value)
 
 if __name__ == "__main__":
-    
-    logger = logging.getLogger('mylogger')
-    logger.setLevel(logging.DEBUG) 
-    handler = logging.StreamHandler() 
-    handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    from Qlogger import Logger
+    print('# --------------------------------- green -------------------------------- #')
+    logger = Logger('test_chain', 'level', 'log.ini', False)
+    chain = CustomLog(logger, 'sync')
+    chain.msg('default debug')
+    chain.info.msg('info')
+    chain.debug.msg('debug')
+    chain.warning.msg('warning')
+    chain.error.msg('error')
 
-    class Log(CustomLog):
+    def test():
+        chain.stream('status','(1234567890)','(1234567890)','(1234567890)')
+    test()
+
+    print('# ------------------------------- customlog ------------------------------ #')
+
+    class Msg(CustomLog):
         def custom_msg(self, module, status, msg):
             header=f":: {module:<10} {status:<10}"
             self.msg(header + msg)
@@ -98,9 +111,8 @@ if __name__ == "__main__":
             self.custom_msg('mod01', 'init', 'test_custom')
 
         def msg_module02_start(self):
-            self.custom_msg('mod02', 'start', 'test_custom')
+            self.stream('mod02', 'start', 'test_custom')
     
-
-    mylogger = Log(logger, 'thread')
+    mylogger = Msg(logger, 'sync')
     mylogger.info.msg_module01_init()
     mylogger.debug.msg_module02_start()

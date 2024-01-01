@@ -1,8 +1,7 @@
 from Qlogger.util import Config
 from typing import Literal
-import threading
-import contextvars
 import logging
+
 
 cmap = dict(
     reset = "\033[0m",
@@ -41,11 +40,12 @@ class Logger(logging.Logger):
     
         # ---------------------------- config file --------------------------- #
         conf = Config(config_filename=config, debug=debug)
-        conf.location_subdir(folder_name='config',config_fallback='default.ini')
+        conf.read_config_subdir(folder_name='config',config_fallback='default.ini')
+        conf.read_section(section_name=name, fallback_name='logger')
 
-        log_lev = conf.data.get(name, 'level')
-        log_fmt = conf.data.get(name, 'fmt')
-        log_ymd = conf.data.get(name, 'datefmt', fallback=None)
+        log_lev = conf.data.get(conf.section, 'level')
+        log_fmt = conf.data.get(conf.section, 'fmt', raw=True)
+        log_ymd = conf.data.get(conf.section, 'datefmt', raw=True, fallback=None)
         
         # ----------------------------- formatter ---------------------------- #
         if color == 'level':
@@ -89,118 +89,24 @@ class HeadFormatter(logging.Formatter):
         colored_log = original_formatted_log.replace(record.levelname, levelname_with_color)
         return colored_log
 
-class CustomLog:
-    def __init__(self, logger:logging.Logger,
-                 context:Literal['sync', 'thread', 'async'] = 'sync'):
-        self.logger = logger
-        if context == 'sync':
-            self.method = _Sync()
-        elif context =='thread':
-            self.method = _Thread()
-        elif context == 'async':
-            self.method = _Async()
-    
-    def msg(self, msg):
-        if self.logger is not None:
-            self.log(msg=msg)
-
-    def log(self, msg):
-        self.logger.log(level=self.method.level, msg=msg)
-
-    @property
-    def debug(self):
-        self.method.level = logging.DEBUG
-        return self
-
-    @property
-    def info(self):
-        self.method.level = logging.INFO
-        return self
-    
-    @property
-    def warning(self):
-        self.method.level = logging.WARNING
-        return self
-
-    @property
-    def error(self):
-        self.method.level = logging.ERROR
-        return self
-
-class _Sync:
-
-    def __init__(self):
-        self._level = logging.DEBUG
-    @property
-    def level(self):
-        return self._level
-    
-    @level.setter
-    def level(self, value):
-        self._level = value
-
-class _Thread:
-
-    def __init__(self):
-        self._level = threading.local()
-    @property
-    def level(self):
-        return self._level.value
-    
-    @level.setter
-    def level(self, value):
-        self._level.value = value
-    
-class _Async:
-    def __init__(self):
-        self._level = contextvars.ContextVar('level')
-    @property
-    def level(self):
-        return self._level.get()
-    
-    @level.setter
-    def level(self, value):
-        self._level.set(value)
 
 if __name__ == "__main__":
     print('# ---------------------------------- fix --------------------------------- #')
-    logger = Logger('test_fix_logger', 'blue', 'log.ini', True)
+    logger = Logger('test_fix', 'blue', 'log.ini', True)
     logger.info('info')
     logger.debug('debug')
     logger.warning('warn')
     logger.error('error')
     print('# --------------------------------- level -------------------------------- #')
-    logger = Logger('test_level_logger', 'level', 'log.ini', True)
+    logger = Logger('test_level', 'level', 'log.ini', True)
     logger.info('info')
     logger.debug('debug')
     logger.warning('warn')
     logger.error('error')
     print('# --------------------------------- head --------------------------------- #')
-    logger = Logger('test_head_logger', 'head', 'log.ini', True)
+    logger = Logger('test_head', 'head', 'log.ini', True)
     logger.info('info')
     logger.debug('debug')
     logger.warning('warn')
     logger.error('error')
-    print('# --------------------------------- green -------------------------------- #')
-    logger = Logger('test_chain', 'green', 'log.ini', False)
-    chain = CustomLog(logger, 'async')
-    chain.info.msg('info')
-    chain.debug.msg('debug')
-    chain.warning.msg('warning')
-    chain.error.msg('error')
-    print('# ------------------------------- customlog ------------------------------ #')
-    class Log(CustomLog):
-        def custom_msg(self, module, status, msg):
-            header=f":: {module:<10} {status:<10}"
-            self.msg(header + msg)
-
-        def msg_module01_init(self):
-            self.custom_msg('mod01', 'init', 'test_custom')
-
-        def msg_module02_start(self):
-            self.custom_msg('mod02', 'start', 'test_custom')
     
-
-    mylogger = Log(logger, 'sync')
-    mylogger.info.msg_module01_init()
-    mylogger.debug.msg_module02_start()
