@@ -28,7 +28,7 @@ class Logger(logging.Logger):
     def __init__(self, 
             name:str, 
             color:Literal['level','head','red','green','yellow','blue']=None,
-            config:str = "log.ini", 
+            config:str="log.ini", 
             debug=False
         ):
         """
@@ -40,6 +40,11 @@ class Logger(logging.Logger):
         super().__init__(name, level=logging.NOTSET)
     
         # ---------------------------- config file --------------------------- #
+        conf  = Config(filename=config, debug=True)
+    
+        if not conf.file_in_folder('config'):
+            conf.fallback('default.ini')
+
         conf = Config(config,'rawconfig',debug)
         if not conf.read_project(child_dir='config'):
             conf.read_written(fallback_file='default.ini')
