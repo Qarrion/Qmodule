@@ -40,21 +40,12 @@ class Logger(logging.Logger):
         super().__init__(name, level=logging.NOTSET)
     
         # ---------------------------- config file --------------------------- #
-        conf  = Config(filename=config, debug=True)
-    
-        if not conf.file_in_folder('config'):
-            conf.fallback('default.ini')
+        conf = Config(config_filename=config, debug=debug)
+        conf.location_subdir(folder_name='config',config_fallback='default.ini')
 
-        conf = Config(config,'rawconfig',debug)
-        if not conf.read_project(child_dir='config'):
-            conf.read_written(fallback_file='default.ini')
-        
-        if conf.is_section(name) is None:
-            conf.is_section('default')
-
-        log_lev = conf.config.get(conf.section, 'level')
-        log_fmt = conf.config.get(conf.section, 'fmt')
-        log_ymd = conf.config.get(conf.section, 'datefmt', fallback=None)
+        log_lev = conf.data.get(name, 'level')
+        log_fmt = conf.data.get(name, 'fmt')
+        log_ymd = conf.data.get(name, 'datefmt', fallback=None)
         
         # ----------------------------- formatter ---------------------------- #
         if color == 'level':
