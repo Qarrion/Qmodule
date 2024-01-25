@@ -1,21 +1,25 @@
 import requests
 from Qupbit.utils.config import Config
-from Qupbit.tools import parser
+from Qupbit.tools import parser, Msg
 
-config = Config('limit.ini', 'config', debug=True)
-config.read_project('config')
-config.is_section('rest-default')
-# C:\Qarrion\Code\Qmodule\Qupbit\Qupbit\config\limit.ini
+import logging
+
+# config = Config('limit.ini', 'config', debug=True)
+# config.read_project('config')
+# config.is_section('rest-default')
+# # C:\Qarrion\Code\Qmodule\Qupbit\Qupbit\config\limit.ini
 
 
 """Quote-Base"""
 class Market:
-    """ test """
+    """ qoutation """
+
     url_market = "https://api.upbit.com/v1/market/all"
     params = {"isDetails": 'true'}
     headers = {"Accept": "application/json"}
     
-    # def __init__(self):
+    def __init__(self, logger:logging.Logger):
+        self.msg = Msg(logger)
 
     def get(self):
         """ >>> # Quote-Base 
@@ -34,6 +38,7 @@ class Market:
             rslt['remain'] = None
             rslt['payload'] = None
 
+        self.msg.debug.request('market',rslt['remain'])
         return rslt 
     
     def response(self):
@@ -41,12 +46,15 @@ class Market:
 
     def filter(self, payload, qoute=None, base=None, market=None):
         if market is not None:
-            rslt = [d for d in payload if d['market'] == market]
-        elif qoute is not None:
-            rslt = [d for d in payload if d['market'].startswith(qoute)]
-        elif base is not None:
-            rslt = [d for d in payload if d['market'].endswith(base)]
-        return rslt
+            payload = [d for d in payload if d['market'] == market]
+
+        if qoute is not None:
+            payload = [d for d in payload if d['market'].startswith(qoute)]
+
+        if base is not None:
+            payload = [d for d in payload if d['market'].endswith(base)]
+            
+        return payload
     
 if __name__=='__main__':
     from datetime import datetime

@@ -15,10 +15,19 @@ class CustomLog:
         elif context == 'async':
             self.method = _Async()
 
-    def stream(self, status, *args):
-        """>>> #{func.status:<20} {arg:12}"""
+    def stream(self, status, *args, n_back=2):
+        """>>> #{func.status:<20} {arg:12}
+        n_back=1 -> customlog
+        n_back=2 -> function
+        """
         # frame = f'{inspect.stack()[2].function}.{status}'
-        frame = f'{inspect.currentframe().f_back.f_code.co_name}.{status}'
+        if n_back == 1:
+            frame = f'{inspect.currentframe().f_back.f_code.co_name}.{status}'
+        elif n_back == 2:
+            frame = f'{inspect.currentframe().f_back.f_back.f_code.co_name}.{status}'
+        elif n_back == 3:
+            frame = f'{inspect.currentframe().f_back.f_back.f_back.f_code.co_name}.{status}'
+
         header = f'{frame:<20} ::: '
         body = ', '.join([f"{arg:<12}" for arg in args]) +" :::"
         self.msg(header + body) 

@@ -86,9 +86,16 @@ class _Async:
         self._level.set(value)
 
 if __name__ == "__main__":
-    from Qlogger import Logger
     print('# --------------------------------- green -------------------------------- #')
-    logger = Logger('test_chain', 'level', 'log.ini', False)
+    logger = logging.getLogger('mylogger')
+    logger.setLevel(logging.DEBUG) 
+    handler = logging.StreamHandler() 
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)7s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+
     chain = CustomLog(logger, 'sync')
     chain.msg('default debug')
     chain.info.msg('info')
@@ -103,16 +110,13 @@ if __name__ == "__main__":
     print('# ------------------------------- customlog ------------------------------ #')
 
     class Msg(CustomLog):
-        def custom_msg(self, module, status, msg):
-            header=f":: {module:<10} {status:<10}"
-            self.msg(header + msg)
 
-        def msg_module01_init(self):
-            self.custom_msg('mod01', 'init', 'test_custom')
+        def msg_module01(self):
+            self.stream('mod01', 'init', 'test_custom')
 
-        def msg_module02_start(self):
+        def msg_module02(self):
             self.stream('mod02', 'start', 'test_custom')
     
     mylogger = Msg(logger, 'sync')
-    mylogger.info.msg_module01_init()
-    mylogger.debug.msg_module02_start()
+    mylogger.info.msg_module01()
+    mylogger.debug.msg_module02()

@@ -14,8 +14,8 @@ class ViewBox(pg.ViewBox):
         super().__init__(*args, **kwds)
         # self.enableAutoRange()
         self.setMouseEnabled(y=False)
-        
-
+        self.enableAutoRange( y=True)
+        self.setAutoVisible(y=True)
     def wheelEvent(self, event):
         # 확대/축소 비율 설정
         x_min, x_max = self.viewRange()[0]
@@ -44,17 +44,17 @@ class PlotWidget(pg.PlotWidget):
 
         self.plot_data_item = self.plot(x,y,antialias=True)
         # -------------------------------------------------------------------- #
-        self.sigXRangeChanged.connect(self.update_y_range_given_x_range)
+        # self.sigXRangeChanged.connect(self.update_y_range_given_x_range)
         
-    def update_y_range_given_x_range(self,  viewbox):
-        # print(self.plot_data_item.getData())
-        # print(viewbox.viewRange()[0])
-        xdata = self.plot_data_item.getData()[0]
-        ydata = self.plot_data_item.getData()[1]
-        x_min, x_max = viewbox.viewRange()[0]
-        y_given_x_range = ydata[(xdata >= x_min) & (xdata <= x_max)]
+    # def update_y_range_given_x_range(self,  viewbox):
+    #     # print(self.plot_data_item.getData())
+    #     # print(viewbox.viewRange()[0])
+    #     xdata = self.plot_data_item.getData()[0]
+    #     ydata = self.plot_data_item.getData()[1]
+    #     x_min, x_max = viewbox.viewRange()[0]
+    #     y_given_x_range = ydata[(xdata >= x_min) & (xdata <= x_max)]
 
-        viewbox.setYRange(min(y_given_x_range),max(y_given_x_range))
+    #     viewbox.setYRange(min(y_given_x_range),max(y_given_x_range))
 
 
 
