@@ -1,0 +1,1 @@
+# https://github.com/pyqtgraph/pyqtgraph/issues/1658

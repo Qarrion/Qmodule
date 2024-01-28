@@ -1,5 +1,6 @@
 from PySide6 import QtWidgets
 from PySide6.QtGui import QPainter, QWheelEvent, QMouseEvent
+from PySide6.QtCore import QPointF
 import pyqtgraph as pg
 import random, sys
 import numpy as np
@@ -12,11 +13,12 @@ class ViewBox(pg.ViewBox):
         self.setMouseEnabled(y=False)
         self.enableAutoRange(x=False, y=False) # 자동 range (add)
         self.setAutoVisible(x=False, y=False)  # 자동 min max
+        
 
     def wheelEvent(self, event):
         # 확대/축소 비율 설정
         x_min, x_max = self.viewRange()[0]
-        print(x_min, x_max)
+        # print(x_min, x_max)
         x_rng = (x_max - x_min) * 0.1
         
         if event.delta() > 0:
@@ -30,15 +32,32 @@ class PlotWidget(pg.PlotWidget):
         super().__init__(*args, **kwds)
         self.x = np.array([])
         self.y = np.array([])
+
         self.plot_dataitem = self.plot(self.x,self.y,antialias=True)
         
+        self.showGrid(x=True,y=True)
+
+        # -------------------------------------------------------------------- #
+        self.last_pos = QPointF(0,0)
+        self.vLine = pg.InfiniteLine(angle=90, movable=False)
+        self.hLine = pg.InfiniteLine(angle=0, movable=False)
+        self.addItem(self.vLine, ignoreBounds=True)
+        self.addItem(self.hLine, ignoreBounds=True)  
+        self.scene().sigMouseMoved.connect(self.mouseMoved)
+        self.getViewBox().sigRangeChanged.connect(self.rangeChanged)
+        # -------------------------------------------------------------------- #
+
     def update_dataitem(self, x, y):
         self.x = np.append(self.x, x)
         self.y = np.append(self.y, y)
         self.plot_dataitem.setData(self.x, self.y)
-
         # self._update_xrange_window()
         # self._update_yrange_given_xrange()
+
+    def amend_dataitem(self, x, y):
+        self.x[-1] = x
+        self.y[-1] = y
+        self.plot_dataitem.setData(self.x, self.y)
 
     def update_yrange_given_xrange(self):
         x_min, x_max = self.getViewBox().viewRange()[0]
@@ -64,11 +83,23 @@ class PlotWidget(pg.PlotWidget):
         x_min, x_max = self.getViewBox().viewRange()[0]
         xdata = self.plot_dataitem.getData()[0]
         threshold = (x_max-x_min)*0.05 
-        # threshold = 5  
         
         if x_max - threshold <= len(xdata) <= x_max + 1 :
             self.setXRange(x_min + threshold, x_max + threshold, padding=0)
-            print(x_min,x_max,x_max-x_min)
+
+    def update_crosshair(self):
+        mousePoint = self.plotItem.vb.mapSceneToView(self.last_pos)
+        self.vLine.setPos(mousePoint.x())
+        self.hLine.setPos(mousePoint.y())
+
+    # ------------------------------- callback ------------------------------- #
+    def mouseMoved(self, evt):
+        # 현재 마우스 위치 업데이트
+        self.last_pos = evt 
+        self.update_crosshair()
+
+    def rangeChanged(self):
+        self.update_crosshair()
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -90,9 +121,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer.timeout.connect(self.update)
         self.timer.start()
 
+        self.test_cnt = 0
     def update(self):
         x_new = len(self.pw.x)
         y_new = np.random.normal(size=1)[0] + 5 * np.sin(x_new/100) 
+
+        #@ test---------------------------
+        # if 
+        
+        
+        #@ test---------------------------
         self.pw.update_dataitem(x_new, y_new)
         self.pw.update_xrange_window()
         self.pw.update_yrange_given_xrange()

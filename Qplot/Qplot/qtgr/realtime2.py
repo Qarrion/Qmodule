@@ -14,8 +14,9 @@ class ViewBox(pg.ViewBox):
         super().__init__(*args, **kwds)
         # self.enableAutoRange()
         self.setMouseEnabled(y=False)
-        self.enableAutoRange( y=True)
+        self.enableAutoRange(y=True)
         self.setAutoVisible(y=True)
+        
     def wheelEvent(self, event):
         # 확대/축소 비율 설정
         x_min, x_max = self.viewRange()[0]
