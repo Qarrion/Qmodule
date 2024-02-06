@@ -60,9 +60,10 @@ class CrossHair:
 
         self.vline = pg.InfiniteLine(angle=90, movable=False)
         self.hline = pg.InfiniteLine(angle=0, movable=False)
+        # self.hline = pg.InfiniteLine(angle=0, movable=False,pos=0, label="aaa")
 
-        self.plotitem.addItem(self.vline)
-        self.plotitem.addItem(self.hline)
+        self.plotitem.addItem(self.vline, ignoreBounds=False)
+        self.plotitem.addItem(self.hline, ignoreBounds=False)
 
     def slot_mouse_moved(self, pos):
         self.pos_scene = pos
@@ -124,9 +125,9 @@ class MainWindow(QtWidgets.QMainWindow):
         super().__init__()
         self.plotwidget = PlotWidget(viewBox=ViewBox())
         # ------------------------------- data ------------------------------- #
-        x = np.arange(5, dtype=float)
-        y = np.random.normal(size=5)
-        y += 5 * np.sin(x/100) 
+        x = np.arange(1000, dtype=float)
+        y = np.random.normal(size=1000)
+        y += 2000 * np.sin(x/100) 
         self.plotwidget.update_data(x,y) #!init
         self.plotwidget.crosshar._update()
         # -------------------------------------------------------------------- #    

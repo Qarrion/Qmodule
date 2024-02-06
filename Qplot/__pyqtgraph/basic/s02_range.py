@@ -131,11 +131,14 @@ class PlotWidget(pg.PlotWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.autoscale= AutoScale(self)
+
+        self.plotitem = self.getPlotItem()
+        self.plotitem.showGrid(x=True, y=True)
         # ------------------------------- plot1 ------------------------------ #
         self.line_x = np.array([])
         self.line_y = np.array([])
 
-        self.plotitem = self.getPlotItem()
+
         self.line = pg.PlotCurveItem(self.line_x,self.line_y,antialias=True)
         self.plotitem.addItem(self.line)
 

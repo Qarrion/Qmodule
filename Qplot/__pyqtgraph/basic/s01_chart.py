@@ -1,4 +1,7 @@
+from typing import Optional
 from PySide6 import QtWidgets
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QWidget
 import pyqtgraph as pg
 import numpy as np
 
@@ -51,100 +54,97 @@ import numpy as np
 #! ---------------------------------------------------------------------------- #
 #!                                     case3                                    #
 #! ---------------------------------------------------------------------------- #
-class CViewBox(pg.ViewBox):
+# class ViewBox(pg.ViewBox):
+#     def __init__(self, *args, **kwds):
+#         super(ViewBox,self).__init__(*args, **kwds)
+#         # self.enableAutoRange()
+#         self.setMouseEnabled(y=False)
+#         # self.enableAutoRange(x=False, y=False) # 자동 range (add)
+#         # self.setAutoVisible(x=False, y=False)  # 자동 min max
+        
+#     def wheelEvent(self, event):
+#         x_min, x_max = self.viewRange()[0]
+#         x_rng = (x_max - x_min) * 0.1
+        
+#         if event.delta() < 0:
+#             self.setXRange(x_min - x_rng , x_max, padding=0)
+#         else:
+#             self.setXRange(x_min + x_rng , x_max, padding=0)
+
+
+# app = QtWidgets.QApplication([])
+# # ---------------------------------- window ---------------------------------- #
+# window = QtWidgets.QMainWindow()
+# # --------------------------------- gen plot --------------------------------- #
+# x = np.arange(1000, dtype=float)
+# y = np.random.normal(size=1000)
+# y += 5 * np.sin(x/100) 
+# # ---------------------------------------------------------------------------- #
+
+# plot_widget =  pg.PlotWidget(viewBox=ViewBox())
+# plot_item = plot_widget.getPlotItem()
+
+
+
+# data_item = pg.PlotCurveItem(x,y,antialias=True)
+
+# plot_item.addItem(data_item)
+# # ---------------------------------------------------------------------------- #
+# plot_item.showAxis('right')
+
+
+# # ---------------------------------------------------------------------------- #
+
+# # --------------------------------- add plot --------------------------------- #
+# window.setCentralWidget(plot_widget)
+# window.show()
+
+# app.exec()
+#! ---------------------------------------------------------------------------- #
+#!                                     case4                                    #
+#! ---------------------------------------------------------------------------- #
+class ViewBox(pg.ViewBox):
     def __init__(self, *args, **kwds):
-        super(CViewBox,self).__init__(*args, **kwds)
+        super(ViewBox,self).__init__(*args, **kwds)
         # self.enableAutoRange()
         self.setMouseEnabled(y=False)
         # self.enableAutoRange(x=False, y=False) # 자동 range (add)
         # self.setAutoVisible(x=False, y=False)  # 자동 min max
         
-
-    def wheelEvent(self, event):
-        x_min, x_max = self.viewRange()[0]
-        x_rng = (x_max - x_min) * 0.1
+    # def wheelEvent(self, event):
+    #     x_min, x_max = self.viewRange()[0]
+    #     x_rng = (x_max - x_min) * 0.1
         
-        if event.delta() < 0:
-            self.setXRange(x_min - x_rng , x_max, padding=0)
-        else:
-            self.setXRange(x_min + x_rng , x_max, padding=0)
+    #     if event.delta() < 0:
+    #         self.setXRange(x_min - x_rng , x_max, padding=0)
+    #     else:
+    #         self.setXRange(x_min + x_rng , x_max, padding=0)
+
+class  PlotWidget(pg.PlotWidget):
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+        self.plot_item = self.getPlotItem()
+
+        x = np.arange(1000, dtype=float)
+        y = np.random.normal(size=1000)
+        y += 5 * np.sin(x/100) 
+
+        self.data_item = pg.PlotCurveItem(x,y,antialias=True)
+
+        self.plot_item.addItem(self.data_item)
+        self.plot_item.showAxis('right')
+
 
 app = QtWidgets.QApplication([])
-# ---------------------------------- window ---------------------------------- #
 window = QtWidgets.QMainWindow()
-# --------------------------------- gen plot --------------------------------- #
-x = np.arange(1000, dtype=float)
-y = np.random.normal(size=1000)
-y += 5 * np.sin(x/100) 
-# ---------------------------------------------------------------------------- #
 
-plot_widget =  pg.PlotWidget(viewBox=CViewBox())
-plot_item = plot_widget.getPlotItem()
+plot_widget = PlotWidget(viewBox=ViewBox())
 
-
-
-data_item = pg.PlotCurveItem(x,y,antialias=True)
-
-plot_item.addItem(data_item)
-# ---------------------------------------------------------------------------- #
-plot_item.showAxis('right')
-
-
-# ---------------------------------------------------------------------------- #
-
-# --------------------------------- add plot --------------------------------- #
 window.setCentralWidget(plot_widget)
 window.show()
 
 app.exec()
-
-
-# ---------------------------------------------------------------------------- #
-#                                     case5                                    #
-# ---------------------------------------------------------------------------- #
-# from PySide6 import QtWidgets
-# import pyqtgraph as pg
-# import numpy as np
-
-# # Define a custom ViewBox class
-# class CustomViewBox(pg.ViewBox):
-#     def __init__(self, *args, **kwargs):
-#         # super(CustomViewBox, self).__init__(*args, **kwargs)
-#         super().__init__(*args, **kwargs)
-#         self.setMouseEnabled(y=False)
-
-# # Create the application and main window
-# app = QtWidgets.QApplication([])
-# window = QtWidgets.QMainWindow()
-
-# # Generate plot data
-# x = np.arange(1000, dtype=float)
-# y = np.random.normal(size=1000)
-# y += 5 * np.sin(x/100)
-
-# # Create PlotWidget with the custom ViewBox
-# plot_widget = pg.PlotWidget(viewBox=CustomViewBox())
-# plot_item = plot_widget.getPlotItem()
-
-# # Create and add the plot data item
-# data_item = pg.PlotCurveItem(x, y, antialias=True)
-# plot_item.addItem(data_item)
-
-# # Set the plot widget as the central widget of the window
-# window.setCentralWidget(plot_widget)
-# window.show()
-
-# # Execute the application
-# app.exec()
-# ---------------------------------------------------------------------------- #
-
-
-
-
-
-
-
-
 
 
 

@@ -231,7 +231,6 @@ class AutoScale:
 class CrossHair:
     def __init__(self, plotitem:pg.PlotItem):
         self.plotitem = plotitem
-
         self.pos_scene = QtCore.QPointF(0,0)
 
         pen = pg.mkPen(color="#cccccc", style=QtCore.Qt.DashLine, width=0.6)

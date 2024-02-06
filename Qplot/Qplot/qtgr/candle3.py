@@ -263,18 +263,18 @@ if __name__ == "__main__":
 #     data.append(i_data)
 
 # np.array(data)
-# import numpy as np
+import numpy as np
 
-# data = [
-#     (1., 10, 13, 5, 15),
-#     (2., 13, 17, 9, 20),
-#     (3., 17, 14, 11, 23),
-#     (4., 1, 1, 1, 1),
-#     # 여기에 더 많은 데이터를 추가할 수 있습니다.
-# ]
-# data_candle = np.array(data)
-# np.max(data_candle[:,2])
-# data_candle[0,-1]
+data = [
+    (1., 10, 13, 5, 15),
+    (2., 13, 17, 9, 20),
+    (3., 17, 14, 11, 23),
+    (4., 1, 1, 1, 1),
+    # 여기에 더 많은 데이터를 추가할 수 있습니다.
+]
+data_candle = np.array(data)
+np.max(data_candle[:,2])
+data_candle[0,-1]
 
 # self.data_candle[:,0] > 1
 # self.data_candle[:,0] > 4
