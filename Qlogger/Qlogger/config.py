@@ -66,22 +66,22 @@ class Config:
 					sections = ['DEFAULT']+self.parser.sections()
 				else:
 					sections = self.parser.sections()
-				dprint(f"sections ('{"', '".join(sections)}')")
+				dprint(f"sections ('{"', '".join(sections)}')",2,self._debug)
 				return
-		dprint(f"No config ({self._filename}).")
+		dprint(f"No config ({self._filename}).",2,self._debug)
 
 	def set_section(self, section=None):
 		if section in self.parser.sections():
 			self.section = self.parser[section]
-			dprint(f"section ({section})",1)
+			dprint(f"section ({section})",1,self._debug)
 		elif self.is_default:
-			dprint(f"section ({section}->DEFAULT)",1)
+			dprint(f"section ({section}->DEFAULT)",1,self._debug)
 			self.section = self.parser['DEFAULT']
 		else:
-			dprint(f"section ({section}->DEFAULT)",0)
-			dprint(f"No section ({section} or DEFAULT)")
+			dprint(f"section ({section}->DEFAULT)",0,self._debug)
+			dprint(f"No section ({section} or DEFAULT)",2,self._debug)
 			return
-		dprint(f"options ('{"', '".join(self.section.keys())}')")
+		dprint(f"options ('{"', '".join(self.section.keys())}')",2,self._debug)
 
 
 	

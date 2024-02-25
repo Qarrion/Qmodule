@@ -86,7 +86,8 @@ class _Async:
         self._level.set(value)
 
 if __name__ == "__main__":
-    print('# --------------------------------- green -------------------------------- #')
+    print('# ------------------------------- customlog ------------------------------ #')
+
     logger = logging.getLogger('mylogger')
     logger.setLevel(logging.DEBUG) 
     handler = logging.StreamHandler() 
@@ -95,28 +96,25 @@ if __name__ == "__main__":
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
-
-    chain = CustomLog(logger, 'sync')
-    chain.msg('default debug')
-    chain.info.msg('info')
-    chain.debug.msg('debug')
-    chain.warning.msg('warning')
-    chain.error.msg('error')
-
+    clogger = CustomLog(logger, 'sync')
+    clogger.msg('default debug')
+    clogger.stream('status','(1234567890)','(1234567890)','(1234567890)')
     def test():
-        chain.stream('status','(1234567890)','(1234567890)','(1234567890)')
+        clogger.stream('status','(1234567890)','(1234567890)','(1234567890)')
     test()
 
-    print('# ------------------------------- customlog ------------------------------ #')
+    print("# ---------------------------- chained method ---------------------------- #")
+    clogger.info.msg('info')
+    clogger.debug.msg('debug')
+    clogger.warning.msg('warning')
+    clogger.error.msg('error')
 
+    print("# ------------------------------ base class ------------------------------ #")
     class Msg(CustomLog):
-
         def msg_module01(self):
             self.stream('mod01', 'init', 'test_custom')
-
         def msg_module02(self):
             self.stream('mod02', 'start', 'test_custom')
-    
     mylogger = Msg(logger, 'sync')
     mylogger.info.msg_module01()
     mylogger.debug.msg_module02()

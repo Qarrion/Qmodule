@@ -1,6 +1,5 @@
-from Qlogger.util import Config
 from typing import Literal
-from config import Config
+from Qlogger.config import Config
 import logging
 
 
@@ -27,8 +26,8 @@ class Logger(logging.Logger):
     # ------------------------------------------------------------------------ #
     def __init__(self, 
             name:str, 
+            color:Literal['level','head','red','green','yellow','blue']='reset',
             file:str="log.ini", 
-            color:Literal['level','head','red','green','yellow','blue']=None,
             debug=False
         ):
         """
@@ -39,24 +38,20 @@ class Logger(logging.Logger):
         """
         super().__init__(name, level=logging.NOTSET)
     
-        # ---------------------------- config file --------------------------- #
-        # config = Config()
-        # conf = Config(config_filename=config, debug=debug)
-        # conf.read_config_subdir(folder_name='config',config_fallback='default.ini')
-        # conf.read_section(section_name=name, fallback_name='logger')
-        # log_lev = conf.data.get(conf.section, 'level')
-        # log_fmt = conf.data.get(conf.section, 'fmt', raw=True)
-        # log_ymd = conf.data.get(conf.section, 'datefmt', raw=True, fallback=None)
-        
-        config = Config(inifile=file,debug=debug)
-        log_lev = config.parser.get(name)
+        # ---------------------------- config file --------------------------- #    
+        config = Config(inifile=file,fallback='default.ini',debug=debug)
+        config.set_section(section=name)
+
+        log_lev = config.section.get('level')
+        log_fmt = config.section.get('fmt', raw=True)
+        log_ymd = config.section.get('datefmt', raw=True, fallback=None)
         # ----------------------------- formatter ---------------------------- #
         if color == 'level':
             formatter = LevelFormatter(fmt=log_fmt, datefmt=log_ymd)
         elif color == 'head':
             formatter = HeadFormatter(fmt=log_fmt, datefmt=log_ymd)
         else:
-            if color is None : color = 'reset'
+            # if color is None : color = 'reset'
             log_fmt_col = f"{cmap[color]}{log_fmt}{cmap['reset']}"
             formatter = logging.Formatter(fmt=log_fmt_col, datefmt=log_ymd)
     
@@ -95,21 +90,21 @@ class HeadFormatter(logging.Formatter):
 
 if __name__ == "__main__":
     print('# ---------------------------------- fix --------------------------------- #')
-    logger = Logger('test_fix', 'blue', 'log.ini', True)
+    logger = Logger('test_fix', 'blue', 'log.ini')
     logger.info('info')
     logger.debug('debug')
     logger.warning('warn')
     logger.error('error')
-    print('# --------------------------------- level -------------------------------- #')
-    logger = Logger('test_level', 'level', 'log.ini', True)
-    logger.info('info')
-    logger.debug('debug')
-    logger.warning('warn')
-    logger.error('error')
-    print('# --------------------------------- head --------------------------------- #')
-    logger = Logger('test_head', 'head', 'log.ini', True)
-    logger.info('info')
-    logger.debug('debug')
-    logger.warning('warn')
-    logger.error('error')
+    # print('# --------------------------------- level -------------------------------- #')
+    # logger = Logger('test_level', 'level', 'log.ini', True)
+    # logger.info('info')
+    # logger.debug('debug')
+    # logger.warning('warn')
+    # logger.error('error')
+    # print('# --------------------------------- head --------------------------------- #')
+    # logger = Logger('test_head', 'head', 'log.ini', True)
+    # logger.info('info')
+    # logger.debug('debug')
+    # logger.warning('warn')
+    # logger.error('error')
     
