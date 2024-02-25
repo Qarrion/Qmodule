@@ -69,9 +69,7 @@ class Config:
         filepath = os.path.join(os.path.dirname(__file__), filename)
         return self._data_read(filepath,location='fallback') 
 
-
     # ----------------------------- read section ----------------------------- #
-
     def read_section(self, section_name:str, fallback_name:str=None):
         if section_name in self.data.sections(): 
             self.section = section_name
@@ -126,12 +124,13 @@ if __name__ == "__main__":
     config = Config(config_filename='test.ini', debug=True)
 
     # --------------------------------- meth1 -------------------------------- #
-    #! project/'config'/'test.ini',
-    if not config.read_config_subdir('config'):
-        #! path/to/execute/'test.ini',
-        if not config.read_config_dirname(__file__):
-            #! path/to/define/'config.ini',
-            config.fallback('config.ini')
+    # #! project/'config'/'test.ini',
+    # if not config.read_config_subdir('config'):
+    #     #! path/to/execute/'test.ini',
+    #     if not config.read_config_dirname(__file__):
+    #         #! path/to/define/'config.ini',
+    #         # config.fallback('config.ini')
+    #         pass
 
     # --------------------------------- meth2 -------------------------------- #
     config.read_config_subdir('conifg',config_fallback='test.ini')

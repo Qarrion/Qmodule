@@ -1,5 +1,6 @@
 from Qlogger.util import Config
 from typing import Literal
+from config import Config
 import logging
 
 
@@ -21,13 +22,13 @@ level = {
     'ERROR':    cmap['red'],
     'RESET':    cmap['reset'],
 }
-class Logger(logging.Logger):
 
+class Logger(logging.Logger):
     # ------------------------------------------------------------------------ #
     def __init__(self, 
             name:str, 
+            file:str="log.ini", 
             color:Literal['level','head','red','green','yellow','blue']=None,
-            config:str="log.ini", 
             debug=False
         ):
         """
@@ -39,14 +40,16 @@ class Logger(logging.Logger):
         super().__init__(name, level=logging.NOTSET)
     
         # ---------------------------- config file --------------------------- #
-        conf = Config(config_filename=config, debug=debug)
-        conf.read_config_subdir(folder_name='config',config_fallback='default.ini')
-        conf.read_section(section_name=name, fallback_name='logger')
-
-        log_lev = conf.data.get(conf.section, 'level')
-        log_fmt = conf.data.get(conf.section, 'fmt', raw=True)
-        log_ymd = conf.data.get(conf.section, 'datefmt', raw=True, fallback=None)
+        # config = Config()
+        # conf = Config(config_filename=config, debug=debug)
+        # conf.read_config_subdir(folder_name='config',config_fallback='default.ini')
+        # conf.read_section(section_name=name, fallback_name='logger')
+        # log_lev = conf.data.get(conf.section, 'level')
+        # log_fmt = conf.data.get(conf.section, 'fmt', raw=True)
+        # log_ymd = conf.data.get(conf.section, 'datefmt', raw=True, fallback=None)
         
+        config = Config(inifile=file,debug=debug)
+        log_lev = config.parser.get(name)
         # ----------------------------- formatter ---------------------------- #
         if color == 'level':
             formatter = LevelFormatter(fmt=log_fmt, datefmt=log_ymd)
