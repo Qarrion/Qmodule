@@ -7,14 +7,14 @@ from functools import partial
 
 import asyncio
 
-from Qrepeater.msg import Msg
+from Qrepeater.tracer import Tracer
 from Qrepeater.timer import Timer
 
 
 class ThreadRepeater:
 
     def __init__(self, value:float, unit:Literal['second','minute'], logger:logging.Logger):
-        self.msg = Msg(logger, 'thread')
+        self.msg = Tracer(logger, 'thread')
         self.timer = Timer(value, unit, logger)
 
         self._stop_event = threading.Event()
@@ -49,7 +49,7 @@ class ThreadRepeater:
 class AscyncRepeater:
     
     def __init__(self, value:float, unit:Literal['second','minute'], logger:logging.Logger):
-        self.msg = Msg(logger, 'async')
+        self.msg = Tracer(logger, 'async')
         self.timer = Timer(value, unit, logger)
 
         self._stop_event = asyncio.Event()
@@ -80,12 +80,12 @@ class AscyncRepeater:
 
 
 if __name__ == "__main__":
-    from Qlogger import Logger
-    logger = Logger('test','level')
-    logger2 = Logger('func','level')
+    from Qrepeater.utils.log_color import ColorLog
+    logger1 = ColorLog('test','blue')
+    logger2 = ColorLog('func','green')
 
     # -------------------------------- thread -------------------------------- #
-    repeater = ThreadRepeater(10, 'second', logger)
+    repeater = ThreadRepeater(10, 'second', logger1)
 
     def myfunc1(x):
         logger2.warning(f'myfunc1 sleep ({x})')
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         time.sleep(x)
         logger2.warning(f'myfunc2 done!')
 
-    from functools import partial
+    # from functools import partial
     repeater.register(myfunc1, 1)
     repeater.register(myfunc2, 2)
 

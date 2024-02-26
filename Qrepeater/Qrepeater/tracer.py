@@ -1,22 +1,15 @@
 import logging
 from typing import Literal
-from Qrepeater.utils.customlog import CustomLog
+from Qrepeater.utils.log_custom import CustomLog
 import inspect
 from datetime import datetime
 
-class Msg(CustomLog):
+class Tracer(CustomLog):
     def __init__(self, logger: logging.Logger, context: Literal['sync', 'thread', 'async'] = 'sync'):
         super().__init__(logger, context)
 
-    def stream(self, status, *args):
-        # frame = f'{inspect.stack()[2].function}.{status}'
-        frame = f'{inspect.currentframe().f_back.f_code.co_name}.{status}'
-        header = f'{frame:<20} ::: '
-        body = ''.join([f"{arg:<12}, " for arg in args]) +" :::"
-        self.msg(header + body) 
-
-    def strm_timer_wait(self, datetime_next, timedelta_ms):
-        status=''
+    def timer(self, datetime_next, timedelta_ms):
+        status='wait'
         str_nxt = datetime_next.strftime("%M:%S.%f")[:-3]
 
         sec_rem = timedelta_ms.total_seconds()
@@ -36,8 +29,8 @@ class Msg(CustomLog):
         self.stream('all done!','','','')
 
 if __name__ =="__main__":
-    from Qlogger import Logger
-    logger = Logger('test','level')
+    from Qrepeater.utils.log_color import ColorLog
+    logger = ColorLog('test','green')
     
-    msg = Msg(logger, 'async')
-    msg.info.strm_async_timeout('dd',(2,3),3)
+    tracer = Tracer(logger, 'async')
+    tracer.info.strm_async_timeout('dd',(2,3),3)
