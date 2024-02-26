@@ -1,9 +1,8 @@
-import logging
 import threading
 import contextvars
+import inspect
 from typing import Literal
-
-# sub class in Qlogger
+import logging
 
 class CustomLog:
     def __init__(self, logger:logging.Logger,
@@ -15,9 +14,16 @@ class CustomLog:
             self.method = _Thread()
         elif context == 'async':
             self.method = _Async()
-    
+
+    def stream(self, status, *args):
+        """>>> #{func.status:<20} {arg:12}"""
+        # frame = f'{inspect.stack()[2].function}.{status}'
+        frame = f'{inspect.currentframe().f_back.f_code.co_name}.{status}'
+        header = f'{frame:<20} ::: '
+        body = ', '.join([f"{arg:<12}" for arg in args]) +" :::"
+        self.msg(header + body) 
+
     def msg(self, msg):
-        """if self.logger is not None:"""
         if self.logger is not None:
             self.log(msg=msg)
 
@@ -45,21 +51,25 @@ class CustomLog:
         return self
 
 class _Sync:
+
     def __init__(self):
         self._level = logging.DEBUG
     @property
     def level(self):
         return self._level
+    
     @level.setter
     def level(self, value):
         self._level = value
 
 class _Thread:
+
     def __init__(self):
         self._level = threading.local()
     @property
     def level(self):
         return self._level.value
+    
     @level.setter
     def level(self, value):
         self._level.value = value
@@ -70,32 +80,41 @@ class _Async:
     @property
     def level(self):
         return self._level.get()
+    
     @level.setter
     def level(self, value):
         self._level.set(value)
 
 if __name__ == "__main__":
-    
+    print('# ------------------------------- customlog ------------------------------ #')
+
     logger = logging.getLogger('mylogger')
     logger.setLevel(logging.DEBUG) 
     handler = logging.StreamHandler() 
     handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)7s - %(message)s')
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
-    class Log(CustomLog):
-        def custom_msg(self, module, status, msg):
-            header=f":: {module:<10} {status:<10}"
-            self.msg(header + msg)
+    clogger = CustomLog(logger, 'sync')
+    clogger.msg('default debug')
+    clogger.stream('status','(1234567890)','(1234567890)','(1234567890)')
+    def test():
+        clogger.stream('status','(1234567890)','(1234567890)','(1234567890)')
+    test()
 
-        def msg_module01_init(self):
-            self.custom_msg('mod01', 'init', 'test_custom')
+    print("# ---------------------------- chained method ---------------------------- #")
+    clogger.info.msg('info')
+    clogger.debug.msg('debug')
+    clogger.warning.msg('warning')
+    clogger.error.msg('error')
 
-        def msg_module02_start(self):
-            self.custom_msg('mod02', 'start', 'test_custom')
-    
-
-    mylogger = Log(logger, 'thread')
-    mylogger.info.msg_module01_init()
-    mylogger.debug.msg_module02_start()
+    print("# ------------------------------ base class ------------------------------ #")
+    class Msg(CustomLog):
+        def msg_module01(self):
+            self.stream('mod01', 'init', 'test_custom')
+        def msg_module02(self):
+            self.stream('mod02', 'start', 'test_custom')
+    mylogger = Msg(logger, 'sync')
+    mylogger.info.msg_module01()
+    mylogger.debug.msg_module02()
