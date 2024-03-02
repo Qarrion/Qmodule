@@ -13,13 +13,13 @@ class Timer:
         self.interval = value
         self.unit = unit
         
-    def remaining_seconds(self, debug=False)->float:
+    def remaining_seconds(self)->float:
         now_time = datetime.now()
         now_unit = self._to_unit(now_time)
         nxt_unit = int((now_unit/self.interval)+1)*self.interval
         nxt_time = self._to_floor(now_time+self._to_delta(nxt_unit-now_unit))
         tgt_time = nxt_time-now_time
-        if debug: self.tracer.debug.timer(nxt_time, tgt_time)
+        self.tracer.info.timer(nxt_time, tgt_time)
         return tgt_time.total_seconds()
 
     def _to_unit(self, time:datetime)->int:

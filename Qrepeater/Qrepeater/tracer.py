@@ -17,16 +17,17 @@ class Tracer(CustomLog):
         str_lft = dtm_rem.strftime("%M:%S.%f")[:-3]
 
         var3 = ''
-        self.stream(status, str_nxt, str_lft, var3)
+        self.args(status, str_nxt, str_lft, var3)
+
+    def catch(self, e):
+        self.text(type(e).__name__, str(e))
 
     def strm_async_timeout(self, fname, args, timeout):
         var01 = fname
         var02 = f"{args}"
         var03 = timeout
-        self.stream('', var01, var02, var03)
+        self.args('', var01, var02, var03)
 
-    def strm_thread_alldone(self):
-        self.stream('all done!','','','')
 
 if __name__ =="__main__":
     from Qrepeater.utils.log_color import ColorLog
