@@ -140,7 +140,6 @@ if __name__ == "__main__":
     myclass.myfunc1()
     myclass.myfunc2()
 
-
     print('# ------------------------------ superclass ------------------------------ #')
     class Msg(CustomLog):
         def msg_module01(self, status, *args, n_back=1):
@@ -151,10 +150,10 @@ if __name__ == "__main__":
             self.msg = Msg(logger)
 
         def myfunc1(self):
-            self.msg.msg_module01('args','val1','val2','val3', n_back=1)
+            self.msg.info.msg_module01('args','val1','val2','val3', n_back=1)
         
         def myfunc2(self):
-            self.msg.msg_module01('args','val1','val2','val3', n_back=2)
+            self.msg.debug.msg_module01('args','val1','val2','val3', n_back=2)
 
     myclass2 = Myclass2(logger)
     myclass2.myfunc1()

@@ -1,12 +1,6 @@
 from typing import Literal
 
 
-
-
-
-
-
-
 def dprint(m, c=Literal[0,1], d=True):
 	"m:msg, c:color, d:debug"
 	name = ['green', 'red', 'reset']
