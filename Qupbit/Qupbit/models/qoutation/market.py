@@ -1,34 +1,11 @@
 # https://docs.upbit.com/reference/%EB%A7%88%EC%BC%93-%EC%BD%94%EB%93%9C-%EC%A1%B0%ED%9A%8C
 import requests
+import logging
 from Qupbit.tools.parser import Parser
 from Qupbit.tools.tracer import Tracer 
-from Qupbit.tools import valider
-import logging
 from typing import List
 
 """Quote-Base"""
-"""
-[{'market': 'KRW-BTC', 'korean_name': '비트코인', 'english_name': 'Bitcoin', 'market_warning': 'NONE', 
-    'market_event': 
-    {'warning': False, 
-        'caution': {
-        'PRICE_FLUCTUATIONS': False, 
-        'TRADING_VOLUME_SOARING': False, 
-        'DEPOSIT_AMOUNT_SOARING': False, 
-        'GLOBAL_PRICE_DIFFERENCES': False, 
-        'CONCENTRATION_OF_SMALL_ACCOUNTS': False
-        }
-    }
-}]
-"""
-"""
-['market','korean_name','english_name','warning',
-'price_fluctuations',
-'trading_volume_soaring',
-'deposit_amount_soaring',
-'global_price_differences',
-'concentration_of_small_accounts']
-"""
 
 class Market:
     """ qoutation """
