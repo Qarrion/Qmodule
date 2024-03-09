@@ -1,7 +1,6 @@
 import logging
 from typing import Literal
 from Qrepeater.utils.log_custom import CustomLog
-import inspect
 from datetime import datetime
 
 class Tracer(CustomLog):
