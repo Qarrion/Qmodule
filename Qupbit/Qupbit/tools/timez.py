@@ -14,7 +14,8 @@ class Timez():
         3:'%Y-%m-%d %H:%M:%S%z',
         4:'%Y-%m-%dT%H:%M:%S%z',
         5:'%Y-%m-%d %H:%M:%S.%f%z',
-        6:'%Y-%m-%dT%H:%M:%S.%f%z'}
+        6:'%Y-%m-%dT%H:%M:%S.%f%z',
+        7:'%Y-%m-%dT%H:%M:%SZ'}
     
     tz_dict = {
         "KST":KST,
@@ -40,7 +41,7 @@ class Timez():
     def as_localize(cls, date_time_naive:datetime, tz:Literal['KST','UTC']="KST"):
         """date_time_naive -> date_time_loc(tz)
         """
-        cls.tz_dict[tz].localize(date_time_naive)
+        return cls.tz_dict[tz].localize(date_time_naive)
 
     @classmethod
     def as_timezone(cls, date_time_aware:datetime, tz:Literal['KST','UTC']="KST"):
@@ -61,7 +62,21 @@ class Timez():
         5:'%Y-%m-%d %H:%M:%S.%f%z'
         6:'%Y-%m-%dT%H:%M:%S.%f%z'
         """
-        return datetime.strftime(date_time, cls.fmt_dict[fmt])
+        date_time_str = datetime.strftime(date_time, cls.fmt_dict[fmt])
+        return date_time_str
+
+    @staticmethod
+    def is_aware(date_time:datetime):
+        return date_time.tzinfo is not None
+
+    @staticmethod
+    def to_str_upbit(date_time_naive:datetime, tz:Literal['KST','UTC']):
+        if tz == "KST":
+            date_time_kst = pytz.timezone('Asia/Seoul').localize(date_time_naive)
+            date_time_str = date_time_kst.isoformat(sep='T',timespec='seconds')
+        elif tz == "UTC":
+            date_time_str = datetime.strftime(date_time_naive,'%Y-%m-%dT%H:%M:%SZ')
+        return date_time_str
 
     @staticmethod
     def to_str_slice(date_time:datetime, date="%Y-%m-%d", time='%H:%M:%S'):
@@ -150,7 +165,7 @@ if __name__ =="__main__":
     # ------------------------------------------------------------------------ #
     # -------------------------------- string -------------------------------- #
     div('string from target')
-    now = timez.now('KST')
+    now = timez.now('UTC')
     typ(now)
 
     div('string from sample')

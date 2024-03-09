@@ -1,7 +1,8 @@
+# https://docs.upbit.com/reference/%EB%A7%88%EC%BC%93-%EC%BD%94%EB%93%9C-%EC%A1%B0%ED%9A%8C
 import requests
 from Qupbit.tools.parser import Parser
 from Qupbit.tools.tracer import Tracer 
-from Qupbit.models import info
+from Qupbit.tools import valider
 import logging
 from typing import List
 
@@ -34,8 +35,7 @@ class Market:
 
     url_market = "https://api.upbit.com/v1/market/all"
     headers = {"Accept": "application/json"}
-    params = {"isDetails": 'true'}
-
+   
     cols_table = ['market','korean_name','english_name','warning',
         'price_fluctuations','trading_volume_soaring',
         'deposit_amount_soaring','global_price_differences',
@@ -46,35 +46,16 @@ class Market:
         self.parser = Parser()
         self._debug = debug
 
+    def requests_get(self):
+        params = {"isDetails": 'true'}
+        resp = requests.get(url=self.url_market, headers=self.headers, params=params)
+        return resp
+
     def get(self):
         """status, header, payload, remain[group, min, sec], text"""
-        resp = requests.get(url=self.url_market, headers=self.headers, params=self.params)
+        resp = self.requests_get()
         rslt = self.parser.response(resp)
-        if self._debug : self.tracer.debug.request('market',rslt['remain']) 
-        return rslt
-
-    def test(self, rslt, header=True, column=True):
-        if header:
-            """group, remain 값 변동확인"""
-            grp = info.qoutation['market']['group'] == rslt['remain']['group']
-            sec = info.qoutation['market']['sec'] == rslt['remain']['sec']+1
-            # if grp and sec:
-            self.tracer.debug.test_header('market','group',rslt['remain']['group'],grp)
-            self.tracer.debug.test_header('market','sec', rslt['remain']['sec']+1,sec)
-
-        if column:
-            """response.json 의 keys 변동확인"""
-            rslt_keys = self.parser.response_allkeys(rslt['payload'][0])
-            info_keys = info.qoutation['market']['columns']
-            add = [r for  r in rslt_keys if r not in info_keys]
-            rmv = [i for  i in info_keys if i not in rslt_keys]
-
-            self.tracer.debug.test_column('market','added', add)
-            self.tracer.debug.test_column('market','removed',rmv)
-
-    def filter(self, payload:List[dict], qoute=None, base=None, market=None):
-        rslt = self.parser.response_market(
-            payload, 'market', qoute, base, market)
+        if self._debug : self.tracer.request('market',rslt) 
         return rslt
     
     def to_cols(self, payload:List[dict]):
@@ -102,32 +83,40 @@ class Market:
         return rows
     
 if __name__=='__main__':
+    from Qupbit.utils.print_divider import eprint
     from Qlogger import Logger
+
     logger = Logger('test','level')
     market = Market(logger)
 
-    print('# ---------------------------------- get --------------------------------- #')
+    # ------------------------------------------------------------------------ #
+    eprint('get')
     rslt = market.get()
+    # ------------------------------------------------------------------------ #
+    eprint('rslt')
     print(rslt.keys())
-
-    print('# --------------------------------- test --------------------------------- #')
-    market.test(rslt,header=True, column=True)
-
-    print('# -------------------------------- filter -------------------------------- #')
-    rslt_filtered = market.filter(rslt['payload'], market='KRW-BTC')
-    print("KRW-BTC", len(rslt_filtered))
-    print(rslt_filtered)
-
-    rslt_filtered = market.filter(rslt['payload'], qoute='KRW')
-    print("qoute-KRW", len(rslt_filtered))
-
-    rslt_filtered = market.filter(rslt['payload'], base='BTC')
-    print("base-BTC", len(rslt_filtered))
-    
-
-    print('# --------------------------------- table -------------------------------- #')
-    cols = market.to_cols(payload=rslt_filtered)
-    rows = market.to_rows(payload=rslt_filtered)
+    eprint('payload')
+    print( rslt['payload'][0:5])
+    # ------------------------------------------------------------------------ #
+    cols = market.to_cols(payload=rslt['payload'])
+    rows = market.to_rows(payload=rslt['payload'])
+    eprint('cols')
     print(cols)
-    print(rows)
+    eprint('rows')
+    print(rows[0:5])
+
+
+    # print('# --------------------------------- test --------------------------------- #')
+    # market.test(rslt, header=True, column=True)
+
+    # print('# -------------------------------- filter -------------------------------- #')
+    # rslt_filtered = market.filter(rslt['payload'], market='KRW-BTC')
+    # print("KRW-BTC", len(rslt_filtered))
+    # print(rslt_filtered)
+
+    # rslt_filtered = market.filter(rslt['payload'], qoute='KRW')
+    # print("qoute-KRW", len(rslt_filtered))
+
+    # rslt_filtered = market.filter(rslt['payload'], base='BTC')
+    # print("base-BTC", len(rslt_filtered))
     
