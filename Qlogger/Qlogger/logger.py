@@ -90,7 +90,7 @@ class HeadFormatter(logging.Formatter):
 
 if __name__ == "__main__":
     print('# ---------------------------------- fix --------------------------------- #')
-    logger = Logger('test_fix', 'blue', 'log.ini')
+    logger = Logger('test_fix', 'blue', 'log.ini',debug=True)
     logger.info('info')
     logger.debug('debug')
     logger.warning('warn')
