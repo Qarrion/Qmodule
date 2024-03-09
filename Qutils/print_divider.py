@@ -1,2 +1,2 @@
-div = lambda x: print(f"{"="*60} [{x}]")
-typ = lambda x: print(type(x), x)
+eprint = lambda x: print(f"{"="*60} [{x}]")
+iprint = lambda x: print(type(x), x)

@@ -10,7 +10,7 @@ def trim_text(text, limit):
         text = text[:limit-3]+'...'
     return text
 
-def table(dfr:pd.DataFrame, r=5, f:Literal["github","fancy_grid"]="github", w=15):
+def tprint(dfr:pd.DataFrame, r=5, f:Literal["github","fancy_grid"]="github", w=15):
     """
         >>> r = rows    : 'num of rows'
         >>> f = format  : 'github', 'fancy_grid'
