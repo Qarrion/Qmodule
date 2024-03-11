@@ -8,3 +8,4 @@ CREATE TABLE IF NOT EXISTS raw_trade_data(
 );
 
 select create_hypertable('raw_trade_data', 'time');
+
