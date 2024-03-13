@@ -3,6 +3,7 @@ import requests
 import logging
 from Qupbit.tools.parser import Parser
 from Qupbit.tools.tracer import Tracer 
+from Qupbit.tools.valider import Valider
 from typing import List
 
 """Quote-Base"""
@@ -20,6 +21,7 @@ class Market:
 
     def __init__(self, logger:logging.Logger=None, debug=True):
         self.tracer = Tracer(logger)
+        self.valider = Valider(logger)
         self.parser = Parser()
         self._debug = debug
 
@@ -29,12 +31,20 @@ class Market:
         return resp
 
     def get(self):
-        """status, header, payload, remain[group, min, sec], text"""
+        """
+        + retun dict
+        + keys (status, header, payload, remain[group, min, sec], text)
+        + if (status = 200) debug else error 
+        """
         resp = self.requests_get()
         rslt = self.parser.response(resp)
         if self._debug : self.tracer.request('market',rslt) 
         return rslt
     
+    def valid(self):
+        rlst = self.get()
+        self.valider.check('market',rlst)
+
     def to_cols(self, payload:List[dict]):
         keys_response = self.parser.response_allkeys(payload[0])
         keys_lower = [k.lower() for k in keys_response]

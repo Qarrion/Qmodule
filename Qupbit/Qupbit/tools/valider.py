@@ -34,6 +34,7 @@ class Valider:
 
 	def check(self, group:Literal['market','candles'], 
 		   rslt, header=True, column=True):
+		
 		if header:
 			"""group, remain 값 변동확인"""
 			grp = qoutation[group]['group'] == rslt['remain']['group']

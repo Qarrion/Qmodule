@@ -10,6 +10,8 @@ class Tracer(CustomLog):
         super().__init__(logger, context)
 
     def request(self, model, resp_dict):
+        """debug : status = 200
+        error : status != 200"""
         remain = resp_dict['remain']
         status = resp_dict['status']
         if status == 200:
@@ -24,13 +26,13 @@ class Tracer(CustomLog):
         self.text(model, f"cols ({', '.join(is_cols_not_in_keys)}) not in market")
 
     def test_header(self,model, name, value, test):
-        self.args(model, name, value, test)
+        self.args(model, name, value, test, n_back=2)
 
     def test_column(self,model, change, cols:list):
         if cols:
-             self.text(model,f"cols ({', '.join(cols)}) {change}" )
+             self.text(model,f"cols ({', '.join(cols)}) {change}",n_back=2 )
         else:
-            self.args(model, 'column', change, True)
+            self.args(model, 'column', change, True,n_back=2)
        
 
 # if __name__ == "__main__":
