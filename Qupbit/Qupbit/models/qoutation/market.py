@@ -13,11 +13,7 @@ class Market:
 
     url_market = "https://api.upbit.com/v1/market/all"
     headers = {"Accept": "application/json"}
-   
-    cols_table = ['market','korean_name','english_name','warning',
-        'price_fluctuations','trading_volume_soaring',
-        'deposit_amount_soaring','global_price_differences',
-        'concentration_of_small_accounts']
+    columns = ['market','korean_name','english_name','market_warning','last_updated']
 
     def __init__(self, logger:logging.Logger=None, debug=True):
         self.tracer = Tracer(logger)
@@ -45,25 +41,16 @@ class Market:
         rlst = self.get()
         self.valider.check('market',rlst)
 
-    def to_cols(self, payload:List[dict]):
-        keys_response = self.parser.response_allkeys(payload[0])
-        keys_lower = [k.lower() for k in keys_response]
-
-        cols_not_in_keys = [col.lower() for col in self.cols_table if col.lower() not in keys_lower]
-        if cols_not_in_keys:
-            if self._debug :  self.tracer.warning.cols_match('market',cols_not_in_keys)
-        return self.cols_table
-
     def to_rows(self,payload:List[dict]):
         rows =[
             (
                 d['market'], d['korean_name'],d['english_name'],
                 d['market_event']['warning'],
-                d['market_event']['caution']['PRICE_FLUCTUATIONS'],
-                d['market_event']['caution']['TRADING_VOLUME_SOARING'],
-                d['market_event']['caution']['DEPOSIT_AMOUNT_SOARING'],
-                d['market_event']['caution']['GLOBAL_PRICE_DIFFERENCES'],
-                d['market_event']['caution']['CONCENTRATION_OF_SMALL_ACCOUNTS']
+                # d['market_event']['caution']['PRICE_FLUCTUATIONS'],
+                # d['market_event']['caution']['TRADING_VOLUME_SOARING'],
+                # d['market_event']['caution']['DEPOSIT_AMOUNT_SOARING'],
+                # d['market_event']['caution']['GLOBAL_PRICE_DIFFERENCES'],
+                # d['market_event']['caution']['CONCENTRATION_OF_SMALL_ACCOUNTS']
             ) 
                 for d in payload
         ]
@@ -76,7 +63,10 @@ if __name__=='__main__':
     logger = Logger('test','level')
     market = Market(logger)
 
-    # ------------------------------------------------------------------------ #
+    # --------------------------------- valid -------------------------------- #
+    eprint('valid')
+    
+    # ---------------------------------- get --------------------------------- #
     eprint('get')
     rslt = market.get()
     rslt['payload']
@@ -86,25 +76,9 @@ if __name__=='__main__':
     eprint('payload')
     print( rslt['payload'][0:5])
     # ------------------------------------------------------------------------ #
-    cols = market.to_cols(payload=rslt['payload'])
+    cols = market.columns
     rows = market.to_rows(payload=rslt['payload'])
     eprint('cols')
     print(cols)
     eprint('rows')
     print(rows[0:5])
-
-
-    # print('# --------------------------------- test --------------------------------- #')
-    # market.test(rslt, header=True, column=True)
-
-    # print('# -------------------------------- filter -------------------------------- #')
-    # rslt_filtered = market.filter(rslt['payload'], market='KRW-BTC')
-    # print("KRW-BTC", len(rslt_filtered))
-    # print(rslt_filtered)
-
-    # rslt_filtered = market.filter(rslt['payload'], qoute='KRW')
-    # print("qoute-KRW", len(rslt_filtered))
-
-    # rslt_filtered = market.filter(rslt['payload'], base='BTC')
-    # print("base-BTC", len(rslt_filtered))
-    

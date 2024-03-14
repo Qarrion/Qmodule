@@ -19,8 +19,8 @@ class Tracer(CustomLog):
         else:
             self.error.text(model, resp_dict['text'])
 
-    def alert(self, text):
-        self.warning.text('warning',text)
+    # def alert(self, text):
+    #     self.warning.text('warning',text)
 
     def cols_match(self,model, is_cols_not_in_keys:list):
         self.text(model, f"cols ({', '.join(is_cols_not_in_keys)}) not in market")
