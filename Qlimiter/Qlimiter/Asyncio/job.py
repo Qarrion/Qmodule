@@ -48,12 +48,10 @@ class Job:
                     await self.enqueue(fname, args, retry+1)
                 else:
                     self.msg.error.exception('drop',fname,args,retry)
-                    # self.msg.error.error_msg('drop','failed queue')
             finally:
                 self.queue.task_done()
 
         except asyncio.TimeoutError:
-            # print('time out')
             pass
 
         return result
@@ -117,7 +115,6 @@ if __name__ =="__main__":
         await job.enqueue('myfunc_err',(1,))
 
         await job.dequeue()
-
         await job.dequeue()
         await job.dequeue()
 
