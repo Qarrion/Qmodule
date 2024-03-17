@@ -3,7 +3,7 @@ import contextvars
 import inspect
 from typing import Literal
 import logging
-
+import asyncio
 # ---------------------------------------------------------------------------- #
 #                                   customlog                                  #
 # ---------------------------------------------------------------------------- #
@@ -11,6 +11,7 @@ class CustomLog:
     """>>> #
     customlog.args(status, *args, n_back=1)
     customlog.text(status, text, n_back=1)
+    customlog.args(status, *args, task_name=True, n_back=1)
     """
     def __init__(self, logger:logging.Logger,
                  context:Literal['sync', 'thread', 'async'] = 'sync'):
@@ -28,27 +29,31 @@ class CustomLog:
             frame = frame.f_back
         return frame.f_code.co_name
     
-    def _get_header(self,status, frame):
-        header = f'{frame} / {status}'
-        return  f'{header:<20}'
+    def _get_header(self, status, frame):
+        # header = f'{frame} / {status}'
+        # return  f'{header:<20}'
+        nspace = 18 - (len(frame) +len(status))
+        return f"{frame}{'.' * nspace}{status}"
     
     def _log_chained(self, msg):
         if self.logger is not None:
             self.logger.log(level=self.method.level, msg=msg)
 
-    def args(self, status, *args, n_back=1):
+    def args(self, status, *args, task_name=False, n_back=1):
         """>>> #{func.status:<20} {arg:12}"""
         frame = self._get_frame(n_back=n_back+1)
         header = self._get_header(status=status,frame=frame)
         text = ', '.join([f"{arg:<12}" for arg in args]) 
-        body = "::: "f"{text:<40}" +" :::"
+        body = " | "f"{text:<40}" +" |"
+        if task_name: body = body+f" {asyncio.current_task().get_name():<10}"
         self._log_chained(header + body) 
 
-    def text(self, status, text, n_back=1):
+    def text(self, status, text, task_name=False, n_back=1):
         """>>> #{func.status:<20} {text:40}"""
         frame = self._get_frame(n_back=n_back+1)
         header = self._get_header(status=status,frame=frame)
-        body = "::: "f"{text:<40}" +" :::"
+        body = " | "f"{text:<40}" +" |"
+        if task_name: body = body+f" {asyncio.current_task().get_name():<10}"
         self._log_chained(header + body) 
 
     @property
@@ -120,7 +125,9 @@ if __name__ == "__main__":
     formatter = logging.Formatter('%(asctime)s - %(levelname)7s @ %(name)7s . %(message)s')
     handler.setFormatter(formatter)
     logger.addHandler(handler)
+    # from Qlogger import Logger
 
+    # logger = Logger('test', 'head')
     print('# ------------------------------- functions ------------------------------- #')
     clogger = CustomLog(logger, 'sync')
     clogger.args('args','val1','val2')
