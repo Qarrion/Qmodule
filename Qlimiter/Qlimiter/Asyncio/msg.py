@@ -11,6 +11,9 @@ class Msg(CustomLog):
     def __init__(self, logger: logging.Logger, context: Literal['sync', 'thread', 'async'] = 'sync'):
         super().__init__(logger, context)
 
+    def test(self, test):
+        self.text('test',test)
+
     def initiate(self, max_calls, seconds):
         #Limiter
         var01 = f'max_calls({max_calls})'
@@ -21,18 +24,25 @@ class Msg(CustomLog):
         #Job
         self.args(limit_type,name)
 
-    def enqueue(self, fname, args, kwargs):
+    def enqueue(self, fname, args, retry):
         #job
         var01 = f"{fname}"
         var02 = f"{args}"
-        var03 = f"{kwargs}"
+        var03 = f"{retry}"
         self.args('function',var01,var02,var03)
 
-    def handler(self, fname, args, kwargs):
+    def handler(self, fname, args, retry):
         #Job
         var01 = f"{fname}"
         var02 = f"{args}"
-        var03 = f"{kwargs}"
+        var03 = f"{retry}"
+        self.args('execute',var01,var02,var03)
+
+    def dequeue(self, fname, args, retry):
+        #Job
+        var01 = f"{fname}"
+        var02 = f"{args}"
+        var03 = f"retry({retry})"
         self.args('execute',var01,var02,var03)
 
     def semaphore(self, context:Literal['acquire','release'], fname, sema:asyncio.Semaphore, max_calls):
@@ -53,47 +63,17 @@ class Msg(CustomLog):
         var01 = f'sec({seconds:.3f})'
         self.args(status, var01, var02, "")
 
-    def exception(self, status, fname, args, kwargs):
+    def exception(self, status, fname, args, retry):
         #Job
         var01 = f'{fname}'
         var02 = f'{args}'
-        var03 = f'{kwargs}'
+        var03 = f'{retry}'
         self.args(status, var01, var02, var03)
-
-    # ------------------------------------------------------------------------ #
-    # ------------------------------------------------------------------------ #
 
     def _str_from_tsp(self, time):
         datetime_time = datetime.fromtimestamp(time)
         return datetime_time.strftime("%S.%f")[:-3]
     
-    # ------------------------------------------------------------------------ #
-    #                            base stream formma                            #
-
-    # ------------------------------------------------------------------------ #
-    # def stream(self, status, *args):
-    #     frame = f'{inspect.stack()[2].function}.{status}'
-    #     header = f'/{frame:<20} ::: '
-    #     body = ''.join([f"{arg:<12}, " for arg in args]) +" :::"
-    #     self.msg(header + body)
-
-    # ------------------------------------------------------------------------ #
-
-
-
-
-# ---------------------------------------------------------------------------- #
-    def strm_workerpool(self,text):
-        status = 'workerpool'
-        self.stream(status,text,"","")
-
-    def strm_worker(self, text):
-        status = 'worker'
-        self.text(status,text)        
-
-
-    # -------------------------------- message ------------------------------- #
-
 if __name__ == "__main__":
     from Qlogger import Logger
 
@@ -102,9 +82,9 @@ if __name__ == "__main__":
     log.debug('test debug msg')
 
     msg = Msg(log, 'thread')
-    msg.info.stream("msg")
-    msg.debug.stream("msg")
+    msg.error.test("msg")
+    # msg.debug.stream("msg")
 
-    msg = Msg(None, 'thread')
-    msg.debug.stream("msg")
+    # msg = Msg(None, 'thread')
+    # msg.debug.stream("msg")
  

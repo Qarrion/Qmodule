@@ -41,8 +41,15 @@ class Limiter:
 
     async def _worker_coro(self):
         while not self._stop_event.is_set():
-            result = await self.job.dequeue()
-        print('a worker quit')
+            try:
+                fname, args, kwargs = await asyncio.wait_for(self.job.queue.get(), timeout=1)
+                assert fname in self.job.registry.keys(), 'no fname'
+                result = await self.job.handler(fname, *args, **kwargs)
+                self.job.queue.task_done()
+
+            except asyncio.TimeoutError:
+                continue # wait_for(time_out)
+        print("a worker quit")
 
     def _signal_handler(self, sig, frame):
         print('Ctrl + C Keyboard Interrupted')
@@ -51,7 +58,6 @@ class Limiter:
 if __name__ == "__main__":
     from Qlogger import Logger
     logger = Logger('test', 'head', debug=True)
-    logger._dev_stream_handler_level('INFO')
     limiter = Limiter(3, 1, 'outflow', logger=logger)
 
     async def myfunc1(x):
@@ -64,15 +70,14 @@ if __name__ == "__main__":
         limiter.register(myfunc1)
         limiter.register(myfunc2)
 
-        await limiter.enqueue('myfunc1',(1,))
-        await limiter.enqueue('myfunc2',(2,))
-        # await limiter.enqueue('myfunc2',(3,))
-        # await limiter.enqueue('myfunc1',(1,))
-        # await limiter.enqueue('myfunc1',(2,))
-        # await limiter.enqueue('myfunc1',(3,))
-        # await limiter.enqueue('myfunc1',(1,))
+        await limiter.enqueue('myfunc1',1),
+        await limiter.enqueue('myfunc1',2),
+        await limiter.enqueue('myfunc2',3),
+        await limiter.enqueue('myfunc1',1),
+        await limiter.enqueue('myfunc1',2),
+        await limiter.enqueue('myfunc1',3),
+        await limiter.enqueue('myfunc1',1),
 
         await limiter.taskgroup()
 
     asyncio.run(main())
-
