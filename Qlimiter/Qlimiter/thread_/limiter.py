@@ -4,8 +4,8 @@ import time
 from queue import  Empty
 from typing import Literal
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from Qlimiter.thread.msg import Msg
-from Qlimiter.thread.job import Job
+from Qlimiter.thread_.msg import Msg
+from Qlimiter.thread_.job import Job
 
 class Limiter:
     def __init__(self, max_calls: int, seconds: float, 

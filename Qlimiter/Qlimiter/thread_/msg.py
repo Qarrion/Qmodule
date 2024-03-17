@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from typing import Literal
 import threading
-from Qlimiter.util import CustomLog
+from Qlimiter.util.log_custom import CustomLog
 import inspect
 
 class Msg(CustomLog):

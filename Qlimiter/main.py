@@ -1,4 +1,4 @@
-from Qlimiter.asyncio import Limiter
+from Qlimiter import AsyncLimiter
 from Qlogger import Logger
 
 
@@ -7,7 +7,7 @@ if __name__ == "__main__":
 
     logger = Logger('test', 'head', debug=False)
     logger._dev_stream_handler_level('INFO')
-    limiter = Limiter(3, 1, 'outflow', logger=logger)
+    limiter = AsyncLimiter(3, 1, 'outflow', logger=logger)
     async def myfunc1(x):
         await asyncio.sleep(x)
 

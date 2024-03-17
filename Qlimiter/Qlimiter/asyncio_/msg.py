@@ -1,10 +1,10 @@
-# from Qlimiter.util import CustomLog
 from Qlimiter.util.log_custom import CustomLog
 from datetime import datetime
 from typing import Literal
 import logging
 import asyncio
 import inspect
+
 
 
 class Msg(CustomLog):
@@ -18,6 +18,7 @@ class Msg(CustomLog):
         #Limiter
         var01 = f'max_calls({max_calls})'
         var02 = f'seconds({seconds})'
+
         self.args('limiter',var01,var02)
 
     def register(self, limit_type, name):
@@ -29,21 +30,14 @@ class Msg(CustomLog):
         var01 = f"{fname}"
         var02 = f"{args}"
         var03 = f"{retry}"
-        self.args('function',var01,var02,var03)
-
-    def handler(self, fname, args, retry):
-        #Job
-        var01 = f"{fname}"
-        var02 = f"{args}"
-        var03 = f"{retry}"
-        self.args('execute',var01,var02,var03)
+        self.args('function',var01,var02,var03,task_name=True)
 
     def dequeue(self, fname, args, retry):
         #Job
         var01 = f"{fname}"
         var02 = f"{args}"
         var03 = f"retry({retry})"
-        self.args('execute',var01,var02,var03)
+        self.args('execute',var01,var02,var03,task_name=True)
 
     def semaphore(self, context:Literal['acquire','release'], fname, sema:asyncio.Semaphore, max_calls):
         #job
@@ -54,21 +48,21 @@ class Msg(CustomLog):
         elif context =="release":
             queue = f"s({sema._value+1}/{max_calls})<"
             var01 = f">{queue:>11}"
-        self.args(status,fname,"",var01)
+        self.args(status,fname,"",var01,task_name=True)
 
     def wait_reset(self, tsp_ref, seconds,limit):
         #Job
         status = limit
         var02 = f'ref({self._str_from_tsp(tsp_ref)})'
         var01 = f'sec({seconds:.3f})'
-        self.args(status, var01, var02, "")
+        self.args(status, var01, var02, "",task_name=True)
 
     def exception(self, status, fname, args, retry):
         #Job
         var01 = f'{fname}'
         var02 = f'{args}'
         var03 = f'{retry}'
-        self.args(status, var01, var02, var03)
+        self.args(status, var01, var02, var03, task_name=True)
 
     def _str_from_tsp(self, time):
         datetime_time = datetime.fromtimestamp(time)
