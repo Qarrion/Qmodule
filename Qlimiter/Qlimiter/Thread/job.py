@@ -5,7 +5,7 @@ import queue
 import logging
 import time
 
-from Qlimiter.Thread import Msg
+from Qlimiter.thread import Msg
 
 class Job:
 

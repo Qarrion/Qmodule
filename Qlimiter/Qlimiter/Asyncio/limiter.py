@@ -4,8 +4,8 @@ import signal
 
 from typing import  Literal, List, Coroutine
 
-from Qlimiter.Asyncio import Msg
-from Qlimiter.Asyncio import Job
+from Qlimiter.asyncio import Msg
+from Qlimiter.asyncio import Job
 
 class Limiter:
     """>>> #

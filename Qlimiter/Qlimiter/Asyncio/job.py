@@ -5,7 +5,7 @@ import logging
 import time
 
 
-from Qlimiter.Asyncio import Msg
+from Qlimiter.asyncio import Msg
 
 class Job:
     """>>> #
