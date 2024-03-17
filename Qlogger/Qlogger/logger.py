@@ -63,6 +63,12 @@ class Logger(logging.Logger):
         if self.hasHandlers(): self.handlers.clear()        
         self.addHandler(stream_handler)  
 
+    def _dev_stream_handler_level(self, log_lev:Literal['DEBUG','INFO','WARNING','ERROR']):
+        """change stream_handler log level"""
+        for handler in self.handlers:
+            if isinstance(handler, logging.StreamHandler):
+                handler.setLevel(log_lev)
+
 class LevelFormatter(logging.Formatter):
     def __init__(self, fmt=None, datefmt=None, style='%'):
         super().__init__(fmt, datefmt, style)
@@ -90,9 +96,11 @@ class HeadFormatter(logging.Formatter):
 
 if __name__ == "__main__":
     print('# ---------------------------------- fix --------------------------------- #')
-    logger = Logger('test_fix', 'blue', 'log.ini',debug=True)
-    logger.info('info')
+    logging.basicConfig(level=logging.INFO)
+    logger = Logger('test_fix', 'head', 'log.ini', debug=True)
+    logger._dev_stream_handler_level('INFO')
     logger.debug('debug')
+    logger.info('info')
     logger.warning('warn')
     logger.error('error')
     # print('# --------------------------------- level -------------------------------- #')
