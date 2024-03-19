@@ -3,7 +3,7 @@ from typing import Literal
 from Qrepeater.utils.log_custom import CustomLog
 from datetime import datetime
 
-class Tracer(CustomLog):
+class Msg(CustomLog):
     def __init__(self, logger: logging.Logger, context: Literal['sync', 'thread', 'async'] = 'sync'):
         super().__init__(logger, context)
 
@@ -32,5 +32,5 @@ if __name__ =="__main__":
     from Qrepeater.utils.log_color import ColorLog
     logger = ColorLog('test','green')
     
-    tracer = Tracer(logger, 'async')
+    tracer = Msg(logger, 'async')
     tracer.info.strm_async_timeout('dd',(2,3),3)

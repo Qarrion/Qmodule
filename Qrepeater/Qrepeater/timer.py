@@ -3,13 +3,13 @@ import logging
 from typing import Literal
 from datetime import datetime, timedelta
 
-from Qrepeater.tracer import Tracer
+from Qrepeater.msg import Msg
 
 
 
 class Timer:
-    def __init__(self, value:float, unit:Literal['second','minute','hour'], logger:logging.Logger=None):
-        self.tracer = Tracer(logger, 'thread')
+    def __init__(self, value:float, unit:Literal['second','minute','hour'], msg:Msg):
+        self.msg = msg
         self.interval = value
         self.unit = unit
         
@@ -19,7 +19,7 @@ class Timer:
         nxt_unit = int((now_unit/self.interval)+1)*self.interval
         nxt_time = self._to_floor(now_time+self._to_delta(nxt_unit-now_unit))
         tgt_time = nxt_time-now_time
-        self.tracer.info.timer(nxt_time, tgt_time)
+        self.msg.info.timer(nxt_time, tgt_time)
         return tgt_time.total_seconds()
 
     def _to_unit(self, time:datetime)->int:
@@ -50,7 +50,10 @@ class Timer:
         return on_time
     
 if __name__ == "__main__":
-    from Qrepeater.utils.log_color import ColorLog
-    logger = ColorLog('test','green')
-    timer = Timer(5, 'minute', logger)
-    print(timer.remaining_seconds(True))
+    # from Qrepeater.utils.log_color import ColorLog
+    from Qlogger import Logger
+
+    logger = Logger('test','green')
+    msg = Msg(logger,'async')
+    timer = Timer(5, 'minute', msg)
+    print(timer.remaining_seconds())
