@@ -5,7 +5,7 @@ import logging
 import time
 
 
-from Qlimiter.asyncio_.msg import Msg
+from Qlimiter.msg import Msg
 
 class Job:
     """>>> #
@@ -30,22 +30,24 @@ class Job:
         self.msg.debug.register(self._limit_type, fname)
         self.registry[fname] = self._wrapper_throttle(func)
 
-    async def enqueue(self, fname:str, args:tuple, retry:int=0):
+    async def enqueue(self, fname:str, args:tuple=(), kwargs:dict=None, retry:int=0):
         """enqueue args with function"""
         self.msg.debug.enqueue(fname, args, retry)
-        await self.queue.put((fname, args, retry))
+        await self.queue.put((fname, args, kwargs, retry))
 
     async def dequeue(self):
         result = None
         try:
-            fname, args, retry = await asyncio.wait_for(self.queue.get(), timeout=1)
+            fname, args, kwargs, retry = await asyncio.wait_for(self.queue.get(), timeout=1)
+            if kwargs is None : kwargs = {}
+            
             try:
                 self.msg.info.dequeue(fname, args, retry)
-                result = await self.registry[fname](*args) # with limit
+                result = await self.registry[fname](*args, **kwargs) # with limit
             except Exception as e:
                 if retry+1 <= self.max_retry:
-                    self.msg.warning.exception('requeue',fname,args,retry)
-                    await self.enqueue(fname, args, retry+1)
+                    self.msg.warning.exception('requeue',fname, args, retry)
+                    await self.enqueue(fname, args, kwargs, retry+1)
                 else:
                     self.msg.error.exception('drop',fname,args,retry)
             finally:
@@ -74,6 +76,7 @@ class Job:
                     tsp_finish = time.time()
                     await self._wait_reset(tsp_start, tsp_finish)
                     self.msg.debug.semaphore("release", *msg_arg) 
+                    #? propagate exception to retry
                     if propagate_exception:
                         raise propagate_exception
                     else:
@@ -117,6 +120,5 @@ if __name__ =="__main__":
         await job.dequeue()
         await job.dequeue()
         await job.dequeue()
-
 
     asyncio.run(main())

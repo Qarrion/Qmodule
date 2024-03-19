@@ -53,8 +53,8 @@ class Msg(CustomLog):
     def wait_reset(self, tsp_ref, seconds,limit):
         #Job
         status = limit
-        var02 = f'ref({self._str_from_tsp(tsp_ref)})'
         var01 = f'sec({seconds:.3f})'
+        var02 = f'ref({self._str_from_tsp(tsp_ref)})'
         self.args(status, var01, var02, "",task_name=True)
 
     def exception(self, status, fname, args, retry):
