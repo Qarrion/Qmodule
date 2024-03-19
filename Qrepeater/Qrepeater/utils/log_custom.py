@@ -3,11 +3,16 @@ import contextvars
 import inspect
 from typing import Literal
 import logging
-
+import asyncio
 # ---------------------------------------------------------------------------- #
 #                                   customlog                                  #
 # ---------------------------------------------------------------------------- #
 class CustomLog:
+    """>>> #
+    customlog.args(status, *args, n_back=1)
+    customlog.text(status, text, n_back=1)
+    customlog.args(status, *args, task_name=True, n_back=1)
+    """
     def __init__(self, logger:logging.Logger,
                  context:Literal['sync', 'thread', 'async'] = 'sync'):
         self.logger = logger
@@ -18,34 +23,38 @@ class CustomLog:
         elif context == 'async':
             self.method = _Async()
             
-    def get_frame(self, n_back=1):
+    def _get_frame(self, n_back=1):
         frame = inspect.currentframe()
         for _ in range(n_back):
             frame = frame.f_back
         return frame.f_code.co_name
     
-    def get_header(self,status, frame):
-        header = f'{frame} / {status}'
-        return  f'{header:<20}'
+    def _get_header(self, status, frame):
+        # header = f'{frame} / {status}'
+        # return  f'{header:<20}'
+        nspace = 18 - (len(frame) +len(status))
+        return f"{frame}{'.' * nspace}{status}"
     
-    def args(self, status, *args, n_back=1):
-        """>>> #{func.status:<20} {arg:12}"""
-        frame = self.get_frame(n_back=n_back+1)
-        header = self.get_header(status=status,frame=frame)
-        text = ', '.join([f"{arg:<12}" for arg in args]) 
-        body = "::: "f"{text:<40}" +" :::"
-        self.log(header + body) 
-
-    def text(self, status, text, n_back=1):
-        """>>> #{func.status:<20} {text:40}"""
-        frame = self.get_frame(n_back=n_back+1)
-        header = self.get_header(status=status,frame=frame)
-        body = "::: "f"{text:<40}" +" :::"
-        self.log(header + body) 
-
-    def log(self, msg):
+    def _log_chained(self, msg):
         if self.logger is not None:
             self.logger.log(level=self.method.level, msg=msg)
+
+    def args(self, status, *args, task_name=False, n_back=1):
+        """>>> #{func.status:<20} {arg:12}"""
+        frame = self._get_frame(n_back=n_back+1)
+        header = self._get_header(status=status,frame=frame)
+        text = ', '.join([f"{arg:<12}" for arg in args]) 
+        body = " | "f"{text:<40}" +" |"
+        if task_name: body = body+f" {asyncio.current_task().get_name():<10}"
+        self._log_chained(header + body) 
+
+    def text(self, status, text, task_name=False, n_back=1):
+        """>>> #{func.status:<20} {text:40}"""
+        frame = self._get_frame(n_back=n_back+1)
+        header = self._get_header(status=status,frame=frame)
+        body = " | "f"{text:<40}" +" |"
+        if task_name: body = body+f" {asyncio.current_task().get_name():<10}"
+        self._log_chained(header + body) 
 
     @property
     def debug(self):
@@ -116,29 +125,31 @@ if __name__ == "__main__":
     formatter = logging.Formatter('%(asctime)s - %(levelname)7s @ %(name)7s . %(message)s')
     handler.setFormatter(formatter)
     logger.addHandler(handler)
+    # from Qlogger import Logger
 
-    print('# --------------------------------- chain -------------------------------- #')
+    # logger = Logger('test', 'head')
+    print('# ------------------------------- functions ------------------------------- #')
     clogger = CustomLog(logger, 'sync')
-    clogger.args('args','val1','val2','val3')
-    clogger.info.args('args','val1','val2','val3')
-    clogger.warning.args('args','val1','val2','val3')
-
-    print('# ------------------------------- function ------------------------------- #')
-    clogger.args('args','val1','val2','val3')
     clogger.args('args','val1','val2')
     clogger.text('text','text'*5)
 
-    print('# --------------------------------- nback -------------------------------- #')
-    class Myclass:
-        def myfunc1(self):
-            clogger.info.args('args','val1','val2','val3',n_back=1)
-        
-        def myfunc2(self):
-            clogger.debug.args('args','val1','val2','val3',n_back=2)
 
-    myclass = Myclass()
-    myclass.myfunc1()
-    myclass.myfunc2()
+    print('# --------------------------------- chain -------------------------------- #')
+    clogger.args('args','val1','val2','val3')
+    clogger.info.args('args','val1','val2','val3')
+    clogger.warning.args('args','val1','val2','val3')
+    clogger.error.text('text','text'*5)
+
+
+    print('# --------------------------------- nback -------------------------------- #')
+    def func_inner(n_back):
+        clogger.info.args('args','val1','val2','val3',n_back=n_back)
+
+    def func_outter(n_back):
+        func_inner(n_back)
+
+    func_outter(n_back=1)
+    func_outter(n_back=2)
 
 
     print('# ------------------------------ superclass ------------------------------ #')
@@ -146,17 +157,18 @@ if __name__ == "__main__":
         def msg_module01(self, status, *args, n_back=1):
             self.args(status, *args, n_back=n_back)
 
-    class Myclass2:
+    class Myclass:
         def __init__(self, logger):
             self.msg = Msg(logger)
 
         def myfunc1(self):
-            self.msg.msg_module01('args','val1','val2','val3', n_back=1)
+            self.msg.info.msg_module01('args','val1','val2','val3', n_back=1)
         
         def myfunc2(self):
-            self.msg.msg_module01('args','val1','val2','val3', n_back=2)
+            self.msg.debug.msg_module01('args','val1','val2','val3', n_back=2)
 
-    myclass2 = Myclass2(logger)
+    myclass2 = Myclass(logger)
     myclass2.myfunc1()
     myclass2.myfunc2()
+
     

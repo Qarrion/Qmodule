@@ -16,16 +16,18 @@ class Msg(CustomLog):
         str_lft = dtm_rem.strftime("%M:%S.%f")[:-3]
 
         var3 = ''
-        self.args(status, str_nxt, str_lft, var3)
+        self.args(status, str_nxt, str_lft, var3,task_name=True)
 
-    def catch(self, e):
-        self.text(type(e).__name__, str(e))
+    def job(self, status, fname):
+        self.text(status,fname,task_name=True)
+    # def catch(self, e):
+    #     self.text(type(e).__name__, str(e))
 
-    def strm_async_timeout(self, fname, args, timeout):
+    def exception(self, fname, args, timeout):
         var01 = fname
         var02 = f"{args}"
         var03 = timeout
-        self.args('', var01, var02, var03)
+        self.args('', var01, var02, var03,task_name=True)
 
 
 if __name__ =="__main__":
@@ -33,4 +35,4 @@ if __name__ =="__main__":
     logger = ColorLog('test','green')
     
     tracer = Msg(logger, 'async')
-    tracer.info.strm_async_timeout('dd',(2,3),3)
+    tracer.info.exception('dd',(2,3),3)
