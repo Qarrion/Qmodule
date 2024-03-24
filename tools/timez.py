@@ -4,8 +4,8 @@ import pytz
 from typing import Literal
 
 class Timez():
-    UTC = pytz.timezone('UTC')
-    KST = pytz.timezone('Asia/Seoul')
+    # UTC = pytz.timezone('UTC')
+    # KST = pytz.timezone('Asia/Seoul')
 
     # upbit:4
     fmt_dict = {        
@@ -18,8 +18,8 @@ class Timez():
         7:'%Y-%m-%dT%H:%M:%SZ'}
     
     tz_dict = {
-        "KST":KST,
-        "UTC":UTC
+        "KST":pytz.timezone('Asia/Seoul'),
+        "UTC":pytz.timezone('UTC')
     }
     # ------------------------------------------------------------------------ #
     #                              return datetime                             #
@@ -61,6 +61,7 @@ class Timez():
         4:'%Y-%m-%dT%H:%M:%S%z'
         5:'%Y-%m-%d %H:%M:%S.%f%z'
         6:'%Y-%m-%dT%H:%M:%S.%f%z'
+        7:'%Y-%m-%dT%H:%M:%SZ'
         """
         date_time_str = datetime.strftime(date_time, cls.fmt_dict[fmt])
         return date_time_str
