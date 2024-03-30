@@ -5,7 +5,7 @@ import logging
 import time
 
 
-from Qlimiter.msg import Msg
+from Qrepeater.msg import Msg
 
 class Job:
     """>>> #
@@ -13,18 +13,9 @@ class Job:
     job.enqueue(fname:str, *args, **kwargs)
     job.handler(fname:str, *args, **kwargs)
     """
-    def __init__(self, max_worker:int, seconds:float, limit:Literal['inflow','outflow'],
-                 msg:Msg):
+    def __init__(self, msg:Msg):
         self.msg = msg
-
-        self._limit_type = limit
-        self._max_worker = max_worker
-        self._seconds = seconds
-
-        self._semaphore = asyncio.Semaphore(max_worker)
-        self.max_retry = 3
-        self.registry = dict()
-        self.queue = asyncio.Queue()
+        self.registry = dict() 
 
     def register(self,func:Coroutine, fname:str=None):
         if fname is None: fname = func.__name__
@@ -40,7 +31,6 @@ class Job:
         result = None
         try:
             fname, args, kwargs, retry = await asyncio.wait_for(self.queue.get(), timeout=1)
-            # fname, args, kwargs, retry = await self.queue.get()
             if kwargs is None : kwargs = {}
             
             try:

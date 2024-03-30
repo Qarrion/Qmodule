@@ -7,6 +7,9 @@ class Msg(CustomLog):
     def __init__(self, logger: logging.Logger, context: Literal['sync', 'thread', 'async'] = 'sync'):
         super().__init__(logger, context)
 
+    def initiate(self, value, unit):
+        self.args('repeater', value, unit)
+
     def timer(self, datetime_next, timedelta_ms):
         status='wait'
         str_nxt = datetime_next.strftime("%M:%S.%f")[:-3]

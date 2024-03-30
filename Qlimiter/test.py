@@ -27,3 +27,8 @@ def wrapper(fun, args, kwargs):
 
 
 wrapper(myfunc, args=(1,2),kwargs={"c":5})()
+
+
+import time
+
+time.time()

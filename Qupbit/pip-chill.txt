@@ -8,3 +8,4 @@ websockets
 # idna # Installed as dependency for requests
 # six # Installed as dependency for python-dateutil
 # urllib3 # Installed as dependency for requests
+

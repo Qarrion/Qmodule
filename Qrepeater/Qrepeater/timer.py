@@ -8,6 +8,7 @@ from Qrepeater.msg import Msg
 
 
 class Timer:
+    
     def __init__(self, value:float, unit:Literal['second','minute','hour'], msg:Msg):
         self.msg = msg
         self.interval = value
@@ -16,7 +17,7 @@ class Timer:
     def remaining_seconds(self)->float:
         now_time = datetime.now()
         now_unit = self._to_unit(now_time)
-        nxt_unit = int((now_unit/self.interval)+1)*self.interval
+        nxt_unit = int((now_unit/self.interval)+1.0)*self.interval
         nxt_time = self._to_floor(now_time+self._to_delta(nxt_unit-now_unit))
         tgt_time = nxt_time-now_time
         self.msg.info.timer(nxt_time, tgt_time)

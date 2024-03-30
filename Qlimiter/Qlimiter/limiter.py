@@ -19,9 +19,9 @@ class Limiter:
                  logger:logging.Logger=None):
         
         self.msg = Msg(logger, 'async')
-        self.job = Job(max_calls,seconds,limit, self.msg)
-
         self.msg.info.initiate(max_calls, seconds)
+
+        self.job = Job(max_calls,seconds,limit, self.msg)
         self._stop_event = asyncio.Event()
     
     async def run(self):
@@ -37,7 +37,6 @@ class Limiter:
     async def enqueue(self, fname:str, args:tuple=(), kwargs:dict=None, retry:int=0):
         await self.job.enqueue(fname, args,kwargs, retry)
 
-
     async def _worker_coro(self):
         while not self._stop_event.is_set():
             result = await self.job.dequeue()
@@ -50,13 +49,11 @@ class Limiter:
 if __name__ == "__main__":
     from Qlogger import Logger
     logger = Logger('test', 'head', debug=True)
-    # logger._dev_stream_handler_level('INFO')
+    logger._dev_stream_handler_level('INFO')
     limiter = Limiter(3, 1, 'outflow', logger=logger)
 
     async def myfunc1(a,b,c):
-        print("a",a)
-        print("b",b)
-        print("c",c)
+
         await asyncio.sleep(1)
 
     async def myfunc2(x):
