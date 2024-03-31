@@ -11,18 +11,35 @@ from Qperiodic.tools.every import Every
 from Qperiodic.utils.log_custom import CustomLog
 import logging
 
-
-
+import traceback
 class Timer:
-
+    """
+    timer = Timer()
+    timer.run_daemon_thread
+    """
     def __init__(self, logger:logging.Logger=None):
-        self.custom = CustomLog(logger,'async')
+        self.custom = CustomLog(logger,'thread')
         self.sync = Sync(self.custom)
+        self.next = Next(self.custom)
         
-        self.next = None
+    def run_daemon_thread(self, every:Literal['minute','hour','day']='minute', 
+                          at:int=5, tz:Literal['KST','UTC']='KST', add_offset=True):
+        get_remaining_seconds = self.next.wrapper(every, at, tz, add_offset)
+        self.thread_daemon = threading.Thread(name='background',
+            target=self._worker, args=(get_remaining_seconds,), daemon=True)
+        self.thread_daemon.start()
 
-    def run_daemon_thread(self,seconds=10):
-        self.sync.run_daemon_thread(seconds)
+    def _worker(self, callback_seconds):
+        while True:
+            try:    
+                seconds = callback_seconds()  
+                time.sleep(seconds)
+                Offset.value = self.sync.fetch_offset()
+                time.sleep(1) 
+            except Exception as e:
+                print(str(e))
+                traceback.print_exc()
+                time.sleep(1) 
 
 class Offset:
     value:int = 0
@@ -30,7 +47,8 @@ class Offset:
 
 class Sync:
     """>>> #
-    now.run_daemon_thread(seconds=10)
+    sync = Sync()
+    sync.fetch_offset()
     """
     
     server_list = ["pool.ntp.org","time.windows.com" "time.nist.gov","ntp.ubuntu.com"]
@@ -38,29 +56,9 @@ class Sync:
     def __init__(self, custom:CustomLog):
         self.custom = custom
         self.custom.info.msg('Sync')
-        Offset.value = self._fetch_offset(False)
+        Offset.value = self.fetch_offset(False)
 
-    #! get_seconds_remaining 함수정의 근데 Next 클래스 안에 잇는데 한번만 선언하곱
-    def run_daemon_thread(self, seconds:int=60):
-        self.get_seconds_remaining = 
-        self.thread_daemon = threading.Thread( name='background',
-            target=self._worker, args=(seconds,), daemon=True)
-        self.thread_daemon.start()
-
-    # ------------------------------------------------------------------------ #
-    #                                   inner                                  #
-    # ------------------------------------------------------------------------ #
-    def _worker(self, seconds):
-
-        while True:
-            try:      
-                time.sleep(seconds)
-                Offset.value = self._fetch_offset()
-                time.sleep(1) # buffer
-            except:
-                time.sleep(1) 
-
-    def _fetch_offset(self,debug=True):
+    def fetch_offset(self,debug=True):
         offset_list = []
         server_list = []
         for s in self.server_list:
@@ -84,20 +82,34 @@ class Sync:
 
 
 class Next:
+    """ 
+    >>> # basic
+    next = Next()
+    seconds = next.minute_at_seconds(seconds=5, tz='KST', add_offset=True)
+    seconds = next.hour_at_minutes(minutes=5, tz='KST', add_offset=True)
+    seconds = next.day_at_hours(hours=5, tz='KST', add_offset=True)
 
+    >>> # wrapper
+    next = Next()
+    get_next_seconds = next.wrapper(every='minute', at=5, tz='KST')
+    seconds = get_next_seconds()
+    """
     tz_dict = {"KST":pytz.timezone('Asia/Seoul'),"UTC":pytz.timezone('UTC')}
     
-    def __init__(self):
-        pass
+    def __init__(self, custom:CustomLog):
+        self.custom = custom
+        self.custom.info.msg('Next')
 
-    def wrapper(self, every:Literal['minute','hour','day']='minute', at:int=5, tz:Literal['KST','UTC']='KST'):
-        """add_offset=False"""
+    def wrapper(self, every:Literal['minute','hour','day']='minute', at:int=5, tz:Literal['KST','UTC']='KST',add_offset=True):
         if every == 'minute':
-            func = self.minute_at_seconds(seconds=at,tz=tz,add_offset=False)
+            # func = self.minute_at_seconds(seconds=at,tz=tz,add_offset=add_offset)
+            func = partial(self.minute_at_seconds,at,tz,add_offset)
         elif every == 'hour':
-            func = self.hour_at_minutes(minutes=at,tz=tz,add_offset=False)
+            # func = self.hour_at_minutes(minutes=at,tz=tz,add_offset=add_offset)
+            func = partial(self.hour_at_minutes,at,tz,add_offset)
         elif every == 'day':
-            func = self.day_at_hours(hours=at,tz=tz,add_offset=False)
+            # func = self.day_at_hours(hours=at,tz=tz,add_offset=add_offset)
+            func = partial(self.day_at_hours,at,tz,add_offset)
         return func
 
     def now_naive(self, tz:Literal['KST','UTC']='KST' , add_offset=True):
@@ -132,19 +144,18 @@ class Next:
         return rslt
     
 
-
-
 if __name__ == "__main__":
     from Qlogger import Logger
     logger = Logger('timer','head')
 
     timer = Timer(logger)
+    timer.sync.fetch_offset()
 
-    # print('# --------------------------------- sync --------------------------------- #')
-    # timer.run_daemon_thread()
-    # for i in range(10):
-    #     time.sleep(5)
-    #     print(Offset.value)
+    timer.run_daemon_thread('minute',10,'KST',False)
+    
+    for i in range(30):
+        time.sleep(10)
+        logger.debug('hi')
 
 # class Next:
 
