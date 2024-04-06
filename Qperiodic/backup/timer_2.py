@@ -134,7 +134,7 @@ class Sync:
         for server in self.server_list:
             try:
                 response = self._fetch_NTPStats(server)
-                offset = response.offset
+                offset = round(response.offset,7)
                 if max_offset is None :
                     max_offset, max_server = offset, server
                 else :
@@ -143,7 +143,7 @@ class Sync:
 
             except Exception as e:
                 pass
-        if debug: self.custom.info.msg('ok',f"{max_offset:.6f}", max_server)
+        if debug: self.custom.info.msg('ok',max_offset, max_server)
         return max_offset
             
     def _fetch_NTPStats(self, server):
@@ -177,7 +177,7 @@ class Next:
     get_next_seconds = next.wrapper(every='minute', at=5, tz='KST')
     seconds = get_next_seconds()
     """
-    # tz_dict = {"KST":pytz.timezone('Asia/Seoul'),"UTC":pytz.timezone('UTC')}
+    tz_dict = {"KST":pytz.timezone('Asia/Seoul'),"UTC":pytz.timezone('UTC')}
     
     def __init__(self, custom:CustomLog):
         self.custom = custom
@@ -220,23 +220,16 @@ class Next:
         return total_seconds
 
 class Every:
-    """>>> #
-    every = Every()
-    every.th_hour(5)
-    every.th_minute(5)
-    every.th_second(5,add_offset=True)
-    """
     def __init__(self, custom:CustomLog):
         self.buffer = timedelta(seconds=0.05)
         self.custom = custom
         self.custom.info.msg('Every')
 
-    def th_hour(self, value:float, tz:Literal['KST','UTC']='KST', add_offset=True) -> float:
+    def th_hour(self, value:int, tz:Literal['KST','UTC']='KST', add_offset=True) -> float:
         assert 0 <= value < 24 , 'invalid hour'
         now_datetime = Shared.now_datetime(tz=tz, add_offset=add_offset) + self.buffer
         unit_value_now = now_datetime.hour
         unit_value_nxt = int((unit_value_now/value)+1.0)*value
-        
         nxt_datetime = now_datetime + timedelta(hours=unit_value_nxt - unit_value_now)
         nxt_datetime = nxt_datetime.replace(minute=0, second=0, microsecond=0)
         total_seconds = (nxt_datetime-now_datetime).total_seconds()
@@ -246,12 +239,11 @@ class Every:
         self.custom.debug.msg('every',f"({value})th hour", fmt_seconds, fmt_datetime)
         return total_seconds  
 
-    def th_minute(self, value:float, tz:Literal['KST','UTC']='KST', add_offset=True) -> float:
+    def th_minute(self, value:int, tz:Literal['KST','UTC']='KST', add_offset=True) -> float:
         assert 0 <= value < 60 , 'invalid minutes'
         now_datetime = Shared.now_datetime(tz=tz, add_offset=add_offset) + self.buffer
         unit_value_now = now_datetime.minute
         unit_value_nxt = int((unit_value_now/value)+1.0)*value
-
         nxt_datetime = now_datetime + timedelta(minutes=unit_value_nxt - unit_value_now)
         nxt_datetime = nxt_datetime.replace(second=0, microsecond=0)
         total_seconds = (nxt_datetime-now_datetime).total_seconds()
@@ -261,13 +253,12 @@ class Every:
         self.custom.debug.msg('every',f"({value})th min", fmt_seconds,fmt_datetime)
         return total_seconds  
 
-    def th_second(self, value:float, tz:Literal['KST','UTC']='KST', add_offset=True) -> float:
+    def th_second(self, value:int, tz:Literal['KST','UTC']='KST', add_offset=True) -> float:
         assert 0 <= value < 60 , 'invalid seconds'
         now_datetime = Shared.now_datetime(tz=tz, add_offset=add_offset) + self.buffer
-        # _now_datetime = datetime.now()
+        _now_datetime = datetime.now()
         unit_value_now = now_datetime.second
         unit_value_nxt = int((unit_value_now/value)+1.0)*value
-
         nxt_datetime = now_datetime + timedelta(seconds=unit_value_nxt - unit_value_now)
         nxt_datetime = nxt_datetime.replace(microsecond=0)
         total_seconds = (nxt_datetime-now_datetime).total_seconds()
@@ -293,19 +284,21 @@ class Every:
 if __name__ == "__main__":
     from Qlogger import Logger
     logger = Logger('timer','head')
+
     timer = Timer(logger)
 
     # --------------------------------- every -------------------------------- #
     # timer.every.th_hour(5)
     # timer.every.th_minute(5)
-    # timer.every.th_second(5,add_offset=True)
+    timer.every.th_second(5,add_offset=True)
+
+
 
     # --------------------------------- sync --------------------------------- #
     # timer.sync.check()
     # timer.sync.fetch_offset()
 
     # --------------------------------- next --------------------------------- #
-    #! TODO costum 
     # print(timer.next.day_at_hours(5))
     # print(timer.next.hour_at_minutes(5))
     # print(timer.next.minute_at_seconds(5))
