@@ -1,3 +1,3 @@
-from Qpgsql.connect import Connection
+from Qpgsql.pgsql import Pgsql
 
-connection = Connection()
+connection = Pgsql()

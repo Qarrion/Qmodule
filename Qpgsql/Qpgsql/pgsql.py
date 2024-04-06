@@ -1,7 +1,7 @@
 from configparser import ConfigParser
 import psycopg
 
-class Connection:
+class Pgsql:
     def __init__(self):
         self.config = ConfigParser()
 
@@ -21,7 +21,7 @@ class Connection:
             ---------------------                  
         """)
     # -------------------------------- connect ------------------------------- #
-    def open(self):
+    def connect(self):
         cnxn = psycopg.connect(
             host=self.config.get('connect','host'),
             port=self.config.get('connect','port'),
@@ -32,17 +32,23 @@ class Connection:
         return cnxn
 
 if __name__ == "__main__":
-    config = ConfigParser()
-    config.read(r'config/db.ini')
-    connection = Connection()
-    conn = connection.open()
+    pgsql = Pgsql()
+    conn = pgsql.connect()
+
+    from Qpgsql.utils.print_divider import eprint
+    eprint('dir_conn')
     print(dir(conn))
-    print(dir(conn.info))
+    eprint('dir_conn.autocommit')
     print(conn.autocommit)
-    print(conn.info.status)
+    eprint('dir_conn.pipeline')
+    print(conn.pipeline)
+    eprint('dir_conn.info')
+    print(dir(conn.info))
+    eprint('dir_conn.pipeline_status')
+    print(conn.info.pipeline_status)
+    eprint('dir_conn.timezone')
     print(conn.info.timezone)
-    print(conn.info.password)
-
-    
-
-    
+    eprint('dir_conn.pipeline_status')
+    print(conn.info.pipeline_status)
+    eprint('dir_conn.dsn')
+    print(conn.info.dsn)
