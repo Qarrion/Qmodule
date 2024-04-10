@@ -79,8 +79,8 @@ class Market:
 if __name__=='__main__':
     from Qupbit.utils.print_divider import eprint
     from Qupbit.utils.logger_color import ColorLog
-
-    logger = ColorLog('test','green')
+    logger = ColorLog('test', 'green')
+    
     market = Market(logger)
 
     # --------------------------------- valid -------------------------------- #

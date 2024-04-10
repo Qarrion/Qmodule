@@ -65,9 +65,9 @@ if __name__=='__main__':
     import pandas as pd
     from Qupbit.tools.timez import Timez
     from Qupbit.utils.print_divider import eprint
-    from Qlogger import Logger
-
-    logger = Logger('test','head')
+    from Qupbit.utils.logger_color import ColorLog
+    logger = ColorLog('test', 'green')
+    
     candle = Candle(logger)
 
     # ------------------------------------------------------------------------ #
