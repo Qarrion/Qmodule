@@ -2,6 +2,7 @@ from configparser import ConfigParser
 import psycopg
 
 class Pgsql:
+    """psycopg wrapper"""
     def __init__(self):
         self.config = ConfigParser()
 
