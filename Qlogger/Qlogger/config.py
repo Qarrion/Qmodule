@@ -31,17 +31,19 @@ class Config:
 		[logger]
 		opt3 = text
 	#----------------------------------------------
+	>>> # read
 	config = Config('log.ini',debug=True)
 	print(config.parser.get('logger', 'level'))
 	print(config.parser.get('logger','fmt',raw=True))
 	print(config.parser.get('logger','NoVar',fallback='fallback'))
 
+	>>> # section
 	config.set_section('log')
 	print(config.section.get('level'))
 	print(config.section.get('fmt',raw=True))
 	print(config.section.get('NoVar',fallback='fallback'))
 	#----------------------------------------------
-	# [DEFAULT] define 
+	[DEFAULT] define 
 	"""	
 	def __init__(self, inifile, fallback='default.ini', debug=False) -> None:
 		self._fallback = fallback

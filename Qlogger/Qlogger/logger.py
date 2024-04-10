@@ -30,11 +30,18 @@ class Logger(logging.Logger):
             file:str="log.ini", 
             debug=False
         ):
-        """
+        """ 
         #### name : name is section of config /else/ default
         #### color : 'red','green','yellow','blue','purple','cyan','white'
         #### color : 'level', 'head', None
         #### config : project/config/<log.ini> /else/ defualt
+        >>> #
+        logger = Logger('test_fix', 'head', 'log.ini', debug=True)
+        logger._dev_stream_handler_level('INFO')
+        logger.debug('debug')
+        logger.info('info')
+        logger.warning('warn')
+        logger.error('error')
         """
         super().__init__(name, level=logging.NOTSET)
     
