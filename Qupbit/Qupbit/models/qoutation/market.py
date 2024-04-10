@@ -25,7 +25,6 @@ class Market:
     columns = ['market','korean_name','english_name','market_warning','last_updated']
 
     def __init__(self, logger:logging.Logger=None, debug=True):
-        # self.tracer = Tracer(logger)
         self.custom = CustomLog(logger,'async')
         self.valider = Valider(logger)
         self.parser = Parser()
