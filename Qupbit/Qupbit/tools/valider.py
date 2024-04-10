@@ -49,13 +49,13 @@ class Valider:
 			add = [r for  r in rslt_keys if r not in info_keys]
 			rmv = [i for  i in info_keys if i not in rslt_keys]
 
-			self.custom.debug.msg(group,'added', add)
-			self.custom.debug.msg(group,'removed',rmv)
+			self.custom.debug.msg('added', str(add))
+			self.custom.debug.msg('removed',str(rmv))
 
 if __name__ =="__main__":
 	from Qupbit.utils.print_divider import eprint
-	from Qlogger import Logger
-	logger = Logger('test', 'head')
+	from Qupbit.utils.logger_color import ColorLog
+	logger = ColorLog('test', 'green')
 	valider = Valider(logger)
 
 	# --------------------------------------------------------------------------- #
