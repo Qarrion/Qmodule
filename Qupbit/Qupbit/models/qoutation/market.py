@@ -1,5 +1,5 @@
 # https://docs.upbit.com/reference/%EB%A7%88%EC%BC%93-%EC%BD%94%EB%93%9C-%EC%A1%B0%ED%9A%8C
-from Qupbit.utils.log_custom import CustomLog
+from Qupbit.utils.logger_custom import CustomLog
 from Qupbit.tools.valider import Valider
 from Qupbit.tools.parser import Parser
 from typing import List
@@ -78,9 +78,9 @@ class Market:
 
 if __name__=='__main__':
     from Qupbit.utils.print_divider import eprint
-    from Qlogger import Logger
+    from Qupbit.utils.logger_color import ColorLog
 
-    logger = Logger('test','head')
+    logger = ColorLog('test','green')
     market = Market(logger)
 
     # --------------------------------- valid -------------------------------- #

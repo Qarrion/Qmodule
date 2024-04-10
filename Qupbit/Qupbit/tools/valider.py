@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------------- #
 #                https://docs.upbit.com/docs/user-request-guide                #
 # ---------------------------------------------------------------------------- #
-from Qupbit.utils.log_custom import CustomLog
+from Qupbit.utils.logger_custom import CustomLog
 from Qupbit.tools.parser import Parser
 from typing import Literal
 import logging

@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------------- #
 #     https://docs.upbit.com/reference/%EB%B6%84minute-%EC%BA%94%EB%93%A4-1    #
 # ---------------------------------------------------------------------------- #
-from Qupbit.utils.log_custom import CustomLog
+from Qupbit.utils.logger_custom import CustomLog
 from Qupbit.tools.parser import Parser
 from Qupbit.tools.timez import Timez
 from datetime import datetime

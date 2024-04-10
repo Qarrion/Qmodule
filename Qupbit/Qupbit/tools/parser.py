@@ -54,10 +54,10 @@ class Parser():
         return keys_list
     
 if __name__ =="__main__":
-    from Qlogger import Logger
+    from Qupbit.utils.logger_color import ColorLog 
     from Qupbit.models import Market
     from Qupbit.utils.print_divider import eprint
-    logger = Logger('test', 'head')
+    logger = ColorLog('test', 'blue')
     market = Market(logger, debug=True)
     parser = Parser()
     rslt = market.get()
