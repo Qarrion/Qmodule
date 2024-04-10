@@ -1,0 +1,1 @@
+iprint = lambda x: print(type(x), x)
