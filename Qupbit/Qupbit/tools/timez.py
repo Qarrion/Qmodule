@@ -45,7 +45,7 @@ class Timez():
 
     @classmethod
     def as_timezone(cls, date_time_aware:datetime, tz:Literal['KST','UTC']="KST"):
-        """date_time_aware -> date_time_ast(tz)
+        """date_time_aware -> date_time_astz(tz)
         """
         return date_time_aware.astimezone(cls.tz_dict[tz])
     

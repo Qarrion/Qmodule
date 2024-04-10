@@ -31,8 +31,9 @@ class Parser():
             response_dict['text'] = resp.text
         return response_dict
     
-    def response_market(self, payload:List[dict], key, qoute=None, base=None, market=None):
-        """list comprehension """
+    def market(self, payload:List[dict], key, qoute=None, base=None, market=None):
+        """ >>> parser.market() 
+        # list comprehension """
         if market is not None:
             payload = [d for d in payload if d[key] == market]
 
@@ -44,12 +45,12 @@ class Parser():
             
         return payload        
     
-    def response_allkeys(self, nested_dict:dict):
+    def allkeys(self, nested_dict:dict):
         keys_list = []
         for key, value in nested_dict.items():
             keys_list.append(key)  # 현재 레벨의 키를 추가
             if isinstance(value, dict):
-                keys_list.extend(self.response_allkeys(value))  # value가 딕셔너리일 경우, 재귀적으로 호출
+                keys_list.extend(self.allkeys(value))  # value가 딕셔너리일 경우, 재귀적으로 호출
         return keys_list
     
 if __name__ =="__main__":
@@ -63,12 +64,12 @@ if __name__ =="__main__":
     
     # ------------------------------------------------------------------------ # 
     eprint('market')
-    print(parser.response_market(rslt['payload'], key='market', market='KRW-BTC'))
+    print(parser.market(rslt['payload'], key='market', market='KRW-BTC'))
     eprint('base')
-    print(parser.response_market(rslt['payload'], key='market', base='BTC'))
+    print(parser.market(rslt['payload'], key='market', base='BTC'))
     eprint('qoute')
-    print(parser.response_market(rslt['payload'], key='market', qoute='USDT'))
+    print(parser.market(rslt['payload'], key='market', qoute='USDT'))
     
     # ------------------------------------------------------------------------ #
     eprint('allkeys')
-    print(parser.response_allkeys(rslt['payload'][0]))
+    print(parser.allkeys(rslt['payload'][0]))

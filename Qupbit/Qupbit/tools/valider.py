@@ -1,12 +1,11 @@
 # ---------------------------------------------------------------------------- #
 #                https://docs.upbit.com/docs/user-request-guide                #
 # ---------------------------------------------------------------------------- #
-
-
-import logging
-from typing import Literal
+from Qupbit.utils.log_custom import CustomLog
 from Qupbit.tools.parser import Parser
-from Qupbit.tools.tracer import Tracer
+from typing import Literal
+import logging
+
 qoutation = dict()
 
 # ---------------------------------- market ---------------------------------- #
@@ -30,7 +29,7 @@ qoutation['candles']['columns']=[
 class Valider:
 	def __init__(self, logger:logging.Logger):
 		self.parser = Parser()
-		self.tracer = Tracer(logger)
+		self.custom = CustomLog(logger,'async')
 
 	def check(self, group:Literal['market','candles'], 
 		   rslt, header=True, column=True):
@@ -40,18 +39,18 @@ class Valider:
 			grp = qoutation[group]['group'] == rslt['remain']['group']
 			sec = qoutation[group]['sec'] == rslt['remain']['sec']+1
 
-			self.tracer.debug.test_header(group,'group',rslt['remain']['group'],grp)
-			self.tracer.debug.test_header(group,'sec', rslt['remain']['sec']+1,sec)
+			self.custom.debug.msg(group,'group',rslt['remain']['group'],grp)
+			self.custom.debug.msg(group,'sec', rslt['remain']['sec']+1,sec)
 
 		if column:
 			"""response.json 의 keys 변동확인"""
-			rslt_keys = self.parser.response_allkeys(rslt['payload'][0])
+			rslt_keys = self.parser.allkeys(rslt['payload'][0])
 			info_keys = qoutation[group]['columns']
 			add = [r for  r in rslt_keys if r not in info_keys]
 			rmv = [i for  i in info_keys if i not in rslt_keys]
 
-			self.tracer.debug.test_column(group,'added', add)
-			self.tracer.debug.test_column(group,'removed',rmv)
+			self.custom.debug.msg(group,'added', add)
+			self.custom.debug.msg(group,'removed',rmv)
 
 if __name__ =="__main__":
 	from Qupbit.utils.print_divider import eprint

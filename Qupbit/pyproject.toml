@@ -1,0 +1,11 @@
+[project]
+name = "Qupbit"
+version = "0.0.1"
+dependencies = [
+        'python-dateutil',
+        'pytz',
+        'requests',
+        'websockets'
+    ]
+[tool.setuptools]
+packages = ["Qupbit"]
