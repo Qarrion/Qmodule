@@ -10,6 +10,7 @@ async def run_job() -> None:
 	print(f'{datetime.now()} finished ({delay}) sec seconds{asyncio.current_task()}')
 	print(dir(asyncio.current_task()))
 	print(asyncio.current_task().get_name())
+	
 async def main() -> None:
 	while True:
 		asyncio.create_task(run_job())
