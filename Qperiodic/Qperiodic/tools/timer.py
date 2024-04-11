@@ -1,13 +1,14 @@
-import threading, traceback, time, logging
-import ntplib,pytz
-
+from Qperiodic.utils.logger_custom import CustomLog
 from datetime import datetime, timedelta
 from functools import partial
 from datetime import datetime
 from typing import Literal
 
+import time, logging, traceback, threading
+import ntplib, pytz
 
-from Qperiodic.utils.logger_custom import CustomLog
+
+
 
 
 class _core:
@@ -66,7 +67,54 @@ class _format:
         elif fmt=='ms7f':
             formatted_time = datetime_naive.strftime(':%S.%f') 
         return formatted_time
+
+class Timer:
+    """
+    >>> #
+    timer = Timer()
+    timer.offset
+    timer.now_naive()
+    timer.now_stamp()
+    """
+    def __init__(self, logger:logging.Logger=None):
+        self.custom = CustomLog(logger,'async')
+        self.custom.info.msg('Timer')
+
+        self.sync = Sync(self.custom)
+        self.every = Every(self.custom)
+
+    def now_naive(self, tz: Literal['KST', 'UTC'] = 'KST', msg=False):
+        now_naive = _core.now_naive(tz)
+        if msg: self.custom.info.msg('', str(now_naive))
+        return now_naive
     
+    def now_stamp(self, msg=False):
+        now_stamp = _core.now_stamp()
+        if msg: self.custom.info.msg('', now_stamp)
+        return now_stamp
+
+    def get_offset(self,msg=False):
+        offset = _core.offset
+        if msg:self.custom.info.msg('',offset)
+        return offset
+
+    def run_daemon_thread(self, every:Literal['minute_at_seconds','hour_at_minutes','day_at_hours',
+                    'seconds','minutes','hours'], at:float=5, tz:Literal['KST','UTC']='KST',msg=True):
+        get_total_seconds = self.every.wrapper(every,at,tz,msg=False)
+        def worker():
+            while True:
+                try:
+                    time.sleep(get_total_seconds())
+                    _core.offset = self.sync.fetch_offset(msg=msg)
+                except Exception as e:
+                    print(str(e))
+                    traceback.print_exc()
+                    time.sleep(1)
+        self.daemon_thread = threading.Thread(name='BackGround',target=worker, daemon=True)
+        self.daemon_thread.start()            
+
+
+
 class Sync:
     """>>> #
     sync = Sync()
@@ -83,7 +131,7 @@ class Sync:
         _core.offset = self.fetch_offset(True)
         # self.check()
 
-    def fetch_offset(self, debug=True):
+    def fetch_offset(self, msg=True):
         max_offset = None
         for server in self.server_list:
             try:
@@ -95,7 +143,7 @@ class Sync:
                         max_offset, max_server = offset, server
             except Exception as e:
                 pass
-        if debug: self.custom.info.msg('ok',f"{max_offset:.6f}", max_server)
+        if msg: self.custom.info.msg('ok',f"{max_offset:.6f}", max_server)
         return max_offset
             
     def _fetch_NTPStats(self, server)->ntplib.NTPStats:
@@ -110,31 +158,9 @@ class Sync:
                 tsp_offset = response.offset
                 kst_server = datetime.fromtimestamp(response.tx_time, tz=_core.timezone['KST'])
                 kst_local = datetime.fromtimestamp(time.time(), tz=_core.timezone['KST'])
-                # print(tsp_offset,kst_server,kst_local)
                 print(f"  ::: offset({tsp_offset:.6f}), server({kst_server}) - local({kst_local}) [{server}]")
             except Exception as e:
                 pass        
-
-class Next:
-    """ 
-    >>> # basic
-    next = Next()
-    seconds = next.minute_at_seconds(seconds=5, tz='KST', msg=True)
-    seconds = next.hour_at_minutes(minutes=5, tz='KST', msg=True)
-    seconds = next.day_at_hours(hours=5, tz='KST', msg=True)
-
-    >>> # wrapper
-    next = Next()
-    timer = next.wrapper(every='minute_at_seconds', at=5, tz='KST')
-    seconds = timer()
-    """
-    # tz_dict = {"KST":pytz.timezone('Asia/Seoul'),"UTC":pytz.timezone('UTC')}
-    
-    def __init__(self, custom:CustomLog):
-        self.custom = custom
-        self.custom.info.msg('Next')
-
-
 
 class Every:
     """>>> # every times on the clock 
@@ -269,16 +295,28 @@ if __name__=="__main__":
     # sync = Sync(cust)
 
     # --------------------------------- evry --------------------------------- #
-    every = Every(cust)
-    every.minute_at_seconds(10,'KST')
-    every.hour_at_minutes(57,'KST')
-    every.day_at_hours(10,'KST')
+    # every = Every(cust)
+    # every.minute_at_seconds(10,'KST')
+    # every.hour_at_minutes(57,'KST')
+    # every.day_at_hours(10,'KST')
 
-    every.seconds(5,'KST')
-    every.minutes(60,'KST')
-    every.hours(5,'KST')
+    # every.seconds(5,'KST')
+    # every.minutes(60,'KST')
+    # every.hours(5,'KST')
 
-    get_total_seconds = every.wrapper('minute_at_seconds',5,'KST')
-    get_total_seconds()
-    # evry.hours(24,'KST')
+    # get_total_seconds = every.wrapper('minute_at_seconds',5,'KST')
+    # get_total_seconds()
+    # # evry.hours(24,'KST')
     
+    # --------------------------------- Timer -------------------------------- #
+    timer = Timer(logg)
+
+    # timer.get_offset(msg=True)
+    # timer.now_naive(msg=True)
+    # timer.now_stamp(msg=True)
+
+    timer.run_daemon_thread('seconds',3,'KST',True)
+
+    for i in range(20):
+        time.sleep(1)
+        timer.get_offset(msg=True)
