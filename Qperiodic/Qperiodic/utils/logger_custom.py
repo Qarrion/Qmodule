@@ -23,7 +23,7 @@ class CustomLog:
             
     def msg(self, status, *args, task=False, back:int=1):
         """>>> #{func.status:<20} {arg:12}"""
-        frame = self._get_frame(n_back=back+1)
+        frame = self._get_frame(n_back=back+1) if back is not None else ""
         header = self._get_header(status=status,frame=frame)
         text = ', '.join([f"{arg:<12}" for arg in args]) 
         body = " | "f"{text:<40}" +" |"

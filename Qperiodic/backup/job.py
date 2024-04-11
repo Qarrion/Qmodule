@@ -1,4 +1,4 @@
-from Qperiodic.utils.log_custom import CustomLog
+from Qperiodic.utils.logger_custom import CustomLog
 from typing import Coroutine
 import asyncio
 import logging
@@ -43,7 +43,6 @@ class Job:
             self.custom.info.msg('done',fname, f"{args}",task=True)
             
         except Exception as e:
-
             self.custom.warning.msg('except', fname, e.__class__.__name__,task=True)
             if retry <3:
                 await self.enqueue(fname, args, kwargs, timeout, retry+1, msg=False)

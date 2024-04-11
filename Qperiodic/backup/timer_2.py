@@ -6,7 +6,7 @@ from functools import partial
 from datetime import datetime
 from typing import Literal
 
-from Qperiodic.utils.log_custom import CustomLog
+from Qperiodic.utils.logger_custom import CustomLog
 
 class Timer:
     """>>> #

@@ -1,13 +1,17 @@
-import threading, traceback, time, logging
-import ntplib,pytz
-
 from datetime import datetime, timedelta
+from typing import Literal, Self
 from functools import partial
 from datetime import datetime
 from typing import Literal
-
+import ntplib
+import pytz
+import time
+import threading
+from Qperiodic.tools.timer import Every
 from Qperiodic.utils.logger_custom import CustomLog
+import logging
 
+import traceback
 class Timer:
     """
     timer = Timer()
@@ -30,77 +34,53 @@ class Timer:
             try:    
                 seconds = callback_seconds()  
                 time.sleep(seconds)
-                Shared.offset = self.sync.fetch_offset()
+                Offset.value = self.sync.fetch_offset()
                 time.sleep(1) 
             except Exception as e:
                 print(str(e))
                 traceback.print_exc()
                 time.sleep(1) 
 
-class Shared:
-    offset:int = 0
-    timezone = {
-        "KST":pytz.timezone('Asia/Seoul'),
-        "UTC":pytz.timezone('UTC')
-        }
+class Offset:
+    value:int = 0
 
 
 class Sync:
     """>>> #
     sync = Sync()
     sync.fetch_offset()
-    sync.check()
     """
-    server_list = ["pool.ntp.org","kr.pool.ntp.org","time.windows.com" "time.nist.gov","ntp.ubuntu.com"]
+    
+    server_list = ["pool.ntp.org","time.windows.com" "time.nist.gov","ntp.ubuntu.com"]
     
     def __init__(self, custom:CustomLog):
         self.custom = custom
         self.custom.info.msg('Sync')
-        Shared.offset = self.fetch_offset(False)
-        # self.check()
+        Offset.value = self.fetch_offset(False)
 
-    def fetch_offset(self, debug=True):
+    def fetch_offset(self,debug=True):
         offset_list = []
         server_list = []
-        max_offset2 = None
-        for server in self.server_list:
+        for s in self.server_list:
             try:
-                response = self._fetch_NTPStats(server)
-                offset = round(response.offset,7)
-                if max_offset2 is None :
-                    max_offset2, max_server2 = offset, server
-                else :
-                    if offset > max_offset2:
-                        max_offset2, max_server2 = offset, server
+                ntpstat = self._fetch_NTPStats(s)
+                offset = round(ntpstat.offset,7)
                 offset_list.append(offset)
-                server_list.append(server)
+                server_list.append(s)
             except Exception as e:
                 pass
 
-        max_offset = max(offset_list)
-        max_server = server_list[offset_list.index(max_offset)]
-
-        if debug: self.custom.info.msg('ok',max_offset, max_server)
-        if debug: self.custom.info.msg('ok',max_offset2, max_server2)
-        return max_offset2
+        rslt = max(offset_list)
+        msg = f'max offset ({rslt}) {server_list} {offset_list}'
+        if debug: self.custom.info.msg('ok',msg)
+        return rslt
             
     def _fetch_NTPStats(self, server):
         client = ntplib.NTPClient()
         response = client.request(server, version=3)
         return response
 
-    def check(self):
-        t_fmt = "D%d %H:%M:%S.%f"
-        for server in self.server_list:
-            try:
-                response = self._fetch_NTPStats(server)
-                tsp_offset = response.offset
-                kst_server = datetime.fromtimestamp(response.tx_time, tz=Shared.timezone['KST'])
-                kst_local = datetime.fromtimestamp(time.time(), tz=Shared.timezone['KST'])
-                str_offset = f"offset({tsp_offset:.6f}) = sever({kst_server.strftime(t_fmt)}) - local({kst_local.strftime(t_fmt)})"
-                print(f"{str_offset} | [{server}]")
-            except Exception as e:
-                pass
+
 class Next:
     """ 
     >>> # basic
@@ -122,16 +102,19 @@ class Next:
 
     def wrapper(self, every:Literal['minute','hour','day']='minute', at:int=5, tz:Literal['KST','UTC']='KST',add_offset=True):
         if every == 'minute':
+            # func = self.minute_at_seconds(seconds=at,tz=tz,add_offset=add_offset)
             func = partial(self.minute_at_seconds,at,tz,add_offset)
         elif every == 'hour':
+            # func = self.hour_at_minutes(minutes=at,tz=tz,add_offset=add_offset)
             func = partial(self.hour_at_minutes,at,tz,add_offset)
         elif every == 'day':
+            # func = self.day_at_hours(hours=at,tz=tz,add_offset=add_offset)
             func = partial(self.day_at_hours,at,tz,add_offset)
         return func
 
     def now_naive(self, tz:Literal['KST','UTC']='KST' , add_offset=True):
         now_timestamp = time.time() 
-        now_timestamp += Shared.offset if add_offset else 0
+        now_timestamp += Offset.value if add_offset else 0
         now_datetime = datetime.fromtimestamp(now_timestamp,tz=self.tz_dict[tz]) 
         now_datetime_naive = now_datetime.replace(tzinfo=None)
         return now_datetime_naive
@@ -166,17 +149,13 @@ if __name__ == "__main__":
     logger = Logger('timer','head')
 
     timer = Timer(logger)
-    # --------------------------------- sync --------------------------------- #
-    timer.sync.check()
     timer.sync.fetch_offset()
 
-
-
-    # timer.run_daemon_thread('minute',10,'KST',False)
+    timer.run_daemon_thread('minute',10,'KST',False)
     
-    # for i in range(30):
-    #     time.sleep(10)
-    #     logger.debug('hi')
+    for i in range(30):
+        time.sleep(10)
+        logger.debug('hi')
 
 # class Next:
 

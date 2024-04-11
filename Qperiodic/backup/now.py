@@ -5,7 +5,7 @@ import pytz
 import time
 import threading
 from Qperiodic.tools.every import Every
-from Qperiodic.utils.log_custom import CustomLog
+from Qperiodic.utils.logger_custom import CustomLog
 import logging
 
 

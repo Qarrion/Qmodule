@@ -1,4 +1,4 @@
-from Qperiodic.utils.log_custom import CustomLog
+from Qperiodic.utils.logger_custom import CustomLog
 from Qperiodic.job import Job
 from Qperiodic.tools.timer import Timer
 import logging
