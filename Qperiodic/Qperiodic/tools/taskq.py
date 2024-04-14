@@ -1,7 +1,7 @@
 from Qperiodic.utils.logger_custom import CustomLog
+
 from typing import Coroutine, Callable
-import asyncio
-import logging
+import asyncio, logging
 
 
 
@@ -11,15 +11,18 @@ class Taskq:
 
     def __init__(self, logger:logging.Logger=None):
         self.custom = CustomLog(logger,'async')
-        self.custom.info.msg('taskq')
+        self.custom.info.msg('Taskq')
 
         self.registry = dict()
         self.queue = asyncio.Queue()
 
+    # ------------------------------------------------------------------------ #
+    #                               register task                              #
+    # ------------------------------------------------------------------------ #
     def register(self, async_def:Callable, fname:str=None):
         if fname is None : fname = async_def.__name__ 
         self.registry[fname] = async_def
-        self.custom.info.msg('done', fname, task=False)
+        self.custom.info.msg('async_def', fname, task=False)
 
     # ------------------------------------------------------------------------ #
     #                                   async                                  #
@@ -49,7 +52,7 @@ class Taskq:
             
         except Exception as e:
             self.custom.warning.msg('except', fname, e.__class__.__name__,str(e),task=True)
-            if retry <3:
+            if retry < 3:
                 await self.enqueue(fname, args, kwargs, timeout, retry+1, msg=False)
                 self.custom.warning.msg('retry',fname, f"{args}", f"retry({retry})", task=True)
             else:
@@ -94,9 +97,6 @@ if __name__ == "__main__":
         item = await taskq.dequeue()
         await taskq.execute(item)
 
-
-
-    
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
     loop.close()
