@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Callable, Literal
 
 import time, logging, traceback, threading
-import ntplib, pytz
+import pytz
 
 
 class _format:
@@ -44,6 +44,9 @@ class _format:
             formatted_time = datetime_naive.strftime(':%S.%f') 
         return formatted_time
 
+class _core:
+    offset:float = 0.0
+
 class Timer:
     """
     + (current local) + (offset) + [return sec] = (target server) + buffer
@@ -62,8 +65,7 @@ class Timer:
         self._custom = CustomLog(logger,'async')
         self._custom.info.msg('Timer', 'buffer', f"{self.buffer*1000} ms")
 
-        self.registry = dict()
-        self.core = None
+        self.core = _core
 
         self._buffer_ms_delta = timedelta(milliseconds=self.buffer*1000)
     # ------------------------------------------------------------------------ #
@@ -73,29 +75,6 @@ class Timer:
         """+ core.now_naive()"""
         self._custom.info.msg('newst')
         self.core = core
-
-    def now_naive(self, tz:Literal['KST','UTC']='KST')->datetime:
-        """return naive"""
-
-        if self.core is None : 
-            now_stamp = time.time() 
-            now_dtime = datetime.fromtimestamp(now_stamp,tz= self.timezone[tz]) 
-            now_dtime_naive = now_dtime.replace(tzinfo=None)
-        else : 
-            now_dtime_naive = self.core.now_naive(tz=tz)
-
-        return now_dtime_naive        
-    
-    # ------------------------------------------------------------------------ #
-    #                               register time                              #
-    # ------------------------------------------------------------------------ #
-    def register(self, preset:Callable, pname):
-        if pname is None : pname = preset.__name__ 
-        self.registry[pname] = preset
-        self._custom.info.msg('preset', pname, task=False)
-    
-    def execute(self, pname):
-        return self.registry[pname]()
 
     def wrapper(self, every:Literal['minute_at_seconds','hour_at_minutes','day_at_hours',
                                     'every_seconds','every_minutes','every_hours'], 
@@ -115,9 +94,16 @@ class Timer:
             func = partial(self.every_minutes,at,tz,msg)
         elif every == 'every_hours':
             func = partial(self.every_hours,at,tz,msg)
-
         return func
 
+    def _now_naive(self, tz:Literal['KST','UTC']='KST')->datetime:
+        """return naive"""
+        now_stamp = time.time() + self.core.offset
+        now_dtime = datetime.fromtimestamp(now_stamp,tz= self.timezone[tz]) 
+        now_dtime_naive = now_dtime.replace(tzinfo=None)
+
+        return now_dtime_naive        
+    
     def _get_debuging_seconds(self, tot_seconds, nxt_dtime):
         total_s = _format.seconds(tot_seconds,'hmsf')
         final_s = _format.datetime(nxt_dtime,'hmsf')
@@ -131,8 +117,8 @@ class Timer:
     
     def minute_at_seconds(self, seconds:float, tz:Literal['KST','UTC']='KST',msg=True) -> float:
         assert 0 <= seconds < 60 , 'invalid seconds'
-        now_dtime = self.now_naive(tz=tz) 
-        if now_dtime.second >= seconds : nxt_dtime = now_dtime + timedelta(minutes=1) 
+        now_dtime = self._now_naive(tz=tz) 
+        nxt_dtime = (now_dtime + timedelta(minutes=1)) if now_dtime.second >= seconds else now_dtime
         nxt_dtime = nxt_dtime.replace(second=seconds,microsecond=0)
         nxt_dtime = nxt_dtime+ self._buffer_ms_delta 
 
@@ -144,8 +130,8 @@ class Timer:
           
     def hour_at_minutes(self, minutes:float, tz:Literal['KST','UTC']='KST',msg=True) -> float:
         assert 0 <= minutes < 60 , 'invalid minutes'
-        now_dtime = self.now_naive(tz=tz) 
-        if now_dtime.minute >= minutes : nxt_dtime = now_dtime + timedelta(hours=1)
+        now_dtime = self._now_naive(tz=tz) 
+        nxt_dtime = (now_dtime + timedelta(hours=1)) if now_dtime.minute >= minutes else now_dtime
         nxt_dtime = nxt_dtime.replace(minute=minutes,second=0,microsecond=0) 
         nxt_dtime = nxt_dtime + self._buffer_ms_delta
         tot_seconds = (nxt_dtime-now_dtime).total_seconds()
@@ -156,15 +142,13 @@ class Timer:
 
     def day_at_hours(self, hours:float, tz:Literal['KST','UTC']='KST',msg=True)  -> float:
         assert 0 <= hours < 24 , 'invalid hour'
-        now_dtime = self.now_naive(tz=tz) 
-        if now_dtime.hour >= hours : nxt_dtime = now_dtime + timedelta(days=1)
-        try:
-            nxt_dtime = nxt_dtime.replace(hour=hours,minute=0,second=0,microsecond=0)
-            nxt_dtime = nxt_dtime + self._buffer_ms_delta
-            tot_seconds = (nxt_dtime-now_dtime).total_seconds()
-        except Exception as e :
-            print(str(e))
-            print(e)
+        now_dtime = self._now_naive(tz=tz) 
+        nxt_dtime = (now_dtime + timedelta(days=1)) if now_dtime.hour >= hours else now_dtime
+    
+        nxt_dtime = nxt_dtime.replace(hour=hours,minute=0,second=0,microsecond=0)
+        nxt_dtime = nxt_dtime + self._buffer_ms_delta
+        tot_seconds = (nxt_dtime-now_dtime).total_seconds()
+
         if msg : 
             total_s,final_s,core_s = self._get_debuging_seconds(tot_seconds, nxt_dtime)
             self._custom.debug.msg(core_s,f"clock h ({hours})",total_s,final_s,back=None)        
@@ -172,7 +156,7 @@ class Timer:
 
     def every_seconds(self, value:float, tz:Literal['KST','UTC']='KST', msg=True) -> float:
         assert 0 < value <= 60 , 'invalid seconds'
-        now_dtime = self.now_naive(tz=tz) 
+        now_dtime = self._now_naive(tz=tz) 
         unit_value_now = now_dtime.second
         unit_value_nxt = int((unit_value_now/value)+1.0)*value
 
@@ -188,7 +172,7 @@ class Timer:
 
     def every_minutes(self, value:float, tz:Literal['KST','UTC']='KST', msg=True) -> float:
         assert 0 < value <= 60 , 'invalid minutes'
-        now_dtime = self.now_naive(tz=tz) 
+        now_dtime = self._now_naive(tz=tz) 
         unit_value_now = now_dtime.minute
         unit_value_nxt = int((unit_value_now/value)+1.0)*value
 
@@ -204,7 +188,7 @@ class Timer:
 
     def every_hours(self, value:float, tz:Literal['KST','UTC']='KST', msg=True) -> float:
         assert 0 < value <= 24 , 'invalid hour'
-        now_dtime = self.now_naive(tz=tz) 
+        now_dtime = self._now_naive(tz=tz) 
         unit_value_now = now_dtime.hour
         unit_value_nxt = int((unit_value_now/value)+1.0)*value
         
@@ -223,8 +207,9 @@ class Timer:
 if __name__=="__main__":
     from Qperiodic.utils.logger_color import ColorLog
     logg = ColorLog('main', 'green')
-    # --------------------------------- wait --------------------------------- #
     timer = Timer(logg)
+
+    # --------------------------------- timer -------------------------------- #
     timer.minute_at_seconds(10,'KST')
     timer.hour_at_minutes(10,'KST')
     timer.day_at_hours(10,'KST')
@@ -233,22 +218,9 @@ if __name__=="__main__":
     timer.every_minutes(60,'KST')
     timer.every_hours(10,'KST')
 
-    # get_total_seconds = timer.wrapper('minute_at_seconds',5,'KST')
-    # get_total_seconds()
-
-    # get_total_seconds = timer.wrapper('every_seconds',2)
-    # get_total_seconds()
-    # evry.hours(24,'KST')
+    # -------------------------------- wrapper ------------------------------- #
+    get_total_seconds = timer.wrapper('minute_at_seconds',5,'KST')
+    get_total_seconds()
+    get_total_seconds = timer.wrapper('every_seconds',2)
+    get_total_seconds()
     
-    # --------------------------------- Timer -------------------------------- #
-    # timer = Timer(logg)
-
-    # timer.get_offset(msg=True)
-    # timer.now_naive(msg=True)
-    # timer.now_stamp(msg=True)
-
-    # timer.run_daemon_thread('every_seconds',3,'KST',True)
-
-    # for i in range(20):
-    #     time.sleep(1)
-    #     timer.get_offset(msg=True)

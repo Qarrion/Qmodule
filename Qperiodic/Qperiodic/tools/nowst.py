@@ -10,25 +10,6 @@ import ntplib, pytz
 class _core:
     offset:float = 0.0
 
-    timezone = {
-    "KST":pytz.timezone('Asia/Seoul'),
-    "UTC":pytz.timezone('UTC')}
-
-    @classmethod
-    def now_stamp(cls)->float:
-        """with offset"""
-        now_timestamp = time.time() + _core.offset
-        # now_timestamp = time.time() + _core.offset - _core.buffer
-        return now_timestamp
-
-    @classmethod
-    def now_naive(cls, tz:Literal['KST','UTC']='KST')->datetime:
-        """return naive"""
-        now_timestamp = _core.now_stamp()
-        now_datetime = datetime.fromtimestamp(now_timestamp,tz=_core.timezone[tz]) 
-        now_datetime_naive = now_datetime.replace(tzinfo=None)
-        return now_datetime_naive
-
 class Nowst:
     """>>> #
     nowst = Nowst()
@@ -44,6 +25,9 @@ class Nowst:
     print(core.now_naive())
     print(core.now_stamp())
     """
+    timezone = {
+        "KST":pytz.timezone('Asia/Seoul'),
+        "UTC":pytz.timezone('UTC')}
     server_list = ["pool.ntp.org","kr.pool.ntp.org","time.windows.com" "time.nist.gov","ntp.ubuntu.com"]
     
     def __init__(self, logger:logging.Logger=None):
@@ -51,14 +35,24 @@ class Nowst:
         self.custom.info.msg('Nowst')
         _core.offset = self.fetch_offset(msg=True, init=True)
 
+    @property
     def core(self):
         return _core
 
-    def now_stamp(self)->float:
-        return _core.now_stamp()
+    def now_stamp(self, msg=False)->float:
+        """with offset"""
+        now_local = time.time()
+        now_stamp = now_local + _core.offset
+        if msg: self.custom.debug.msg(f"offset ({_core.offset:+.6f})", f"L({now_local:.5f})",f"S({now_stamp:.5f})", back=None)
+        return now_stamp
     
-    def now_naive(self, tz:Literal['KST','UTC']='KST')->datetime:
-        return _core.now_naive(tz)
+    def now_naive(self, tz:Literal['KST','UTC']='KST', msg=False)->datetime:
+        """return naive"""
+        now_timestamp = self.now_stamp()
+        now_datetime = datetime.fromtimestamp(now_timestamp,tz=self.timezone[tz]) 
+        now_datetime_naive = now_datetime.replace(tzinfo=None)
+        if msg: self.custom.debug.msg(f"offset ({_core.offset:+.6f})", f"Server({now_datetime_naive})", back=None)
+        return now_datetime_naive
 
     def fetch_offset(self, msg=True, init=False):
         min_offset = None
@@ -112,9 +106,12 @@ class Nowst:
 
     def _debug_response(self, response, server):
         tsp_offset = response.offset
-        kst_server = datetime.fromtimestamp(response.tx_time, tz=_core.timezone['KST'])
-        kst_local = datetime.fromtimestamp(time.time(), tz=_core.timezone['KST'])
-        print(f"  + offset({tsp_offset:.6f}) ::: server({kst_server}) - local({kst_local}) [{server}]")
+        kst_server = datetime.fromtimestamp(response.tx_time, tz=self.timezone['KST'])
+        kst_local = datetime.fromtimestamp(time.time(), tz=self.timezone['KST'])
+        print(f"  + offset({tsp_offset:+.6f}) = server({kst_server}) - local({kst_local}) [{server}]")
+        # if tsp_offset >=0:
+        # else:
+        #     print(f"  + offset({tsp_offset:.6f}) = server({kst_server}) - local({kst_local}) [{server}]")
 
 if __name__=="__main__":
     from Qperiodic.utils.logger_color import ColorLog
@@ -122,14 +119,15 @@ if __name__=="__main__":
     nowst = Nowst(logg)
 
     # --------------------------------- nowst -------------------------------- #
-    # nowst.fetch_offset()
-    # print(nowst.now_naive())
-    # print(nowst.now_stamp())
+    nowst.fetch_offset()
+    nowst.now_stamp(True)
+    nowst.now_naive(msg=True)
 
-    # nowst.start_daemon_thread(lambda:1)
-    # time.sleep(5)
+    nowst.start_daemon_thread(lambda:1)
+    time.sleep(5)
 
     # --------------------------------- core --------------------------------- #
-    core = nowst.core()
-    print(core.now_naive())
-    print(core.now_stamp())
+    core = nowst.core
+    print(core.offset)
+    # print(core.now_naive())
+    # print(core.now_stamp())
