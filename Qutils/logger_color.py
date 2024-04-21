@@ -17,8 +17,9 @@ def ColorLog(name, color:Literal['red','green','yellow','blue','purple']):
 	handler.setLevel(logging.DEBUG)
 
 	# 로그 포맷 설정
+ 
 	formatter = logging.Formatter(
-		f"{cmap[color]}%(asctime)s - %(levelname)7s @ %(name)7s . %(message)s [%(threadName)s]{cmap['reset']}"
+		f"{cmap[color]}%(asctime)s | %(levelname)-7s | %(name)-7s | %(message)-40s | [%(threadName)s]{cmap['reset']}"
 	)
 	handler.setFormatter(formatter)
 
@@ -38,4 +39,4 @@ if __name__ == "__main__":
 	logger.info("info message")
 	logger.warning("warning message")
 	logger.error("error message")
-	logger.critical("critical message")
+	# logger.critical("critical message")
