@@ -19,7 +19,7 @@ def ColorLog(name, color:Literal['red','green','yellow','blue','purple']):
 	# 로그 포맷 설정
  
 	formatter = logging.Formatter(
-		f"{cmap[color]}%(asctime)s - %(levelname)7s @ %(name)7s . %(message)s [%(threadName)s]{cmap['reset']}"
+		f"{cmap[color]}%(asctime)s | %(levelname)-7s | %(name)-7s | %(message)-40s | [%(threadName)s]{cmap['reset']}"
 	)
 	handler.setFormatter(formatter)
 

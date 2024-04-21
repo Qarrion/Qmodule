@@ -45,7 +45,7 @@ class Periodic:
         return self._timer.wrapper(every,at,tz,msg)
 
     def start_daemon_thread(self, timer:Callable, msg=True):
-        self._newst.start_daemon_thread(timer,msg)
+        self._newst.start_set_offset(timer,msg)
 
     # ------------------------------------------------------------------------ #
     #                                 periodic                                 #

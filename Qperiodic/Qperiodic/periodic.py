@@ -1,4 +1,6 @@
 import asyncio
+from gc import callbacks
+from sys import exception
 from backup.timer import Timer
 from Qperiodic.tools.taskq import Taskq
 from Qperiodic.tools.timer import Timer
@@ -9,32 +11,40 @@ from typing import Literal, Coroutine, Callable, List
 import signal
 import time
 
+class Core:
+    offset:float = 0.0
+    buffer:float = 0.005
+    name:str = 'periodic'
+
 class Periodic:
-    """ >>> #
+    """ >>> # basic
     periodic = Periodic()
-    # get timer preset
-    timer_every_5s = periodic.get_timer('every_seconds',5,'KST',False)
-    # register timer
-    periodic.register_timer(timer_every_5s, 'timer_every_5s')
-    # daemon thread
-    periodic.start_daemon_thread('timer_every_5s')
+    at_05_sec = periodic.get_timer('minute_at_seconds',55,'KST',True)
+
+    >>> # synchronize asyncio
+    await periodic.asyncio_sync_offset(at_05_sec,msg=True)
+
+    >>> # periodic producer
+    await periodic.producer(min_at_00_sec,[async_def])
+
+    >>> # peridoic divider (log)
+    await periodic.divider(min_at_00_sec)
+
     """
     def __init__(self, logger:logging.Logger = None):
         self.logger = logger
-
-        self._newst = Nowst(self.logger)
+        
+        self._nowst = Nowst(self.logger)
         self._timer = Timer(self.logger)
-        # self._taskq = Taskq(self.logger)
 
-        self._timer.set_core(self._newst.core)
+        self._nowst.set_core(Core)
+        self._timer.set_core(Core)
+        self.msg_divider()
 
     def _signal_handler(self, sig, frame):
         print('Ctrl + C Keyboard Interrupted')
         self._stop_event.set()
 
-    def _dev_now_naive(self):
-        self._newst.now_naive(msg=True)
-        # self._newst.now_stamp(msg=True)
     # ------------------------------------------------------------------------ #
     #                                synchronize                               #
     # ------------------------------------------------------------------------ #
@@ -44,34 +54,54 @@ class Periodic:
         """ get timer preset"""
         return self._timer.wrapper(every,at,tz,msg)
 
-    def start_daemon_thread(self, timer:Callable, msg=True):
-        self._newst.start_daemon_thread(timer,msg)
+    # -------------------------------- Asyncio ------------------------------- #
+    async def synchronize_offset(self, timer:Callable, msg=True):
+        """msg : @ fetch_offset...min """
+        await self._nowst.sync_offset(timer,msg=msg)
 
     # ------------------------------------------------------------------------ #
     #                                 periodic                                 #
     # ------------------------------------------------------------------------ #
-    # def register_taskq(self, async_def:Callable, fname:str=None):
-    #     self._taskq.register(async_def, fname)
+    # -------------------------------- divider ------------------------------- #
+    def msg_divider(self):
+        self._timer.msg_divider(offset=Core.offset)
 
-    # 비교적 간단한 일을 실행하기 위한 queue를 생성하는 작업을 담당함 
-    # return none
+    async def divider(self, timer:Callable):
+        while True:
+            tot_sec, tgt_dtm = timer() 
+            await asyncio.sleep(tot_sec)
+            self.msg_divider()
+            await self._adjust_offset_chagne(tgt_dtm)
+
+            # if (now_sec := self._nowst.now_naive(msg=False)) < tgt_dtm:
+            #     buf_sec = (tgt_dtm-now_sec).total_seconds() + Core.buffer
+            #     self._nowst._dev_sleep_buffer(buf_sec)
+            #     await asyncio.sleep(buf_sec)
+
+    # ----------------------------- synchronizer ----------------------------- #
+    async def synchzr(self, timer:Callable, msg):
+        while True:
+            tot_sec, tgt_dtm = timer() 
+            await asyncio.sleep(tot_sec)
+            await self._adjust_offset_chagne(tgt_dtm)
+            await self._nowst.async_offset(msg=msg)
+            await self._adjust_offset_chagne(tgt_dtm)
+
+    # ------------------------------- producer ------------------------------- #
     async def producer(self, timer:Callable, async_defs:List[Callable], timeout=None):
         while True:
             tot_sec, tgt_dtm = timer() 
-            
             await asyncio.sleep(tot_sec)
+            await self._adjust_offset_chagne(tgt_dtm)
             for async_def in async_defs:
-                if timeout is None:
-                    asyncio.create_task(async_def())
-                else :
-                    asyncio.create_task(self.await_with_timeout(async_def,timeout))
+                if timeout is None: timeout = 50
+                asyncio.create_task(self._await_with_timeout(async_def,timeout))
+            await self._adjust_offset_chagne(tgt_dtm)
 
-                if (now_sec := self.now_naive()) < tgt_dtm:
-                    buf_sec = (tgt_dtm-now_sec).total_seconds()+0.002
-                    time.sleep(buf_sec)
+    async def _adjust_offset_chagne(self, tgt_dtm):
+        await self._nowst.adjust_offset_chagne(tgt_dtm)
 
-    async def await_with_timeout(self, async_def:Callable, timeout:int):
-        """work 함수에 타임아웃을 적용하는 함수. 처리 성공 시 output_queue에 결과를 추가함"""
+    async def _await_with_timeout(self, async_def:Callable, timeout:int):
         try:
             await asyncio.wait_for(async_def(), timeout)
 
@@ -83,123 +113,66 @@ class Periodic:
             print(e.__class__.__name__)
 
 
-
-
 if __name__ == "__main__":
     # ------------------------------------------------------------------------ #
     #                                   base                                   #
     # ------------------------------------------------------------------------ #
     from Qlogger import Logger
-    from Qperiodic.tools.nowst import Nowst
 
     logger_g = Logger('newst', 'green')
-    logger_b = Logger('perio', 'blue')
+    log_periodic = Logger('perio', 'blue')
     logger_y = Logger('work', 'yellow')
 
     async def work1():
         logger_y.info('worker1 start')
         await asyncio.sleep(1)
-        logger_y.info('worker2 end')
+        logger_y.info('worker1 end')
+
+    # perio =  Periodic(log_periodic)
+    # min_at_00_sec = perio.get_timer('minute_at_seconds',0,'KST',True)
+    # tot_sec, tgt_dtm = min_at_00_sec()
+    # time.sleep(tot_sec)
+    # perio._divider()
+    # perio._nowst.seconds_to_adjust(tgt_dtm)
 
 
-    def daemon_test():
-        perio =  Periodic(logger_b)
-        # ----------------------------- daemon thread ---------------------------- #
-        at_05_sec = perio.get_timer('minute_at_seconds',55,'KST',False)
-        perio.start_daemon_thread(at_05_sec,msg=True)
-        import time
-        for _ in range(120):
-            time.sleep(1)
-            perio._dev_now_naive()
+    # ------------------------------------------------------------------------ #
+    #                                 sync test                                #
+    # ------------------------------------------------------------------------ #
+    # perio =  Periodic(log_periodic)
 
-    def thread_daemon():
-        perio =  Periodic(logger_b)
-        # ----------------------------- daemon thread ---------------------------- #
-        at_05_sec = perio.get_timer('minute_at_seconds',55,'KST',False)
-        perio.start_daemon_thread(at_05_sec,msg=True)
+    # async def offset():
+    #     min_at_00_sec = perio.get_timer('minute_at_seconds',0,'KST',True)
+    #     await perio.synchzr(min_at_00_sec,msg=False)
 
+    # async def main():
+    #     task_offset = asyncio.create_task(offset())
+    #     await task_offset
 
-    async def period():
-        perio =  Periodic(logger_g)
-        min_at_00_sec = perio.get_timer('minute_at_seconds',0,'KST',True)
-        await perio.producer(min_at_00_sec,[work1])
-        # producer_task = asyncio.create_task(perio.producer(min_at_00_sec,[work1]))
-        # asyncio.gather(producer_task)
+    # asyncio.run(main())
+    # ------------------------------------------------------------------------ #
+    #                                   async                                  #
+    # ------------------------------------------------------------------------ #
+    # perio =  Periodic(log_periodic)
 
-    def async_period():
-        asyncio.run(period())
+    # async def divide():
+    #     min_at_10_sec = perio.get_timer('minute_at_seconds',10,'KST',True)
+    #     await perio.divider(min_at_10_sec)
 
-    def main():
-        thread_daemon()
-        async_period()
+    # async def produce():
+    #     min_at_00_sec = perio.get_timer('minute_at_seconds',0,'KST',True)
+    #     await perio.producer(min_at_00_sec,[work1])
 
 
-#! TODO  최소 
-
-            
-
-        # ------------------------------- periodic ------------------------------- #
-        # min_at_00_sec = perio.get_timer('minute_at_seconds',0,'KST',True)
-        # min_at_05_sec = perio.get_timer('minute_at_seconds',5,'KST',False)
+    # async def offset():
+    #     min_at_55_sec = perio.get_timer('minute_at_seconds',55,'KST',True)
+    #     await perio.synchzr(min_at_55_sec,msg=False)
 
 
-        # loop = asyncio.get_event_loop()
-        # loop = asyncio.new_event_loop()
-        
-        # producer_task = loop.create_task(perio.producer(min_at_00_sec,[work1]))
-        
-        # loop.run_until_complete(producer_task)
-        # loop.close()
+    # async def main():
+    #     task_liner = asyncio.create_task(divide())
+    #     task_produce = asyncio.create_task(produce())
+    #     task_offset = asyncio.create_task(offset())
+    #     await asyncio.gather(task_produce, task_offset, task_liner)
 
-
-    main()
-    # min_at_55_sec = perio.get_preset('minute_at_seconds',55,'KST',True)
-    # perio.register_timer(min_at_55_sec, 'min_at_55_sec')
-
-    # min_at_00_sec = perio.get_preset('minute_at_seconds',0,'KST',True)
-    # perio.register_timer(min_at_00_sec, 'min_at_00_sec')
-
-
-
-
-
-    # perio.register_timer(min_at_55_sec)
-    # perio.register_timer(min_at_00_sec)
-
-
-
-
-
-
-    # -------------------------- start daemon thread ------------------------- #
-    # nowst = Nowst(logger)
-    # timer = Timer(logger)
-    # timer.set_core(nowst.core())
-    
-    # timer_5s = timer.wrapper('every_seconds',5,msg=False)
-    # nowst.start_daemon_thread(timer=timer_5s)
-
-    # import time
-    # time.sleep(20)
-
-
-    # ------------------------ buffer and offset test ------------------------ #
-    # timer0 = Timer(logger)
-
-    # print(timer.minute_at_seconds(10))
-    # print(timer0.minute_at_seconds(10))
-
-    # print(timer.hour_at_minutes(10))
-    # print(timer0.hour_at_minutes(10))
-
-    # print(timer.day_at_hours(10))
-    # print(timer0.day_at_hours(10))
-
-    # print(timer.every_seconds(10))
-    # print(timer0.every_seconds(10))
-
-    # print(timer.every_minutes(10))
-    # print(timer0.every_minutes(10))
-
-    # print(timer.every_hours(10))
-    # print(timer0.every_hours(10))
+    # asyncio.run(main())

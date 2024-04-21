@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import threading
 import contextvars
 import inspect
@@ -20,15 +21,43 @@ class CustomLog:
             self.method = _Thread()
         elif context == 'async':
             self.method = _Async()
-            
-    def msg(self, status, *args, task=False, back:int=1):
+
+    def msg(self, status, *args, frame:int|None=1, task=False, offset:float|None=None):
         """>>> #{func.status:<20} {arg:12}"""
-        frame = self._get_frame(n_back=back+1) if back is not None else ""
-        header = self._get_header(status=status,frame=frame)
-        text = ', '.join([f"{arg:<12}" for arg in args]) 
-        body = " | "f"{text:<40}" +" |"
-        if task: body = body+f" {asyncio.current_task().get_name():<10}"
-        self._log_chained(header + body) 
+        # -------------------------------------------------------------------- #
+        #                                header                                #
+        # -------------------------------------------------------------------- #
+        str_frame = self._get_frame(n_back=frame+1) if frame is not None else ""
+        str_status = status
+
+        HEADER = self._get_header(status=str_status,frame=str_frame)
+        # -------------------------------------------------------------------- #
+        #                                 body                                 #
+        # -------------------------------------------------------------------- #
+        str_args = ', '.join([f"{arg:<12}" for arg in args]) 
+        
+        BODY = f" | {str_args:<40}" 
+        # BODY = f"{str_args:<40}" 
+        
+        # -------------------------------------------------------------------- #
+        #                                footter                               #
+        # -------------------------------------------------------------------- #
+        str_task = f" | {asyncio.current_task().get_name():<10}" if task else ""
+        str_offset = self._get_offset(offset) if offset is not None else ""
+
+        FOOTTER = f"{str_offset}{str_task}"
+        # if offset is not None : 
+            
+        LOG_MSG = f"{HEADER}{BODY}{FOOTTER}"
+        self._log_chained(LOG_MSG) 
+
+    def div(self, task=False, offset:float|None=None):
+        BODY = f"{"="*61}"
+        str_task = f" | {asyncio.current_task().get_name():<10}" if task else ""
+        str_offset = self._get_offset(offset) if offset is not None else ""
+        FOOTTER = f"{str_offset}{str_task}"
+        DIV_MSG = f"{BODY}{FOOTTER}"
+        self._log_chained(DIV_MSG) 
 
     def _get_frame(self, n_back=1):
         frame = inspect.currentframe()
@@ -39,6 +68,11 @@ class CustomLog:
     def _get_header(self, status, frame):
         nspace = 18 - (len(frame) +len(status))
         return f"{frame}{'.' * nspace}{status}"
+    
+    def _get_offset(self, offset:float):
+        server_now = datetime.now() + timedelta(seconds=offset)
+        server = f" | {server_now.strftime('%Y-%m-%d %H:%M:%S')},{server_now.strftime('%f')[:3]}({offset:+.4f})"
+        return server
     
     def _log_chained(self, msg):
         if self.logger is not None:
@@ -105,11 +139,11 @@ class _Async:
 # ---------------------------------------------------------------------------- #
 if __name__ == "__main__":
     import asyncio
-    logger = logging.getLogger('mylogger')
+    logger = logging.getLogger('mylog')
     logger.setLevel(logging.DEBUG) 
     handler = logging.StreamHandler() 
     handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)7s @ %(name)7s . %(message)s [%(threadName)s]')
+    formatter = logging.Formatter('%(asctime)s | %(levelname)-7s | %(name)-7s | %(message)-40s | [%(threadName)s]')
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
@@ -125,20 +159,26 @@ if __name__ == "__main__":
     customlog.info.msg('args','val1','val2','val3')
     customlog.warning.msg('args','val1','val2','val3')
 
-    print('# ---------------------------------- back -------------------------------- #')
-    def func_inner(back):
-        customlog.info.msg('args','val1','val2','val3',back=back)
+    print('# --------------------------------- frame -------------------------------- #')
+    def func_inner(frame):
+        customlog.info.msg('args','val1','val2','val3',frame=frame)
 
-    def func_outter(back):
-        func_inner(back)
+    def func_outter(frame):
+        func_inner(frame)
 
-    func_outter(back=1)
-    func_outter(back=2)
+    func_outter(frame=1)
+    func_outter(frame=2)
+    func_inner(frame=None)
+
+    print('# -------------------------------- offset -------------------------------- #')
+    customlog.info.msg('offset', 'task',offset=0.02)
     
     print('# ---------------------------------- task -------------------------------- #')
     async def main():
         customlog.info.msg('async', 'task',task=True)
-
+        customlog.info.msg('async', 'task',task=True, offset=0.1)
     asyncio.run(main())
 
-
+    print('# ---------------------------------- div --------------------------------- #')
+    customlog.info.div()
+    customlog.info.div(offset=0.1)

@@ -1,14 +1,14 @@
 from Qperiodic.utils.logger_custom import CustomLog
 
 from typing import Literal, Callable
-from datetime import datetime, timedelta
+from datetime import datetime
 import time, traceback, threading, logging, asyncio
 import ntplib, pytz
 
 
 class _core:
     offset:float = 0.0
-    buffer:float = 0.0
+    buffer:float = 0.02
     name:str = 'default'
 
 class Nowst:
@@ -19,7 +19,8 @@ class Nowst:
 
     >>> # synchronize
     nowst.fetch_offset()
-    await nowst.async_offset(timer=None)
+    nowst.thread_sync_offset(timer=None)
+    await nowst.asyncio_sync_offset(timer=None)
 
     >>> # core (default)
     nowst.set_core(_core)
@@ -92,36 +93,90 @@ class Nowst:
                 print(f'\033[31m [Warning:{where}] core has not been set! ::: timer.set_core(core) \033[0m')
 
     def _default_timer(self):
-        return 5, datetime.now() + timedelta(seconds=5)
+        return 5, datetime.now()
+
+    # ------------------------------------------------------------------------ #
+    #                                  thread                                  #
+    # ------------------------------------------------------------------------ #
+    def thread_sync_offset(self, timer:Callable=None, msg=True):
+        """+ sync current time on background process (offset for now)
+        + timer(Callable) return seconds to next synchronization
+        """
+        self._warning_default_core('start_daemon_thread()')
+        repeat_timer  = timer if timer is not None else self._default_timer
+
+        def worker():
+            while True:
+                tot_sec, tgt_dtm = repeat_timer() 
+                
+                try:
+                    time.sleep(tot_sec)
+                    self._core.offset = self.fetch_offset(msg=msg)
+
+                except Exception as e:
+                    print(str(e))
+                    traceback.print_exc()
+
+                finally:
+                    if (adjust_sec := self.seconds_to_adjust(tgt_dtm)) > 0:
+                        time.sleep.sleep(adjust_sec)                    
+                    # if (now_sec := self.now_naive()) < tgt_dtm:
+                    #     buf_sec = (tgt_dtm-now_sec).total_seconds()+self._core.offset
+                    #     self._dev_sleep_buffer(buf_sec)
+                    #     time.sleep(buf_sec)
+        daemon_thread = threading.Thread(name='BackGround',target=worker, daemon=True)
+        daemon_thread.start()    
+
     # ------------------------------------------------------------------------ #
     #                                   async                                  #
     # ------------------------------------------------------------------------ #
-
-    async def async_offset(self,msg=True):
-        self._warning_default_core('nowst.async_offset()')
+    async def _async_fetch_offset(self, msg=True):
         loop = asyncio.get_running_loop()
         try:
-            pre_offset = self._core.offset
-            new_offset = await asyncio.wait_for(loop.run_in_executor(None,self.fetch_offset,msg),10)
-            self._core.offset = new_offset
-            dif_offset = new_offset - pre_offset
-            msg_offset = (f"pre({pre_offset:+.4f})",f"new({new_offset:+.4f})",f"dif({dif_offset:+.4f})")
-            self._custom.debug.msg('',*msg_offset,offset=self._core.offset)
+            result = await asyncio.wait_for(loop.run_in_executor(None,self.fetch_offset,msg),10)
         except Exception as e:
             print(str(e))
             traceback.print_exc()
+        return result
+    
+    async def asyncio_sync_offset(self,timer:Callable=None, msg=True):
+        """msg : @ fetch_offset...min """
+        self._warning_default_core('start_daemon_thread()')
+        repeat_timer  = timer if timer is not None else self._default_timer
+        while True:
+            tot_sec, tgt_dtm = repeat_timer() 
+            try:
+                await asyncio.sleep(tot_sec)
+                pre_offset = self._core.offset
+                self._core.offset = await self._async_fetch_offset(msg=msg)
+                dif_offset = self._core.offset - pre_offset
 
-    async def adjust_offset_chagne(self,tgt_dtm:datetime)->float:
+                msg_offset = (f"pre({pre_offset:+.4f})",f"new({self._core.offset:+.4f})",f"dif({dif_offset:+.4f})")
+                self._custom.debug.msg('',*msg_offset,offset=self._core.offset)
+            except Exception as e:
+                print(str(e))
+                traceback.print_exc()
+            finally:
+                # if (now_sec := self.now_naive()) < tgt_dtm:
+                #     buf_sec = (tgt_dtm-now_sec).total_seconds()+self._core.offset
+                #     self._dev_sleep_buffer(buf_sec)
+                #     await asyncio.sleep.sleep(buf_sec)
+                if (adjust_sec := self.seconds_to_adjust(tgt_dtm)) > 0:
+                    await asyncio.sleep(adjust_sec)
+
+    def seconds_to_adjust(self,tgt_dtm:datetime)->float:
         """return seconds when if now_datetime(with offset) - target_datetime > 0:"""
-        now_dtm = self.now_naive() 
-        dif_sec = (tgt_dtm-now_dtm).total_seconds()
-        # print(f"{now_dtm=:}")
-        # print(f"{tgt_dtm=:}")
-        # print(f"{dif_sec=:}")
+        dif_sec = (self.now_naive() - tgt_dtm).total_seconds()
         if dif_sec > self._core.buffer:
-            adjust_sec = dif_sec 
-            self._custom.debug.msg('adjust', f"offset_chagne",f"s ({adjust_sec:+.4f})", frame=None, offset=self._core.offset)
-            await asyncio.sleep(adjust_sec)
+            adjust_sec = dif_sec + self._core.buffer
+            self._dev_sleep_buffer(adjust_sec)
+
+        else:
+            adjust_sec = 0.0
+        return adjust_sec
+
+    def _dev_sleep_buffer(self, adjust_sec):
+        self._custom.debug.msg('adjust', f"sleep buffer",f"s ({adjust_sec:+.4f})", frame=None, offset=self._core.offset)
 
     # ------------------------------------------------------------------------ #
     #                                   debug                                  #
@@ -167,21 +222,27 @@ if __name__=="__main__":
     # nowst.fetch_offset(msg=True,debug=True)
     # nowst.fetch_offset(False)
 
-    # --------------------------------- async -------------------------------- #
-    # async def main():
-    #     rslt = await nowst.async_offset(msg=False)
-    #     print(rslt)
+    # -------------------------------- deamon -------------------------------- #
+    # nowst.thread_sync_offset()
+    # for _ in range(20):
+    #     time.sleep(1)
+    #     print(nowst._core.offset)
 
-    # asyncio.run(main())
+    # --------------------------------- async -------------------------------- #
+
+    async def main():
+        rslt = await nowst.asyncio_sync_offset(msg=False)
+        print(rslt)
+
+    asyncio.run(main())
     # --------------------------------- core --------------------------------- #
     # class _core:
-    #     offset = 0.0
-    #     buffer = 0.0
+    #     offset = 0
+    #     buffer = 0.02
     #     name = 'test'
+    # nowst.set_core(_core)
 
-    # async def main():
-    #     nowst.set_core(_core)
-    #     rslt = await nowst.async_offset(msg=False)
-    #     print(rslt)
-
-    # asyncio.run(main())
+    # nowst.thread_sync_offset()
+    # for _ in range(20):
+    #     time.sleep(1)
+    #     print(nowst._core.offset)

@@ -60,9 +60,24 @@ class Timer:
     """
     + (current local) + (offset) + [return sec] = (target server) + buffer
     + @ OFF(Local, Buffer)
-    >>> # 
+    >>> # basic
     timer = Timer()
-    
+    timer.minute_at_seconds(10,'KST')
+    timer.hour_at_minutes(10,'KST')
+    timer.day_at_hours(10,'KST')
+    timer.every_seconds(10,'KST')
+    timer.every_minutes(60,'KST')
+    timer.every_hours(10,'KST')
+    >>> # wrapper
+    preset = timer.wrapper(every='minute_at_seconds', at=5, tz='KST', msg=True)
+    >>> # utils
+    timer.msg_divider(task=None,offset=None):
+    >>> # core (default)
+    timer.set_core(_core)
+    class _core:
+        offset = 0
+        buffer = 0.02
+        whoami = 'default'
     """
     timezone = {
     "KST":pytz.timezone('Asia/Seoul'),
@@ -71,8 +86,8 @@ class Timer:
     def __init__(self, logger:logging.Logger=None):
         self._custom = CustomLog(logger,'async')
         self._custom.info.msg('Timer')
-        self._core = _core
 
+        self._core = _core
         self._buffer_ms_delta = timedelta(milliseconds=self._core.buffer*1000)
     # ------------------------------------------------------------------------ #
     #                                   core                                   #
@@ -84,13 +99,14 @@ class Timer:
         self._buffer_ms_delta = timedelta(milliseconds=self._core.buffer*1000)
         offset = f"OFF({self._core.offset:+.3f})"
         buffer = f"BUF({self._core.buffer:+.3f})"
-        self._custom.info.msg('name',f"({name})",offset,buffer)
+        
+        self._custom.info.msg('Timer',f"({name})",offset,buffer,offset=self._core.offset)
 
     def wrapper(self, every:Literal['minute_at_seconds','hour_at_minutes','day_at_hours',
                                     'every_seconds','every_minutes','every_hours'], 
                 at:float=5, tz:Literal['KST','UTC']='KST',msg=True):
-        self._warning_default_core()
-        if msg : self._custom.msg('timer', f'at({at})', every)
+        self._warning_default_core('wrapper()')
+        self._custom.msg('Timer', f'at({at})', every,offset=self._core.offset)
 
         if every == 'minute_at_seconds':
             func = partial(self.minute_at_seconds,at,tz,msg)
@@ -106,6 +122,9 @@ class Timer:
             func = partial(self.every_hours,at,tz,msg)
         return func
 
+    def msg_divider(self,task=None,offset=None):
+        self._custom.div(task,offset)
+
     def _now_naive(self, tz:Literal['KST','UTC']='KST')->datetime:
         """return naive"""
         now_stamp = time.time() + self._core.offset
@@ -120,10 +139,10 @@ class Timer:
         core_s = f"OFF({self._core.offset:+.3f} {self._core.buffer:+.3f})"
         return (total_s, final_s, core_s)
 
-    def _warning_default_core(self):
+    def _warning_default_core(self, where):
         if hasattr(self._core, 'name'):
             if self._core.name == 'default':
-                print('\033[31m [Warning] core has not been set! ::: timer.set_core(core) \033[0m')
+                print(f'\033[31m [Warning:{where}] core has not been set! ::: timer.set_core(core) \033[0m')
 
     def minute_at_seconds(self, seconds:float, tz:Literal['KST','UTC']='KST',msg=True) -> Tuple[float, float]:
         """+ return (total seconds , target datetime)"""
@@ -136,7 +155,7 @@ class Timer:
         tot_seconds = (nxt_dtime-now_dtime).total_seconds() 
         if msg : 
             total_s,final_s,core_s= self._get_debuging_seconds(tot_seconds, nxt_dtime)
-            self._custom.debug.msg(core_s,f"clock s ({seconds})",total_s,final_s,back=None)
+            self._custom.debug.msg(core_s,f"clock s ({seconds})",total_s,final_s,frame=None,offset=self._core.offset)
         return tot_seconds, nxt_dtime
           
     def hour_at_minutes(self, minutes:float, tz:Literal['KST','UTC']='KST',msg=True) -> Tuple[float, float]:
@@ -149,7 +168,7 @@ class Timer:
         tot_seconds = (nxt_dtime-now_dtime).total_seconds()
         if msg : 
             total_s,final_s,core_s= self._get_debuging_seconds(tot_seconds, nxt_dtime)
-            self._custom.debug.msg(core_s,f"clock m ({minutes})",total_s,final_s,back=None)
+            self._custom.debug.msg(core_s,f"clock m ({minutes})",total_s,final_s,frame=None,offset=self._core.offset)
         return tot_seconds, nxt_dtime
 
     def day_at_hours(self, hours:float, tz:Literal['KST','UTC']='KST',msg=True)  -> Tuple[float, float]:
@@ -164,7 +183,7 @@ class Timer:
 
         if msg : 
             total_s,final_s,core_s = self._get_debuging_seconds(tot_seconds, nxt_dtime)
-            self._custom.debug.msg(core_s,f"clock h ({hours})",total_s,final_s,back=None)        
+            self._custom.debug.msg(core_s,f"clock h ({hours})",total_s,final_s,frame=None,offset=self._core.offset)  
         return tot_seconds, nxt_dtime
 
     def every_seconds(self, value:float, tz:Literal['KST','UTC']='KST', msg=True) -> Tuple[float, float]:
@@ -181,7 +200,7 @@ class Timer:
         tot_seconds = (nxt_dtime-now_dtime).total_seconds()
         if msg:
             total_s,final_s,core_s = self._get_debuging_seconds(tot_seconds, nxt_dtime)
-            self._custom.debug.msg(core_s,f"every s ({value})",total_s, final_s,back=None)  
+            self._custom.debug.msg(core_s,f"every s ({value})",total_s, final_s,frame=None,offset=self._core.offset)
         return tot_seconds, nxt_dtime
 
     def every_minutes(self, value:float, tz:Literal['KST','UTC']='KST', msg=True) -> Tuple[float, float]:
@@ -198,7 +217,7 @@ class Timer:
         tot_seconds = (nxt_dtime-now_dtime).total_seconds()
         if msg:
             total_s,final_s,core_s = self._get_debuging_seconds(tot_seconds, nxt_dtime)
-            self._custom.debug.msg(core_s,f"every m ({value})",total_s, final_s,back=None)  
+            self._custom.debug.msg(core_s,f"every m ({value})",total_s, final_s,frame=None,offset=self._core.offset)
         return tot_seconds + self._core.buffer , nxt_dtime
 
     def every_hours(self, value:float, tz:Literal['KST','UTC']='KST', msg=True) -> Tuple[float, float]:
@@ -215,7 +234,7 @@ class Timer:
         tot_seconds = (nxt_dtime-now_dtime).total_seconds()
         if msg:
             total_s,final_s,core_s = self._get_debuging_seconds(tot_seconds, nxt_dtime)
-            self._custom.debug.msg(core_s,f"every h ({value})",total_s, final_s,back=None)  
+            self._custom.debug.msg(core_s,f"every h ({value})",total_s, final_s,frame=None,offset=self._core.offset)
 
         return tot_seconds + self._core.buffer, nxt_dtime
 
@@ -225,31 +244,27 @@ if __name__=="__main__":
     from Qperiodic.utils.logger_color import ColorLog
     logg = ColorLog('main', 'green')
     timer = Timer(logg)
+    timer.msg_divider()
 
     # --------------------------------- timer -------------------------------- #
-    timer.minute_at_seconds(10,'KST')
-    timer.hour_at_minutes(10,'KST')
-    timer.day_at_hours(10,'KST')
+    # timer.minute_at_seconds(10,'KST')
+    # timer.hour_at_minutes(10,'KST')
+    # timer.day_at_hours(10,'KST')
 
-    timer.every_seconds(10,'KST')
-    timer.every_minutes(60,'KST')
-    timer.every_hours(10,'KST')
+    # timer.every_seconds(10,'KST')
+    # timer.every_minutes(60,'KST')
+    # timer.every_hours(10,'KST')
 
-    # -------------------------------- wrapper ------------------------------- #
-    get_total_seconds = timer.wrapper('minute_at_seconds',5,'KST')
-    get_total_seconds()
+    # # -------------------------------- wrapper ------------------------------- #
+    # get_total_seconds = timer.wrapper('minute_at_seconds',5,'KST')
+    # get_total_seconds()
 
     class _core:
         offset = 0.4
         buffer = 0.05
         name = 'test core'
+
     timer.set_core(_core)
     get_total_seconds = timer.wrapper('every_seconds',2)
     get_total_seconds()
     
-    # print(type(datetime.now()))
-    # b=datetime.now()
-
-    # print(a<b)
-    # print(b-a)
-    # print((b-a).total_seconds())
