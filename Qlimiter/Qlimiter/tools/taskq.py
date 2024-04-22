@@ -33,7 +33,6 @@ class Taskq:
                       timeout:int=None, retry:int=0, msg=True):
         """enqueue fname, args, kwargs"""
         item = (fname, args, kwargs, timeout, retry)
-    
         await self._queue.put(item)
         if msg: self._custom.debug.msg('put', fname, f"{args}",task=True)
 
@@ -74,21 +73,20 @@ if __name__ == "__main__":
     log_func = ColorLog('work', 'yellow')
 
     async def myfun(a,b,c):
-        log_func('', 'start')
+        log_func.info('start')
         await asyncio.sleep(3)
-        log_func('', 'end', (a,b,c))
+        log_func.info('end')
 
     async def main():
         
         logger = ColorLog('test','green')
         taskq = Taskq(logger)
-        # taskq.register(myfun)
-        # print(taskq.registry)
+        taskq.register(myfun)
 
         # ------------------------------- done ------------------------------- #
-        # await taskq.enqueue('myfun', (1,2),{'c':3},timeout=5)
-        # item = await taskq.dequeue()
-        # await taskq.execute(item)
+        await taskq.enqueue('myfun', (1,2),{'c':3},timeout=5)
+        item = await taskq.dequeue()
+        await taskq.execute(item)
 
         # ------------------------------- retry ------------------------------ #
         # await taskq.enqueue('myfun', (1,2),{'c':3},timeout=2)
@@ -103,6 +101,8 @@ if __name__ == "__main__":
         # item = await taskq.dequeue()
         # await taskq.execute(item)
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
-    loop.close()
+    asyncio.run(main())
+
+    # loop = asyncio.get_event_loop()
+    # loop.run_until_complete(main())
+    # loop.close()

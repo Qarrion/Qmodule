@@ -28,12 +28,24 @@ class Limiter(Taskq):
         # self._custom.info.msg(limit,f"max({max_worker})",f"sec({seconds})",f"timeout({timeout})")
         self._custom.info.msg(limit,f"max({max_worker})",f"sec({seconds})")
     
-    # --------------------------- function wrapper --------------------------- #
+    # ------------------------------------------------------------------------ #
+    #                                overriding                                #
+    # ------------------------------------------------------------------------ #
     def register(self, async_def: Callable, fname: str = None):
         if fname is None : fname = async_def.__name__ 
         self._registry[fname] = self._wrapper_throttle(async_def)
         self._custom.info.msg('', fname, task=False)
 
+
+    @property
+    def queue(self):
+        return self.queue
+    
+    async def consumer(self):
+        while True:
+            item = await self.enqueue()
+            await self.execute(item)
+            
     def _wrapper_throttle(self, async_def:Callable):
         async def wrapper(*args):
             propagate_exception = None
@@ -45,19 +57,20 @@ class Limiter(Taskq):
                 try: 
                     tsp_start = time.time()     
                     result = await async_def(*args)
+
                 except Exception as e:
-                    self.msg.error.exception('job',async_def.__name__, args)
+                    # self.msg.error.exception('job',async_def.__name__, args)
+                    self._custom.error.msg('job',async_def.__name__,str(args))
                     propagate_exception = e
                 # ------------------------------------------------------------ #
                 finally:
                     tsp_finish = time.time()
                     await self._wait_reset(tsp_start, tsp_finish)
-                    self.msg.debug.semaphore("release", *msg_arg) 
+                    # self.msg.debug.semaphore("release", *msg_arg) 
+                    self._msg_semaphore('release',async_def.__name__)
                     #? propagate exception to retry
                     if propagate_exception:
                         raise propagate_exception
-                    else:
-                        return result
         return wrapper
     
     async def _wait_reset(self, tsp_start:float, tsp_finish):
@@ -71,10 +84,11 @@ class Limiter(Taskq):
 
         seconds = tsp_ref + self._seconds - time.time()
         if seconds > 0:
-            self.msg.debug.wait_reset(tsp_ref,seconds,self._limit)
+            #?  tsp_ref 여기 출력 양식 변경
+            self._custom.debug.msg(self._limit, tsp_ref, seconds,frame='wait',task=True)
             await asyncio.sleep(seconds)
         else:
-            self.msg.debug.wait_reset(tsp_ref,0,self._limit)
+            self._custom.debug.msg(self._limit, tsp_ref, 0,frame='wait',task=True)
     # ------------------------------------------------------------------------ #
     #                                  dev_msg                                 #
     # ------------------------------------------------------------------------ #
@@ -85,7 +99,7 @@ class Limiter(Taskq):
         elif context =="release":
             queue = f"s({self._semaphore._value+1}/{self._max_worker})<"
             var01 = f">{queue:>11}"
-        self._custom.debug.msg('context',fname,var01)
+        self._custom.debug.msg(context,fname,var01,frame='sema',task=True)
 
 if __name__ == "__main__":
     from Qlimiter .utils .logger_color import ColorLog
@@ -97,9 +111,9 @@ if __name__ == "__main__":
 
     log_func = ColorLog('work', 'yellow')
     async def myfun(a,b,c):
-        log_func('', 'start')
+        log_func.info('start')
         await asyncio.sleep(3)
-        log_func('', 'end', (a,b,c))
+        log_func.info('end')
 
     limiter.register(myfun)
 
