@@ -1,8 +1,5 @@
 import asyncio
-from gc import callbacks
-from sys import exception
-from backup.timer import Timer
-from Qperiodic.tools.taskq import Taskq
+
 from Qperiodic.tools.timer import Timer
 from Qperiodic.tools.nowst import Nowst
 
@@ -153,26 +150,26 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------ #
     #                                   async                                  #
     # ------------------------------------------------------------------------ #
-    # perio =  Periodic(log_periodic)
+    perio =  Periodic(log_periodic)
 
-    # async def divide():
-    #     min_at_10_sec = perio.get_timer('minute_at_seconds',10,'KST',True)
-    #     await perio.divider(min_at_10_sec)
+    async def divide():
+        min_at_10_sec = perio.get_timer('minute_at_seconds',10,'KST',True)
+        await perio.divider(min_at_10_sec)
 
-    # async def produce():
-    #     min_at_00_sec = perio.get_timer('minute_at_seconds',0,'KST',True)
-    #     await perio.producer(min_at_00_sec,[work1])
-
-
-    # async def offset():
-    #     min_at_55_sec = perio.get_timer('minute_at_seconds',55,'KST',True)
-    #     await perio.synchzr(min_at_55_sec,msg=False)
+    async def produce():
+        min_at_00_sec = perio.get_timer('minute_at_seconds',0,'KST',True)
+        await perio.producer(min_at_00_sec,[work1])
 
 
-    # async def main():
-    #     task_liner = asyncio.create_task(divide())
-    #     task_produce = asyncio.create_task(produce())
-    #     task_offset = asyncio.create_task(offset())
-    #     await asyncio.gather(task_produce, task_offset, task_liner)
+    async def offset():
+        min_at_55_sec = perio.get_timer('minute_at_seconds',55,'KST',True)
+        await perio.synchzr(min_at_55_sec,msg=False)
 
-    # asyncio.run(main())
+
+    async def main():
+        task_liner = asyncio.create_task(divide())
+        task_produce = asyncio.create_task(produce())
+        task_offset = asyncio.create_task(offset())
+        await asyncio.gather(task_produce, task_offset, task_liner)
+
+    asyncio.run(main())
