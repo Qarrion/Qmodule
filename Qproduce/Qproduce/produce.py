@@ -13,14 +13,14 @@ class Produce:
     prod = Produce()
     at_05_sec = prod.get_timer('minute_at_seconds',55,'KST',True)
 
-    >>> # synchronize asyncio
-    await prod.asyncio_sync_offset(at_05_sec,msg=True)
+    >>> # synchronize offset
+    await prod.loop_offset(at_05_sec,msg=True)
 
-    >>> # prod producer
-    await prod.producer(min_at_00_sec,[async_def])
+    >>> # prod loop_task
+    await prod.loop_task(min_at_00_sec,[async_def])
 
     >>> # peridoic divider (log)
-    await prod.divider(min_at_00_sec)
+    await prod.loop_divider(min_at_00_sec)
 
     """
     def __init__(self, logger:logging.Logger = None):
@@ -31,7 +31,7 @@ class Produce:
 
         self._nowst.set_core(Core)
         self._timer.set_core(Core)
-        self.msg_divider()
+        self._div_divider()
 
     def _signal_handler(self, sig, frame):
         print('Ctrl + C Keyboard Interrupted')
@@ -55,7 +55,7 @@ class Produce:
     #                                 Produce                                 #
     # ------------------------------------------------------------------------ #
     # -------------------------------- divider ------------------------------- #
-    def msg_divider(self):
+    def _div_divider(self):
         self._timer._dev_divider(offset=Core.offset)
 
     async def loop_divider(self, timer:Callable):
@@ -63,7 +63,7 @@ class Produce:
         while True:
             tot_sec, tgt_dtm = timer() 
             await asyncio.sleep(tot_sec)
-            self.msg_divider()
+            self._div_divider()
             await self._adjust_offset_change(tgt_dtm)
 
     # ----------------------------- synchronizer ----------------------------- #

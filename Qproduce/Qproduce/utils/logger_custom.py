@@ -22,12 +22,13 @@ class CustomLog:
         elif context == 'async':
             self.method = _Async()
 
-    def msg(self, status, *args, frame:int|None=1, task=False, offset:float|None=None):
+    def msg(self, status, *args, frame:int|str|None=1, task=False, offset:float|None=None):
         """>>> #{func.status:<20} {arg:12}"""
         # -------------------------------------------------------------------- #
         #                                header                                #
         # -------------------------------------------------------------------- #
-        str_frame = self._get_frame(n_back=frame+1) if frame is not None else ""
+        #! str_frame = self._get_frame(n_back=frame+1) if frame is not None else ""
+        str_frame = self._get_frame(frame=frame)
         str_status = status
 
         HEADER = self._get_header(status=str_status,frame=str_frame)
@@ -52,18 +53,25 @@ class CustomLog:
         self._log_chained(LOG_MSG) 
 
     def div(self, task=False, offset:float|None=None):
-        BODY = f"{"="*61}"
+        BODY = f"{'='*61}"
         str_task = f" | {asyncio.current_task().get_name():<10}" if task else ""
         str_offset = self._get_offset(offset) if offset is not None else ""
         FOOTTER = f"{str_offset}{str_task}"
         DIV_MSG = f"{BODY}{FOOTTER}"
         self._log_chained(DIV_MSG) 
 
-    def _get_frame(self, n_back=1):
-        frame = inspect.currentframe()
-        for _ in range(n_back):
-            frame = frame.f_back
-        return frame.f_code.co_name
+    def _get_frame(self, frame):
+        if frame is None:
+            rslt = ""
+        elif isinstance(frame , str):
+            rslt = frame
+        elif isinstance(frame, int):
+            n_back = frame + 1
+            cframe = inspect.currentframe()
+            for _ in range(n_back):
+                cframe = cframe.f_back
+            rslt = cframe.f_code.co_name
+        return rslt
     
     def _get_header(self, status, frame):
         nspace = 18 - (len(frame) +len(status))
@@ -162,6 +170,7 @@ if __name__ == "__main__":
     print('# --------------------------------- frame -------------------------------- #')
     def func_inner(frame):
         customlog.info.msg('args','val1','val2','val3',frame=frame)
+        customlog.info.msg('test','val1','val2','val3',frame='dddd')
 
     def func_outter(frame):
         func_inner(frame)
@@ -169,6 +178,8 @@ if __name__ == "__main__":
     func_outter(frame=1)
     func_outter(frame=2)
     func_inner(frame=None)
+
+
 
     print('# -------------------------------- offset -------------------------------- #')
     customlog.info.msg('offset', 'task',offset=0.02)
