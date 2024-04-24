@@ -60,12 +60,6 @@ class CustomLog:
         DIV_MSG = f"{BODY}{FOOTTER}"
         self._log_chained(DIV_MSG) 
 
-    #! def _get_frame(self, n_back=1):
-    #!     frame = inspect.currentframe()
-    #!     for _ in range(n_back):
-    #!         frame = frame.f_back
-    #!     return frame.f_code.co_name
-    #! ------------------------------------------------------------------------ #
     def _get_frame(self, frame):
         if frame is None:
             rslt = ""
@@ -78,7 +72,6 @@ class CustomLog:
                 cframe = cframe.f_back
             rslt = cframe.f_code.co_name
         return rslt
-    #! ------------------------------------------------------------------------ #
     
     def _get_header(self, status, frame):
         nspace = 18 - (len(frame) +len(status))
