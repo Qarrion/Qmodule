@@ -1,0 +1,7 @@
+[project]
+name = "Qproduce"
+version = "0.0.1"
+dependencies = ["ntplib","pytz"]
+
+[tool.setuptools]
+packages = ["Qproduce"]
