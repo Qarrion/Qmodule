@@ -92,7 +92,7 @@ class Timer:
     # ------------------------------------------------------------------------ #
     #                                   core                                   #
     # ------------------------------------------------------------------------ #
-    def set_core(self, core, msg=False):
+    def set_core(self, core):
         #! core backup process
         self._core = core 
         name = self._core.name if hasattr(self._core, 'name') else 'none'
@@ -100,7 +100,7 @@ class Timer:
         offset = f"OFF({self._core.offset:+.3f})"
         buffer = f"BUF({self._core.buffer:+.3f})"
         
-        if msg: self._custom.info.msg('Timer',f"({name})",offset,buffer)
+        self._custom.info.msg('Timer',f"({name})",offset,buffer)
 
     def wrapper(self, every:Literal['minute_at_seconds','hour_at_minutes','day_at_hours',
                                     'every_seconds','every_minutes','every_hours'], 

@@ -1,0 +1,12 @@
+    """ >>> # basic
+    prod = Produce()
+    at_05_sec = prod.get_timer('minute_at_seconds',55,'KST',True)
+
+    >>> # synchronize offset
+    await prod.loop_offset(at_05_sec,msg=True)
+
+    >>> # prod loop_task
+    await prod.loop_task(min_at_00_sec,[async_def])
+
+    >>> # peridoic divider (log)
+    await prod.loop_divider(min_at_00_sec)

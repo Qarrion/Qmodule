@@ -34,15 +34,14 @@ class Nowst:
     server_list = ["pool.ntp.org","kr.pool.ntp.org","ntp.ubuntu.com"]
     # server_list = ["pool.ntp.org","kr.pool.ntp.org","time.windows.com","time.nist.gov","ntp.ubuntu.com"]
     
-    def __init__(self, logger:logging.Logger=None, init_offset=True):
+    def __init__(self, logger:logging.Logger=None):
         self._custom = CustomLog(logger,'sync')
         self._custom.info.msg('Nowst')
 
         self._core = _core
-        if init_offset :
-            self._core.offset = self.fetch_offset(msg=True, debug=False)
+        self._core.offset = self.fetch_offset(msg=True, debug=False)
 
-    def set_core(self, core, msg=False):
+    def set_core(self, core):
         temp_offset = self._core.offset
         self._core = core 
         self._core.offset = temp_offset
@@ -50,7 +49,7 @@ class Nowst:
         offset = f"OFF({self._core.offset:+.3f})"
         buffer = f"BUF({self._core.buffer:+.3f})"
         
-        if msg: self._custom.info.msg('Nowst',f"({name})",offset,buffer)
+        self._custom.info.msg('Nowst',f"({name})",offset,buffer)
         
     def now_stamp(self, msg=False)->float:
         """with offset"""
@@ -87,14 +86,6 @@ class Nowst:
         if msg: self._custom.info.msg('min',f"{min_offset:.6f}", min_server, offset=self._core.offset)
         return min_offset
 
-    def sync_offset(self, msg=True):
-        pre_offset = self._core.offset
-        new_offset = self.fetch_offset(msg=msg)
-        self._core.offset = new_offset
-        dif_offset = new_offset - pre_offset
-        msg_offset = (f"pre({pre_offset:+.4f})",f"new({new_offset:+.4f})",f"dif({dif_offset:+.4f})")
-        self._custom.debug.msg('',*msg_offset,offset=self._core.offset)
-
     def _warning_default_core(self, where):
         if hasattr(self._core, 'name'):
             if self._core.name == 'default':
@@ -127,7 +118,7 @@ class Nowst:
 
         if dif_sec > self._core.buffer:
             adjust_sec = dif_sec 
-            self._custom.debug.msg('adjust', f"offset_change",f"s ({adjust_sec:+.4f})", frame=None, offset=self._core.offset)
+            self._custom.debug.msg('adjust', f"offset_chagne",f"s ({adjust_sec:+.4f})", frame=None, offset=self._core.offset)
             await asyncio.sleep(adjust_sec)
 
     # ------------------------------------------------------------------------ #

@@ -12,36 +12,29 @@ class Core:
 
 class Produce:
     """ >>> # basic
-    prod = Produce(logger)
+    prod = Produce()
     at_05_sec = prod.get_timer('minute_at_seconds',55,'KST',True)
 
     >>> # synchronize offset
-    prod1 = Produce(logger)
-    prod1.set_timer('minute_at_seconds',55)
-    await prod1.loop_offset()
-
-    >>> # peridoic divider
-    prod2 = Produce(logger)
-    prod2.set_timer('minute_at_seconds',0)
-    await prod.loop_divider()
+    await prod.loop_offset(at_05_sec,msg=True)
 
     >>> # prod loop_task
-    prod3 = Produce(logger)
-    await prod3.loop_produce([async_def1, async_def2])
+    await prod.loop_task(min_at_00_sec,[async_def])
 
+    >>> # peridoic divider (log)
+    await prod.loop_divider(min_at_00_sec)
 
     """
     def __init__(self, logger:logging.Logger = None):
+        self.logger = logger
         self._custom = CustomLog(logger,'async')
-        self._custom.info.msg('Produces')
-        self._timer = Timer(logger)
-        self._nowst = Nowst(logger, init_offset= False)
+        self._custom.info.msg('Consume')
+        self._timer = Timer(self.logger)
+        self._nowst = Nowst(self.logger)
 
         self._timer.set_core(Core)
         self._nowst.set_core(Core)
-
-        self.msg_divider()
-        self.timer=None
+        self._div_divider()
 
     def _signal_handler(self, sig, frame):
         print('Ctrl + C Keyboard Interrupted')
@@ -56,33 +49,30 @@ class Produce:
         """ get timer preset"""
         return self._timer.wrapper(every,at,tz,msg)
 
-    def set_timer(self, every:Literal['minute_at_seconds','hour_at_minutes','day_at_hours',
-                                    'every_seconds','every_minutes','every_hours'], 
-                at:float=5, tz:Literal['KST','UTC']='KST',msg=True):
-        self.timer = self.get_timer(every,at,tz,msg)
+    # -------------------------------- Asyncio ------------------------------- #
+    async def synchronize_offset(self, timer:Callable, msg=True):
+        """msg : @ fetch_offset...min """
+        await self._nowst.sync_offset(timer,msg=msg)
 
     # ------------------------------------------------------------------------ #
     #                                 Produce                                 #
     # ------------------------------------------------------------------------ #
     # -------------------------------- divider ------------------------------- #
-    def msg_divider(self):
+    def _div_divider(self):
         self._timer._dev_divider(offset=Core.offset)
 
-    async def loop_divider(self):
+    async def loop_divider(self, timer:Callable):
         """print divider"""
-        timer = self.timer
         while True:
             tot_sec, tgt_dtm = timer() 
             await asyncio.sleep(tot_sec)
             await self._adjust_offset_change(tgt_dtm)
-            self.msg_divider()
+            self._div_divider()
             await self._adjust_offset_change(tgt_dtm)
 
     # ----------------------------- synchronizer ----------------------------- #
-    async def loop_offset(self, msg=True):
+    async def loop_offset(self, timer:Callable, msg):
         """synchronize offset"""
-        self._nowst.sync_offset(msg=True)
-        timer = self.timer
         while True:
             tot_sec, tgt_dtm = timer() 
             await asyncio.sleep(tot_sec)
@@ -91,9 +81,8 @@ class Produce:
             await self._adjust_offset_change(tgt_dtm)
 
     # ------------------------------- producer ------------------------------- #
-    async def loop_produce(self, async_defs:List[Callable], timeout=None):
+    async def loop_task(self, timer:Callable, async_defs:List[Callable], timeout=None):
         """print task"""
-        timer = self.timer
         while True:
             tot_sec, tgt_dtm = timer() 
             await asyncio.sleep(tot_sec)
@@ -123,35 +112,64 @@ if __name__ == "__main__":
     #                                   base                                   #
     # ------------------------------------------------------------------------ #
     from Qproduce.utils.logger_color import ColorLog
-    log_blue = ColorLog('prod', 'blue')
-    # log_green = ColorLog('prod', 'green')
+    log_Produce = ColorLog('prod', 'blue')
     logger_y = ColorLog('work', 'yellow')
 
     async def work1():
         logger_y.info('worker1 start')
         await asyncio.sleep(1)
         logger_y.info('worker1 end')
-    async def work2():
-        logger_y.info('worker2 start')
-        await asyncio.sleep(1)
-        logger_y.info('worker2 end')
     
     # ------------------------------------------------------------------------ #
     #                                 sync test                                #
     # ------------------------------------------------------------------------ #
-    prod1 =  Produce(log_blue)
-    prod2 =  Produce(log_blue)
-    prod3 =  Produce(log_blue)
-    prod1.set_timer('minute_at_seconds',55)
-    prod2.set_timer('minute_at_seconds',0)
-    prod3.set_timer('minute_at_seconds',10)
+    # prod =  Produce(log_Produce)
     
-    async def produce():
-        task1 = asyncio.create_task(prod1.loop_offset())
-        task2 = asyncio.create_task(prod2.loop_divider())
-        task3 = asyncio.create_task(prod3.loop_produce([work1, work2]))
-        await asyncio.gather(task1, task2, task3)
+    # async def offset():
+    #     min_at_00_sec = prod.get_timer('minute_at_seconds',0,'KST',True)
+    #     await prod.loop_offset(min_at_00_sec,msg=False)
 
-    asyncio.run(produce())
+    # async def main():
+    #     task_offset = asyncio.create_task(offset())
+    #     await task_offset
+
+    # asyncio.run(main())
+    # ------------------------------------------------------------------------ #
+    #                                   async                                  #
+    # ------------------------------------------------------------------------ #
+    # prod =  Produce(log_Produce)
+    # async def divide():
+        # min_at_10_sec = prod.get_timer('minute_at_seconds',10,'KST',True)
+        # await prod._div_divider(min_at_10_sec)
+
+    # async def produce():
+    #     min_at_00_sec = prod.get_timer('minute_at_seconds',0,'KST',True)
+    #     await prod.producer(min_at_00_sec,[work1])
 
 
+    # async def offset():
+    #     min_at_55_sec = prod.get_timer('minute_at_seconds',55,'KST',True)
+    #     await prod.synchzr(min_at_55_sec,msg=False)
+
+
+    # async def main():
+        # task_liner = asyncio.create_task(divide())
+        # task_produce = asyncio.create_task(produce())
+        # task_offset = asyncio.create_task(offset())
+        # await asyncio.gather(task_produce, task_offset, task_liner)
+
+    # asyncio.run(main())
+
+    # ------------------------------------------------------------------------ #
+    #                                   test                                   #
+    # ------------------------------------------------------------------------ #
+    prod =  Produce(log_Produce)
+    # prod._div_divider()
+    async def divide():
+        # min_at_10_sec = prod.get_timer('every_seconds',2,'KST',True)
+        every_min = prod.get_timer('minute_at_seconds',0,'KST',False)
+        await prod.loop_divider(every_min)
+    async def main():
+        task_liner = asyncio.create_task(divide())
+        await asyncio.gather(task_liner)
+    asyncio.run(main())
