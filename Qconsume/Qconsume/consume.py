@@ -11,7 +11,7 @@ class Consume(Taskq):
 
     def __init__(self, logger: logging.Logger = None):
         super().__init__(logger)
-        self._custom.info.msg('Limiter')
+        self._custom.info.msg('Consume')
 
         self._limit:str = None
         self._max_worker:int = None
@@ -20,6 +20,7 @@ class Consume(Taskq):
         self._semaphore:asyncio.Semaphore = None
 
     def limiter(self, max_worker:int, seconds:float, limit:Literal['inflow','outflow']):
+        self._is_limiter = True
         self._max_worker = max_worker
         self._seconds = seconds
         self._limit = limit
@@ -32,18 +33,22 @@ class Consume(Taskq):
     #                                overriding                                #
     # ------------------------------------------------------------------------ #
     def register(self, async_def: Callable, fname: str = None):
+        self._warning_default_core('consumer.register()')
         if fname is None : fname = async_def.__name__ 
         self._registry[fname] = self._wrapper_throttle(async_def)
         self._custom.info.msg('', fname, task=False)
 
+    def _warning_default_core(self, where):
+        if not hasattr(self, '_is_limiter'):
+            print(f"\033[31m [Warning in '{where}'] limiter has not been set! \033[0m")
 
     @property
     def queue(self):
-        return self.queue
+        return self._queue
     
     async def consumer(self):
         while True:
-            item = await self.enqueue()
+            item = await self.dequeue()
             await self.execute(item)
             
     def _wrapper_throttle(self, async_def:Callable):
@@ -104,7 +109,7 @@ class Consume(Taskq):
 if __name__ == "__main__":
     from Qconsume .utils .logger_color import ColorLog
 
-    logger = ColorLog('limiter','blue')
+    logger = ColorLog('cons','blue')
     
     cons = Consume(logger)
     cons.limiter(5, 1, 'inflow')

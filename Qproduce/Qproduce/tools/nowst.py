@@ -88,6 +88,7 @@ class Nowst:
         return min_offset
 
     def sync_offset(self, msg=True):
+        self._warning_default_core('nowst.sync_offset()')
         pre_offset = self._core.offset
         new_offset = self.fetch_offset(msg=msg)
         self._core.offset = new_offset
@@ -98,7 +99,7 @@ class Nowst:
     def _warning_default_core(self, where):
         if hasattr(self._core, 'name'):
             if self._core.name == 'default':
-                print(f'\033[31m [Warning:{where}] core has not been set! ::: timer.set_core(core) \033[0m')
+                print(f"\033[31m [Warning in '{where}'] limiter has not been set! \033[0m")
 
     def _default_timer(self):
         return 5, datetime.now() + timedelta(seconds=5)
@@ -135,7 +136,7 @@ class Nowst:
     # ------------------------------------------------------------------------ #
 
     def _dev_divider(self,task=None,offset=None):
-        self._custom.div(task,offset)
+        self._custom.info.div(task,offset)
 
     def _dev_check_offset(self):
         for server in self.server_list:

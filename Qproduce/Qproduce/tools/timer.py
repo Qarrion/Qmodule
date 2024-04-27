@@ -105,7 +105,7 @@ class Timer:
     def wrapper(self, every:Literal['minute_at_seconds','hour_at_minutes','day_at_hours',
                                     'every_seconds','every_minutes','every_hours'], 
                 at:float=5, tz:Literal['KST','UTC']='KST',msg=True):
-        self._warning_default_core('wrapper()')
+        self._warning_default_core('timer.wrapper()')
         self._custom.msg('Timer', f'at({at})', every,offset=self._core.offset)
 
         if every == 'minute_at_seconds':
@@ -139,7 +139,7 @@ class Timer:
     def _warning_default_core(self, where):
         if hasattr(self._core, 'name'):
             if self._core.name == 'default':
-                print(f'\033[31m [Warning:{where}] core has not been set! ::: timer.set_core(core) \033[0m')
+                print(f"\033[31m [Warning in '{where}'] limiter has not been set! \033[0m")
 
     def minute_at_seconds(self, seconds:float, tz:Literal['KST','UTC']='KST',msg=True) -> Tuple[float, float]:
         """+ return (total seconds , target datetime)"""
@@ -236,7 +236,7 @@ class Timer:
         return tot_seconds + self._core.buffer, nxt_dtime
 
     def _dev_divider(self,task=None,offset=None):
-        self._custom.div(task,offset)
+        self._custom.info.div(task,offset)
 
 if __name__=="__main__":
     a=datetime.now()
