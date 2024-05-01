@@ -5,7 +5,8 @@ dependencies = [
         'python-dateutil',
         'pytz',
         'requests',
-        'websockets'
+        'websockets',
+        'httpx'
     ]
 [tool.setuptools]
 packages = ["Qupbit"]

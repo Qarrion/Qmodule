@@ -107,12 +107,14 @@ class Nowst:
     #                                   async                                  #
     # ------------------------------------------------------------------------ #
 
+    # TODO to_thead로 바꾸면?
     async def async_offset(self,msg=True):
         self._warning_default_core('nowst.async_offset()')
-        loop = asyncio.get_running_loop()
+        # loop = asyncio.get_running_loop()
         try:
             pre_offset = self._core.offset
-            new_offset = await asyncio.wait_for(loop.run_in_executor(None,self.fetch_offset,msg),10)
+            # new_offset = await asyncio.wait_for(loop.run_in_executor(None,self.fetch_offset,msg),10)
+            new_offset = await asyncio.wait_for(asyncio.to_thread(self.fetch_offset,msg),10)
             self._core.offset = new_offset
             dif_offset = new_offset - pre_offset
             msg_offset = (f"pre({pre_offset:+.4f})",f"new({new_offset:+.4f})",f"dif({dif_offset:+.4f})")

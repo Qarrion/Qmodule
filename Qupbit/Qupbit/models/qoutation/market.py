@@ -56,18 +56,24 @@ class Market:
         
         resp = requests.get(url=self.url_market, headers=self.headers, params=self.params)
         rslt = self.parser.response(resp)
-        if self._debug : self._msg_result('market',rslt) 
+        if self._debug : self._msg_result('get',rslt,"api") 
         if key is not None: rslt = rslt[key]
         return rslt
     
     async def xget(self, xclient:httpx.AsyncClient, key:Literal['status','header','payload','remain','text']=None):
+        """
+        >>> # 
+        async with market.xclient() as xclient:
+            rslt = await market.xget(xclient)        
+        """
         resp = await xclient.get(url=self.url_market, headers=self.headers, params=self.params)
         rslt = self.parser.response(resp)
-        if self._debug : self._msg_result('market',rslt) 
+        if self._debug : self._msg_result('get',rslt,"xapi") 
         if key is not None: rslt = rslt[key]
         return rslt
 
     def xclient(self):
+        """>>> return httpx.AsyncClient() """
         return httpx.AsyncClient()
 
 
@@ -89,11 +95,11 @@ class Market:
         ]
         return selected_rows
     
-    def _msg_result(self,group, result:dict):
+    def _msg_result(self, group, result:dict, frame:str):
         remain = result['remain']
         status = result['status']
         if status == 200:
-            self._custom.debug.msg(group, remain['group']+"/g", f"{remain['min']}/m",f"{remain['sec']}/s",frame=2)
+            self._custom.debug.msg(group, remain['group']+"/g", f"{remain['min']}/m",f"{remain['sec']}/s",frame=frame)
         else:
             self._custom.error.msg(group, result['text'],frame=2)    
 
@@ -118,8 +124,8 @@ if __name__=='__main__':
     # --------------------------------- async -------------------------------- #
 
     async def main():
-        async with market.xclient() as client:
-            rslt = await market.xget(client)
+        async with market.xclient() as xclient:
+            rslt = await market.xget(xclient)
             print(rslt['payload'][0])
 
     asyncio.run(main())

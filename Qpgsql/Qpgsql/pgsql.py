@@ -1,10 +1,15 @@
 from configparser import ConfigParser
+import sys, asyncio
 import psycopg
 
+
 class Pgsql:
-    """psycopg wrapper"""
     def __init__(self):
+        """psycopg wrapper"""
         self.config = ConfigParser()
+
+        if sys.platform =="win32":
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
         try:
             self.config.read(r'config/db.ini')
@@ -23,6 +28,9 @@ class Pgsql:
         """)
         self.conn_str = self._get_connect_str()
 
+    def _dev_help(self):
+        print("https://www.psycopg.org/psycopg3/docs/advanced/async.html")
+        
     # -------------------------------- connect ------------------------------- #
     def _get_connect_str(self):
         host=self.config.get('connect','host')
@@ -46,15 +54,16 @@ class Pgsql:
 
     def connect(self):
         return psycopg.connect(self.conn_str)
-    
-    def connect_async(self):
+
+    def xconnect(self):
+        """>>> return psycopg.AsyncConnection.connect()"""
         return psycopg.AsyncConnection.connect(self.conn_str)
 
 if __name__ == "__main__":
     pgsql = Pgsql()
     conn = pgsql.connect()
-    conn_async = pgsql.connect_async()
-    print(conn_async)
+    # conn_async = pgsql.xconnect()
+    # print(conn_async)
     from Qpgsql.utils.print_divider import eprint
     eprint('dir_conn')
     print(dir(conn))
