@@ -77,7 +77,7 @@ class Produce:
             tot_sec, tgt_dtm = timer() 
             await asyncio.sleep(tot_sec)
             await self._adjust_offset_change(tgt_dtm)
-            await self._nowst.async_offset(msg=msg)
+            await self._nowst.xsync_offset(msg=msg)
             await self._adjust_offset_change(tgt_dtm)
 
     # ------------------------------- producer ------------------------------- #
@@ -93,7 +93,7 @@ class Produce:
             await self._adjust_offset_change(tgt_dtm)
 
     async def _adjust_offset_change(self, tgt_dtm):
-        await self._nowst.adjust_offset_change(tgt_dtm)
+        await self._nowst.xadjust_offset_change(tgt_dtm)
 
     async def _await_with_timeout(self, async_def:Callable, timeout:int):
         try:

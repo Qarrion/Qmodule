@@ -79,7 +79,8 @@ class CustomLog:
     
     def _get_offset(self, offset:float):
         server_now = datetime.now() + timedelta(seconds=offset)
-        server = f" | {server_now.strftime('%Y-%m-%d %H:%M:%S')},{server_now.strftime('%f')[:3]}({offset:+.4f})"
+        # server = f" | {server_now.strftime('%Y-%m-%d %H:%M:%S')},{server_now.strftime('%f')[:3]}({offset:+.4f})"
+        server = f" | {server_now.strftime('%H:%M:%S')},{server_now.strftime('%f')[:3]}({offset:+.4f})"
         return server
     
     def _log_chained(self, msg):

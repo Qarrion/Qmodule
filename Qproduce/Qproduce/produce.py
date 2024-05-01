@@ -33,7 +33,7 @@ class Produce:
     """
     def __init__(self, logger:logging.Logger = None):
         self._custom = CustomLog(logger,'async')
-        self._custom.info.msg('Produces')
+        self._custom.info.msg('Produce')
         self._timer = Timer(logger)
         self._nowst = Nowst(logger, init_offset= False)
 
@@ -74,21 +74,21 @@ class Produce:
         while True:
             tot_sec, tgt_dtm = timer() 
             await asyncio.sleep(tot_sec)
-            await self._adjust_offset_change(tgt_dtm)
+            await self._xadjust_offset(tgt_dtm)
             self.msg_divider()
-            await self._adjust_offset_change(tgt_dtm)
+            await self._xadjust_offset(tgt_dtm)
 
     # ----------------------------- synchronizer ----------------------------- #
-    async def loop_offset(self, msg=True):
-        """synchronize offset"""
-        self._nowst.sync_offset(msg=True)
+    async def loop_offset(self):
+        """+ synchronize offset"""
+        self._nowst.sync_offset()
         timer = self.timer
         while True:
             tot_sec, tgt_dtm = timer() 
             await asyncio.sleep(tot_sec)
-            await self._adjust_offset_change(tgt_dtm)
-            await self._nowst.async_offset(msg=msg)
-            await self._adjust_offset_change(tgt_dtm)
+            await self._xadjust_offset(tgt_dtm)
+            await self._nowst.xsync_offset()
+            await self._xadjust_offset(tgt_dtm)
 
     # ------------------------------- producer ------------------------------- #
     async def loop_produce(self, async_defs:List[Callable], timeout=None):
@@ -97,14 +97,15 @@ class Produce:
         while True:
             tot_sec, tgt_dtm = timer() 
             await asyncio.sleep(tot_sec)
-            await self._adjust_offset_change(tgt_dtm)
+            await self._xadjust_offset(tgt_dtm)
             for async_def in async_defs:
                 if timeout is None: timeout = 50
+                self._custom.msg('task', async_def.__name__, frame='produce', offset=Core.offset)
                 asyncio.create_task(self._await_with_timeout(async_def,timeout))
-            await self._adjust_offset_change(tgt_dtm)
+            await self._xadjust_offset(tgt_dtm)
 
-    async def _adjust_offset_change(self, tgt_dtm):
-        await self._nowst.adjust_offset_change(tgt_dtm)
+    async def _xadjust_offset(self, tgt_dtm):
+        await self._nowst.xadjust_offset_change(tgt_dtm)
 
     async def _await_with_timeout(self, async_def:Callable, timeout:int):
         try:
@@ -142,6 +143,7 @@ if __name__ == "__main__":
     prod1 =  Produce(log_blue)
     prod2 =  Produce(log_blue)
     prod3 =  Produce(log_blue)
+
     prod1.set_timer('minute_at_seconds',55)
     prod2.set_timer('minute_at_seconds',0)
     prod3.set_timer('minute_at_seconds',10)

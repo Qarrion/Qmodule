@@ -85,7 +85,7 @@ class Timer:
 
     def __init__(self, logger:logging.Logger=None):
         self._custom = CustomLog(logger,'async')
-        self._custom.info.msg('Timer')
+        # self._custom.info.msg('Timer')
 
         self._core = _core
         self._buffer_ms_delta = timedelta(milliseconds=self._core.buffer*1000)

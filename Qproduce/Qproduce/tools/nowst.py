@@ -36,7 +36,7 @@ class Nowst:
     
     def __init__(self, logger:logging.Logger=None, init_offset=True):
         self._custom = CustomLog(logger,'sync')
-        self._custom.info.msg('Nowst')
+        # self._custom.info.msg('Nowst')
 
         self._core = _core
         if init_offset :
@@ -67,7 +67,7 @@ class Nowst:
         if msg: self._custom.debug.msg(f"offset ({self._core.offset:+.6f})", f"Server({now_datetime_naive})", frame=None,offset=self._core.offset)
         return now_datetime_naive
 
-    def fetch_offset(self, msg=True, debug=False):
+    def fetch_offset(self, msg=False, debug=False):
         """
         + msg : INFO @    main . __init__.....Nowst | 
         + debug : + offset(float) = server(datetime) - local(datetime) [url]
@@ -90,11 +90,11 @@ class Nowst:
     def sync_offset(self, msg=True):
         self._warning_default_core('nowst.sync_offset()')
         pre_offset = self._core.offset
-        new_offset = self.fetch_offset(msg=msg)
+        new_offset = self.fetch_offset()
         self._core.offset = new_offset
         dif_offset = new_offset - pre_offset
         msg_offset = (f"pre({pre_offset:+.4f})",f"new({new_offset:+.4f})",f"dif({dif_offset:+.4f})")
-        self._custom.debug.msg('',*msg_offset,offset=self._core.offset)
+        if msg : self._custom.info.msg('',*msg_offset,offset=self._core.offset)
 
     def _warning_default_core(self, where):
         if hasattr(self._core, 'name'):
@@ -107,23 +107,22 @@ class Nowst:
     #                                   async                                  #
     # ------------------------------------------------------------------------ #
 
-    # TODO to_thead로 바꾸면?
-    async def async_offset(self,msg=True):
+    async def xsync_offset(self):
         self._warning_default_core('nowst.async_offset()')
         # loop = asyncio.get_running_loop()
         try:
             pre_offset = self._core.offset
             # new_offset = await asyncio.wait_for(loop.run_in_executor(None,self.fetch_offset,msg),10)
-            new_offset = await asyncio.wait_for(asyncio.to_thread(self.fetch_offset,msg),10)
+            new_offset = await asyncio.wait_for(asyncio.to_thread(self.fetch_offset,False, False),10)
             self._core.offset = new_offset
             dif_offset = new_offset - pre_offset
             msg_offset = (f"pre({pre_offset:+.4f})",f"new({new_offset:+.4f})",f"dif({dif_offset:+.4f})")
-            self._custom.debug.msg('',*msg_offset,offset=self._core.offset)
+            self._custom.info.msg('',*msg_offset,offset=self._core.offset)
         except Exception as e:
             print(str(e))
             traceback.print_exc()
 
-    async def adjust_offset_change(self,tgt_dtm:datetime)->float:
+    async def xadjust_offset_change(self,tgt_dtm:datetime)->float:
         """return seconds when if now_datetime(with offset) - target_datetime > 0:"""
         now_dtm = self.now_naive() 
         dif_sec = (tgt_dtm-now_dtm).total_seconds()
@@ -184,7 +183,7 @@ if __name__=="__main__":
     # --------------------------------- async -------------------------------- #
     nowst._dev_divider()
     async def main():
-        rslt = await nowst.async_offset(msg=False)
+        rslt = await nowst.xsync_offset(msg=False)
         print(rslt)
 
     asyncio.run(main())
@@ -197,7 +196,7 @@ if __name__=="__main__":
 
     async def main():
         nowst.set_core(_core)
-        rslt = await nowst.async_offset(msg=False)
+        rslt = await nowst.xsync_offset(msg=False)
         print(rslt)
 
     asyncio.run(main())
