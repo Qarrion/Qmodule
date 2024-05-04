@@ -1,7 +1,9 @@
-from Qpgsql import connection
+from Qpgsql import Pgsql
+
+sql = Pgsql()
 
 # ------------------------------- create table ------------------------------- #
-with connection.open() as conn:
+with sql.connect() as conn:
     with conn.cursor() as curs:
         curs.execute("""
             CREATE TABLE test (
@@ -22,32 +24,54 @@ import time
 datetime.now(timezone.utc)
 datetime.now()
 
+tnow = time.time()
+now = datetime.now()
+timestamp = datetime.timestamp(now)
+d =1714651979967
+d//10
+
+datetime.fromtimestamp(timestamp)
 
 insert_query = """
     INSERT INTO test (num, data, timez)
     VALUES (%s, %s, %s)
     """
 
-insert_data1 = (10,'test utc', datetime.now(timezone.utc))  # 입력가능
-insert_data2 = (10,'test naive', datetime.now())              # microsecond 까지들어감
-insert_data3 = (10,'test str','2024-03-10 15:02:00+09:00')   # 입력가능
+# insert_data1 = (10,'test utc', datetime.now(timezone.utc))  # 입력가능
+# insert_data2 = (10,'test naive', datetime.now())              # microsecond 까지들어감
+# insert_data3 = (10,'test str','2024-03-10 15:02:00+09:00')   # 입력가능
 
-with connection.open() as conn:
+insert_data3 = (10,'test naive','2024-05-02T14:34:00')   # 입력가능
+insert_data3 = (10,'test naive','2024-05-02T23:34:00')   # 입력가능
+insert_data3 = (10,'test naive','2024-05-02T23:34:00+09:00')   # 입력가능
+insert_data3 = (10,'test naive','2024-05-02 23:34:00+09:00')   # 입력가능
+
+
+from Qpgsql import Pgsql
+sql  =  Pgsql()
+
+with sql.connect() as conn:
     with conn.cursor() as curs:
-        curs.execute(insert_query, insert_data1)
-        time.sleep(1)
-        curs.execute(insert_query, insert_data2)
-        time.sleep(1)
+        # curs.execute(insert_query, insert_data1)
+        # time.sleep(1)
+        # curs.execute(insert_query, insert_data2)
+        # time.sleep(1)
         curs.execute(insert_query, insert_data3)
         conn.commit()
 
 # ---------------------------------- select ---------------------------------- #
 #! timez 는 datetime(utc)로 출력
 
-with connection.open() as conn:
+with sql.connect() as conn:
     with conn.cursor() as curs:
         curs.execute('SELECT * FROM test')
         rows = curs.fetchall()
+print(rows)
+
+from pprint import pprint 
+pprint(rows)
+
+
 rows[0]
 rows[1]
 rows[2]
