@@ -56,7 +56,7 @@ class Market:
         
         resp = requests.get(url=self.url_market, headers=self.headers, params=self.params)
         rslt = self.parser.response(resp)
-        if self._debug : self._msg_result('get',rslt,"api") 
+        if self._debug : self._msg_result('get_market',rslt,"api") 
         if key is not None: rslt = rslt[key]
         return rslt
     
@@ -68,14 +68,13 @@ class Market:
         """
         resp = await xclient.get(url=self.url_market, headers=self.headers, params=self.params)
         rslt = self.parser.response(resp)
-        if self._debug : self._msg_result('get',rslt,"xapi") 
+        if self._debug : self._msg_result('get_market',rslt,"xapi") 
         if key is not None: rslt = rslt[key]
         return rslt
 
     def xclient(self):
         """>>> return httpx.AsyncClient() """
         return httpx.AsyncClient()
-
 
     def to_rows(self,payload:List[dict], qoute=None, base=None, market=None):
         """ >>> market.to_rows(result['payload']) 
@@ -106,7 +105,7 @@ class Market:
 if __name__=='__main__':
     from Qupbit.utils.print_divider import eprint
     from Qupbit.utils.logger_color import ColorLog
-    logger = ColorLog('test', 'green')
+    logger = ColorLog('upbit', 'green')
     
     market = Market(logger)
 

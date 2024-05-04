@@ -102,12 +102,24 @@ class Timez():
 
     @classmethod
     def from_stamp(cls, stamp:float, tz:Literal['KST','UTC']=None):
+        stamp = cls._to_ten_digit(stamp)
         if tz is None:
             date_time = datetime.fromtimestamp(stamp)
         else:
             date_time = datetime.fromtimestamp(stamp, cls.tz_dict[tz])
 
         return date_time
+
+    def _to_ten_digit(stamp_like:float):
+        num_digits = len(str(int(stamp_like))) 
+        print(num_digits)
+        if num_digits <= 10:
+            stamp = num_digits
+        else :
+            divisor = 10 ** (num_digits - 10)
+            stamp = stamp_like / divisor
+        return stamp  
+ 
 
 if __name__ =="__main__":
     # ------------------------------------------------------------------------ #
@@ -219,3 +231,9 @@ if __name__ =="__main__":
     typ(timez.from_stamp(stamp))
     typ(timez.from_stamp(stamp,tz='KST'))
     typ(timez.from_stamp(stamp,tz='UTC'))
+
+
+    dtstr = '2024-05-03 07:43:00.000 +0900'
+    dtstr = '2024-05-02T22:43:00'
+    dd = timez.from_str(dtstr)
+    timez.as_timezone(timez.as_localize(dd,tz='UTC'),'KST')

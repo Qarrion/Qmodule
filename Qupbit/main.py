@@ -10,3 +10,7 @@ if __name__ == "__main__":
     rslt = market.get()
     rslt.keys()
     
+
+
+
+    
