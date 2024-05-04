@@ -31,14 +31,14 @@ class Parser():
             response_dict['text'] = resp.text
         return response_dict
     
-    def market(self, payload:List[dict], key, qoute=None, base=None, market=None):
+    def market(self, payload:List[dict], key, quote=None, base=None, market=None):
         """ >>> parser.market() 
         # list comprehension """
         if market is not None:
             payload = [d for d in payload if d[key] == market]
 
-        if qoute is not None:
-            payload = [d for d in payload if d[key].startswith(qoute)]
+        if quote is not None:
+            payload = [d for d in payload if d[key].startswith(quote)]
 
         if base is not None:
             payload = [d for d in payload if d[key].endswith(base)]
@@ -67,8 +67,8 @@ if __name__ =="__main__":
     print(parser.market(rslt['payload'], key='market', market='KRW-BTC'))
     eprint('base')
     print(parser.market(rslt['payload'], key='market', base='BTC'))
-    eprint('qoute')
-    print(parser.market(rslt['payload'], key='market', qoute='USDT'))
+    eprint('quote')
+    print(parser.market(rslt['payload'], key='market', quote='USDT'))
     
     # ------------------------------------------------------------------------ #
     eprint('allkeys')

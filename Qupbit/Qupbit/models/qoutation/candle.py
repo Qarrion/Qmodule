@@ -1,12 +1,13 @@
 # ---------------------------------------------------------------------------- #
 #     https://docs.upbit.com/reference/%EB%B6%84minute-%EC%BA%94%EB%93%A4-1    #
 # ---------------------------------------------------------------------------- #
+import httpx
 from Qupbit.utils.logger_custom import CustomLog
 from Qupbit.tools.parser import Parser
 from Qupbit.tools.timez import Timez
 from datetime import datetime
 from dateutil import parser
-from typing import Literal
+from typing import Literal, List
 import requests
 import logging
 
@@ -25,17 +26,34 @@ class Candle:
         self.timez = Timez()
         self._debug = debug
 
-    def get(self, market:str, to:str=None, count:int=200, tz:Literal['UTC','KST']='KST'):
+    def get(self, session:requests.Session=None, 
+            market:str='KRW-BTC', to:str=None, count:int=200, tz:Literal['UTC','KST']='KST',
+            key:Literal['status','header','payload','remain','text']=None):
         """ >>> return result
         # status, header, payload, remain[group, min, sec], text"""
 
         totz = self._arg_to(date_time_str=to, tz=tz) if to is not None else None
         params=dict(market = market, count = count, to = totz)
-        resp = requests.get(url=self.url_candle, headers=self.headers, params=params)
 
-        # resp = self._req_get(market=market, to=totz, count=count)
+        if session is None:
+            resp = requests.get(url=self.url_candle, headers=self.headers, params=params)
+        else:
+            resp = session.get(url=self.url_candle, headers=self.headers, params=params)
+
         rslt = self.parser.response(resp)
         if self._debug : self._msg_result('candles',rslt) 
+        if key is not None: rslt = rslt[key]
+        return rslt		
+
+    async def xget(self, xclient:httpx.AsyncClient, 
+                   market:str='KRW-BTC', to:str=None, count:int=200, tz:Literal['UTC','KST']='KST',
+                   key:Literal['status','header','payload','remain','text']=None):
+        totz = self._arg_to(date_time_str=to, tz=tz) if to is not None else None
+        params=dict(market = market, count = count, to = totz)
+        resp = await xclient.get(url=self.url_candle, headers=self.headers, params=params)
+        rslt = self.parser.response(resp)
+        if self._debug : self._msg_result('candles',rslt) 
+        if key is not None: rslt = rslt[key]
         return rslt		
 
     def _arg_to(self, date_time_str:str, tz:Literal['UTC','KST']='KST'):
@@ -51,6 +69,18 @@ class Candle:
             to = date_time_aware.isoformat(sep='T',timespec='seconds')
         return to
     
+    def to_rows(self, payload:List[dict]):
+
+        selected_rows =[
+            (
+                d['market'], d['candle_date_time_kst'],
+                d['opening_price'],d['high_price'],d['low_price'],d['low_price'],
+                d['candle_acc_trade_price'], d['candle_acc_trade_volume']
+            ) 
+                for d in payload
+        ]
+        return selected_rows        
+
     def _msg_result(self,group, result:dict):
         remain = result['remain']
         status = result['status']
@@ -67,48 +97,57 @@ if __name__=='__main__':
     logger = ColorLog('test', 'green')
     candle = Candle(logger)
 
-    # ------------------------------------------------------------------------ #
-    eprint('get') 
-    to ='2021-10-10T00:00:00+09:00'
-    print(to)
-    candle._arg_to(to,tz='UTC')
-    candle._arg_to(to,tz='KST')
-
-    resp = candle.get('KRW-ETH', None, 5,'KST')
+    # ------------------------------ session get ----------------------------- #
+    resp = candle.get(None, 'KRW-ETH', None, 5,'KST')
+    print(resp)
     print(pd.DataFrame(resp['payload']))
+    resp = candle.get(None, 'KRW-ETH', None, 5,'KST','payload')
+    print(resp)
 
-    resp0 = candle.get('KRW-BTC', to, 5,'KST')
-    print(pd.DataFrame(resp0['payload']))
-
-    eprint('kst') 
-    to = resp0['payload'][-1]['candle_date_time_kst']
-    print(to)
-    print(candle._arg_to(to,'KST'))
-    resp = candle.get('KRW-BTC', to, 5,'KST')
-    print(pd.DataFrame(resp['payload']))
-
-    eprint('utc') 
-    to = resp0['payload'][-1]['candle_date_time_utc']
-    print(to)
-    print(candle._arg_to(to,'UTC'))
-    resp = candle.get('KRW-BTC', to, 5,'UTC')
-    print(pd.DataFrame(resp['payload']))
-
+    eprint('rows') 
+    print(candle.to_rows(resp))
     # ------------------------------------------------------------------------ #
-    tmp = pd.DataFrame(resp['payload'])
-    tmp = tmp[['candle_date_time_utc','candle_date_time_kst','timestamp']]
-    tmp['sdt'] = tmp['timestamp'].apply(candle.timez.from_stamp)
-    tmp
+    # eprint('get') 
+    # to ='2021-10-10T00:00:00+09:00'
+    # print(to)
+    # candle._arg_to(to,tz='UTC')
+    # candle._arg_to(to,tz='KST')
 
-    # ------------------------------------------------------------------------ #
-    # from datetime import datetime
-    # timez = Timez()
-    # timez.from_stamp(1633794600053/1000)
-    # print(timez.now())
-    # print(datetime.strftime(timez.now(),'%Y-%m-%dT%H:%M:%SZ'))
-    # print(datetime.strftime(timez.now('KST'),'%Y-%m-%dT%H:%M:%SZ'))
-    # print(datetime.strftime(timez.now('UTC'),'%Y-%m-%dT%H:%M:%SZ'))
+    # resp = candle.get('KRW-ETH', None, 5,'KST')
+    # print(pd.DataFrame(resp['payload']))
 
-    # KRW-BTC  2024-05-02T12:17:00  2024-05-02T21:17:00  1714652221622
-    stamp_like = 1714652221622
-    Timez.from_stamp(Timez._to_ten_digit(stamp_like),'KST')
+    # resp0 = candle.get('KRW-BTC', to, 5,'KST')
+    # print(pd.DataFrame(resp0['payload']))
+
+    # eprint('kst') 
+    # to = resp0['payload'][-1]['candle_date_time_kst']
+    # print(to)
+    # print(candle._arg_to(to,'KST'))
+    # resp = candle.get('KRW-BTC', to, 5,'KST')
+    # print(pd.DataFrame(resp['payload']))
+
+    # eprint('utc') 
+    # to = resp0['payload'][-1]['candle_date_time_utc']
+    # print(to)
+    # print(candle._arg_to(to,'UTC'))
+    # resp = candle.get('KRW-BTC', to, 5,'UTC')
+    # print(pd.DataFrame(resp['payload']))
+
+    # # ------------------------------------------------------------------------ #
+    # tmp = pd.DataFrame(resp['payload'])
+    # tmp = tmp[['candle_date_time_utc','candle_date_time_kst','timestamp']]
+    # tmp['sdt'] = tmp['timestamp'].apply(candle.timez.from_stamp)
+    # tmp
+
+    # # ------------------------------------------------------------------------ #
+    # # from datetime import datetime
+    # # timez = Timez()
+    # # timez.from_stamp(1633794600053/1000)
+    # # print(timez.now())
+    # # print(datetime.strftime(timez.now(),'%Y-%m-%dT%H:%M:%SZ'))
+    # # print(datetime.strftime(timez.now('KST'),'%Y-%m-%dT%H:%M:%SZ'))
+    # # print(datetime.strftime(timez.now('UTC'),'%Y-%m-%dT%H:%M:%SZ'))
+
+    # # KRW-BTC  2024-05-02T12:17:00  2024-05-02T21:17:00  1714652221622
+    # stamp_like = 1714652221622
+    # Timez.from_stamp(Timez._to_ten_digit(stamp_like),'KST')

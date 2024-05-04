@@ -44,7 +44,7 @@ class Market:
         self._custom = CustomLog(logger,'async')
         self._debug = debug
 
-    def get(self, key:Literal['status','header','payload','remain','text']=None):
+    def get(self, session:requests.Session=None, key:Literal['status','header','payload','remain','text']=None):
         """ >>> # return result
         result = market.get()
         result['status']
@@ -53,8 +53,11 @@ class Market:
         result['remain']
         result['text']
         # status, header, payload, remain[group, min, sec], text"""
-        
-        resp = requests.get(url=self.url_market, headers=self.headers, params=self.params)
+        if session is None:
+            resp = requests.get(url=self.url_market, headers=self.headers, params=self.params)
+        else:
+            resp = session.get(url=self.url_market, headers=self.headers, params=self.params)
+
         rslt = self.parser.response(resp)
         if self._debug : self._msg_result('get_market',rslt,"api") 
         if key is not None: rslt = rslt[key]
@@ -76,10 +79,10 @@ class Market:
         """>>> return httpx.AsyncClient() """
         return httpx.AsyncClient()
 
-    def to_rows(self,payload:List[dict], qoute=None, base=None, market=None):
+    def to_rows(self,payload:List[dict], quote=None, base=None, market=None):
         """ >>> market.to_rows(result['payload']) 
-        # [row for row in payload] """
-        selected_payload = self.parser.market(payload,'market', qoute, base, market)
+        # market, korean_name, english_name, market_warning """
+        selected_payload = self.parser.market(payload,'market', quote, base, market)
         selected_rows =[
             (
                 d['market'], d['korean_name'],d['english_name'],
@@ -110,21 +113,24 @@ if __name__=='__main__':
     market = Market(logger)
 
     # ---------------------------------- get --------------------------------- #
-    # eprint('get')
-    # rslt = market.get()
-    # eprint('rslt')
-    # print(rslt.keys())
-    # eprint('payload')
-    # print( rslt['payload'][0:5])
-    # eprint('rows')
-    # rows = market.to_rows(payload=rslt['payload'])
-    # print(rows[0:5])
+    eprint('get1')
+    rslt = market.get()
+    print(rslt)
+    print(rslt.keys())
+    eprint('payload')
+    print(rslt['payload'][0:5])
+    
+    eprint('get2')
+    rslt = market.get(None, 'payload')
+    eprint('rows')
+    rows = market.to_rows(payload=rslt)
+    print(rows[0:5])
 
     # --------------------------------- async -------------------------------- #
 
-    async def main():
-        async with market.xclient() as xclient:
-            rslt = await market.xget(xclient)
-            print(rslt['payload'][0])
+    # async def main():
+    #     async with market.xclient() as xclient:
+    #         rslt = await market.xget(xclient)
+    #         print(rslt['payload'][0])
 
-    asyncio.run(main())
+    # asyncio.run(main())
