@@ -122,14 +122,14 @@ class Nowst:
             print(str(e))
             traceback.print_exc()
 
-    async def xadjust_offset_change(self,tgt_dtm:datetime, msg=True)->float:
+    async def xadjust_offset_change(self,tgt_dtm:datetime)->float:
         """return seconds when if now_datetime(with offset) - target_datetime > 0:"""
         now_dtm = self.now_naive() 
         dif_sec = (tgt_dtm-now_dtm).total_seconds()
 
         if dif_sec > self._core.buffer:
             adjust_sec = dif_sec 
-            if msg : self._custom.debug.msg('adjust', f"offset_change",f"s ({adjust_sec:+.4f})", frame=None, offset=self._core.offset)
+            self._custom.debug.msg('adjust', f"offset_change",f"s ({adjust_sec:+.4f})", frame=None, offset=self._core.offset)
             await asyncio.sleep(adjust_sec)
 
     # ------------------------------------------------------------------------ #

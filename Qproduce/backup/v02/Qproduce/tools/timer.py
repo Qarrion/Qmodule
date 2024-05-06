@@ -106,7 +106,7 @@ class Timer:
                                     'every_seconds','every_minutes','every_hours'], 
                 at:float=5, tz:Literal['KST','UTC']='KST',msg=True):
         self._warning_default_core('timer.wrapper()')
-        self._custom.info.msg('Timer', f'at({at})', every,offset=self._core.offset)
+        self._custom.msg('Timer', f'at({at})', every,offset=self._core.offset)
 
         if every == 'minute_at_seconds':
             func = partial(self.minute_at_seconds,at,tz,msg)
