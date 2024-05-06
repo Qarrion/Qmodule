@@ -32,7 +32,7 @@ class Produce:
     >>> # prod loop_task
     p_worker = Produce(logger)
     p_worker.set_timer('minute_at_seconds',10)
-    p_worker.set_xdefs([work1, work2])
+    p_worker.set_task([work1, work2])
     await p_worker.produce()
     """
     def __init__(self, logger:logging.Logger = None):
@@ -44,9 +44,9 @@ class Produce:
         self._timer.set_core(Core)
         self._nowst.set_core(Core)
 
+        self._tasks={}
         # self.msg_divider()
         self.timer=None
-        self.xdefs=None
 
     def _signal_handler(self, sig, frame):
         print('Ctrl + C Keyboard Interrupted')
@@ -69,11 +69,10 @@ class Produce:
     # ------------------------------------------------------------------------ #
     #                                  common                                  #
     # ------------------------------------------------------------------------ #
-    def set_xdefs(self, async_defs:List[Callable]):
-        if isinstance(async_defs, Callable):
-            async_defs = [async_defs]
-            
-        self.xdefs = async_defs
+    def set_task(self, async_def:Callable, fname:str=None):
+        if fname is None : fname = async_def.__name__ 
+        self._tasks[fname] = async_def
+
 
     def set_preset(self, preset:Literal['xsync_time','msg_divider']):
         """
@@ -81,7 +80,7 @@ class Produce:
         + msg_divider : print divider for debug
         """
         _preset = getattr(self,"work_"+preset)
-        self.set_xdefs(_preset)
+        self.set_task(_preset)
     # ------------------------------------------------------------------------ #
     #                                 Produce                                 #
     # ------------------------------------------------------------------------ #
@@ -95,21 +94,21 @@ class Produce:
         await self._nowst.xsync_offset()
     # ------------------------------- producer ------------------------------- #
 
-    async def produce(self, async_defs:List[Callable]=None, timeout=None, msg=True):
+    async def produce(self, async_defs:Callable=None, timeout=None, msg=True):
         """Run a loop that executes a function according to a timer"""
 
-        if async_defs is not None: self.set_xdefs(async_defs)
+        if async_defs is not None: self.set_task(async_defs)
 
-        xdefs = self.xdefs
         timer = self.timer
         while True:
             tot_sec, tgt_dtm = timer() 
             await asyncio.sleep(tot_sec)
             await self._xadjust_offset(tgt_dtm,msg)
-            for xdef in xdefs:
+            for tname,tfunc in self._tasks.items():
                 if timeout is None: timeout = 50
-                if msg : self._custom.msg('task', xdef.__name__, frame='produce', offset=Core.offset)
-                asyncio.create_task(self._await_with_timeout(xdef,timeout))
+                # if msg : self._custom.msg('task', xdef.__name__, frame='produce', offset=Core.offset)
+                if msg : self._custom.msg('task', tname, frame='produce', offset=Core.offset)
+                asyncio.create_task(self._await_with_timeout(tfunc,timeout))
             await self._xadjust_offset(tgt_dtm,msg)
 
     async def _xadjust_offset(self, tgt_dtm, msg=True):
@@ -159,7 +158,8 @@ if __name__ == "__main__":
     
     p_worker =  Produce(log_blue)
     p_worker.set_timer('minute_at_seconds',10)
-    p_worker.set_xdefs([work1, work2])
+    p_worker.set_task(work1)
+    p_worker.set_task(work2)
 
 
     async def produce():
