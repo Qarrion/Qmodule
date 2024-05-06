@@ -12,7 +12,18 @@ class Taskq:
 
     def __init__(self, logger:logging.Logger=None):
         self._custom = CustomLog(logger,'async')
+        # self._custom.info.msg('Taskq')
+
+        self._registry = dict()
         self._queue = asyncio.Queue()
+
+    # ------------------------------------------------------------------------ #
+    #                               register task                              #
+    # ------------------------------------------------------------------------ #
+    def set_task(self, async_def:Callable, fname:str=None):
+        if fname is None : fname = async_def.__name__ 
+        self._registry[fname] = async_def
+        self._custom.info.msg('async_def', fname, task=False)
 
     # ------------------------------------------------------------------------ #
     #                                   async                                  #
@@ -32,13 +43,13 @@ class Taskq:
         return (fname, args, kwargs, timeout, retry)
 
     # -------------------------------- execute ------------------------------- #
-    async def execute(self, tasks:dict, item:tuple):
+    async def execute(self, item=tuple):
         """with timeout"""
         fname, args, kwargs, timeout, retry = item
         if kwargs is None : kwargs = {}
         #! TODO if timeout is None
         try:
-            await asyncio.wait_for(tasks[fname](*args, **kwargs), timeout=timeout)
+            await asyncio.wait_for(self._registry[fname](*args, **kwargs), timeout=timeout)
             self._custom.info.msg('done',fname, f"{args}",task=True)
             
         except Exception as e:
@@ -70,7 +81,7 @@ if __name__ == "__main__":
         
         logger = ColorLog('test','green')
         taskq = Taskq(logger)
-        taskq.register(myfun)
+        taskq.set_task(myfun)
 
         # ------------------------------- done ------------------------------- #
         await taskq.enqueue('myfun', (1,2),{'c':3},timeout=5)
