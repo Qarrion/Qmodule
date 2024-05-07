@@ -60,6 +60,20 @@ class CustomLog:
         DIV_MSG = f"{BODY}{FOOTTER}"
         self._log_chained(DIV_MSG) 
 
+    def arg(self, text, width:Literal[1,2,3],align:Literal['left','right']='Left', fill="="):
+        if width ==1:
+            w=12
+        elif width ==2:
+            w=26
+        else:
+            w=40
+        if align in ['left','l']:
+            t = f"{text:<{w}}"
+        elif align in ['right','r']:
+            t = f"{text:>{w}}"
+
+        return t.replace(" ", fill)
+
     def _get_frame(self, frame):
         if frame is None:
             rslt = ""
@@ -79,8 +93,7 @@ class CustomLog:
     
     def _get_offset(self, offset:float):
         server_now = datetime.now() + timedelta(seconds=offset)
-        # server = f" | {server_now.strftime('%Y-%m-%d %H:%M:%S')},{server_now.strftime('%f')[:3]}({offset:+.4f})"
-        server = f" | {server_now.strftime('%H:%M:%S')},{server_now.strftime('%f')[:3]}({offset:+.4f})"
+        server = f" | {server_now.strftime('%Y-%m-%d %H:%M:%S')},{server_now.strftime('%f')[:3]}({offset:+.4f})"
         return server
     
     def _log_chained(self, msg):
@@ -194,3 +207,9 @@ if __name__ == "__main__":
     print('# ---------------------------------- div --------------------------------- #')
     customlog.info.div()
     customlog.info.div(offset=0.1)
+
+    print('# ---------------------------------- arg --------------------------------- #')
+
+    customlog.info.msg('test', "hi", customlog.arg("left",1,'left',"-"))
+    customlog.info.msg('test', "hi", customlog.arg("left",2,'left',"-"))
+    customlog.info.msg('test', "hi", customlog.arg("left",2,'r',"-"))

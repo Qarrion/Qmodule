@@ -98,25 +98,25 @@ class Produce:
         """Run a loop that executes a function according to a timer"""
 
         if async_defs is not None: self.set_task(async_defs)
-
         timer = self.timer
         while True:
             tot_sec, tgt_dtm = timer() 
             await asyncio.sleep(tot_sec)
-            await self._xadjust_offset(tgt_dtm,msg)
+            await self._xadjust_offset(tgt_dtm, msg = False)
             for tname,tfunc in self._tasks.items():
                 if timeout is None: timeout = 50
-                # if msg : self._custom.msg('task', xdef.__name__, frame='produce', offset=Core.offset)
-                if msg : self._custom.msg('task', tname, frame='produce', offset=Core.offset)
-                asyncio.create_task(self._await_with_timeout(tfunc,timeout))
-            await self._xadjust_offset(tgt_dtm,msg)
+                # if msg : self._custom.msg('task', self._custom.arg(tname,3,'l',"-"), frame='produce', offset=Core.offset)
+                asyncio.create_task(self._await_with_timeout(tfunc,timeout,msg=msg))
+            await self._xadjust_offset(tgt_dtm, msg = False)
 
-    async def _xadjust_offset(self, tgt_dtm, msg=True):
+    async def _xadjust_offset(self, tgt_dtm, msg=False):
         await self._nowst.xadjust_offset_change(tgt_dtm, msg)
 
-    async def _await_with_timeout(self, async_def:Callable, timeout:int):
+    async def _await_with_timeout(self, async_def:Callable, timeout:int, msg = False):
         try:
+            if msg : self._custom.msg('task', self._custom.arg(async_def.__name__,3,'l',"-"), frame='produce', offset=Core.offset)
             await asyncio.wait_for(async_def(), timeout)
+            if msg : self._custom.msg('task', self._custom.arg(async_def.__name__,3,'r',"-"), frame='produce', offset=Core.offset)
 
         except asyncio.TimeoutError:
             print(f'Timeout!')
