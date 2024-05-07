@@ -49,12 +49,13 @@ class Consume:
     
     def enqueue(self, fname:str, args:tuple=(), kwargs:dict=None, 
                       timeout:int=None, retry:int=0, msg=True):
-        self._taskq.enqueue(fname=fname, args=args, kwargs=kwargs,
+        self._taskq.xenqueue(fname=fname, args=args, kwargs=kwargs,
                             timeout=timeout,retry=retry, msg=msg)
     async def consume(self):
         while True:
-            item = await self._taskq.dequeue()
-            await self._taskq.execute(self._tasks, item)
+            item = await self._taskq.xdequeue()
+            # await self._taskq.xexecute(self._tasks, item)
+            task = asyncio.create_task(self._taskq.xexecute(self._tasks, item))
             
     # ------------------------------------------------------------------------ #
     #                                  dev_msg                                 #
@@ -72,23 +73,35 @@ if __name__ == "__main__":
     log_func = ColorLog('work', 'yellow')
     async def myfun(a,b,c):
         log_func.info('start')
-        await asyncio.sleep(3)
+        await asyncio.sleep(0.4)
         log_func.info('end')
 
     cons.set_task(myfun)
 
     async def put():
         taskq = cons.get_taskq()
-        await taskq.enqueue('myfun',(1,2,3))
-        await taskq.enqueue('myfun',(2,3,4))
+        await taskq.xenqueue('myfun',(1,0,0))
+        await asyncio.sleep(0.1)
+        await taskq.xenqueue('myfun',(2,0,0))
+        await asyncio.sleep(0.1)
+        await taskq.xenqueue('myfun',(3,0,0))
+        await asyncio.sleep(0.1)
+        # await taskq.xenqueue('myfun',(4,0,0))
+        # await taskq.xenqueue('myfun',(5,0,0))
+        # await taskq.xenqueue('myfun',(6,0,0))
+        # await taskq.xenqueue('myfun',(7,0,0))
 
     # async def run():
     #     item = await cons.dequeue()
     #     await cons.execute(item)
 
     async def main():
-        await put()
-        await cons.consume()
+        # await put()
+        # await cons.consume()
+        task_putlike = asyncio.create_task(put())
+        task_consume = asyncio.create_task(cons.consume())
+
+        await asyncio.gather(task_putlike, task_consume)
 
     asyncio.run(main())
     

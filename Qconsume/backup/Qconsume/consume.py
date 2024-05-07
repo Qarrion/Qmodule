@@ -52,8 +52,8 @@ class Consume(Taskq):
     
     async def consume(self):
         while True:
-            item = await self.dequeue()
-            await self.execute(item)
+            item = await self.xdequeue()
+            await self.xexecute(item)
             
     def _wrapper_throttle(self, async_def:Callable):
         async def wrapper(*args):
@@ -127,12 +127,12 @@ if __name__ == "__main__":
     cons.set_task(myfun)
 
     async def put():
-        await cons.enqueue('myfun',(1,2,3))
-        await cons.enqueue('myfun',(2,3,4))
+        await cons.xenqueue('myfun',(1,2,3))
+        await cons.xenqueue('myfun',(2,3,4))
 
     async def run():
-        item = await cons.dequeue()
-        await cons.execute(item)
+        item = await cons.xdequeue()
+        await cons.xexecute(item)
 
     async def main():
         await put()

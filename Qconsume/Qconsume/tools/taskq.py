@@ -18,7 +18,7 @@ class Taskq:
     #                                   async                                  #
     # ------------------------------------------------------------------------ #
     # -------------------------------- enqueue ------------------------------- #
-    async def enqueue(self, fname:str, args:tuple=(), kwargs:dict=None, 
+    async def xenqueue(self, fname:str, args:tuple=(), kwargs:dict=None, 
                       timeout:int=None, retry:int=0, msg=True):
         """enqueue fname, args, kwargs"""
         item = (fname, args, kwargs, timeout, retry)
@@ -26,13 +26,13 @@ class Taskq:
         if msg: self._custom.debug.msg('put', fname, f"{args}",task=True)
 
     # -------------------------------- dequeue ------------------------------- #
-    async def dequeue(self, msg=True):
+    async def xdequeue(self, msg=True):
         fname, args, kwargs, timeout, retry = await self._queue.get()
         if msg : self._custom.debug.msg('get',fname, f"{args}", task=True)
         return (fname, args, kwargs, timeout, retry)
 
     # -------------------------------- execute ------------------------------- #
-    async def execute(self, tasks:dict, item:tuple):
+    async def xexecute(self, tasks:dict, item:tuple):
         """with timeout"""
         fname, args, kwargs, timeout, retry = item
         if kwargs is None : kwargs = {}
@@ -47,7 +47,7 @@ class Taskq:
             traceback.print_exc()
 
             if retry < 3:
-                await self.enqueue(fname, args, kwargs, timeout, retry+1, msg=False)
+                await self.xenqueue(fname, args, kwargs, timeout, retry+1, msg=False)
                 self._custom.warning.msg('retry',fname, f"{args}", f"retry({retry})", task=True)
             else:
                 self._custom.error.msg('fail',fname, f"{args}", f"retry({retry})", task=True)
@@ -73,9 +73,9 @@ if __name__ == "__main__":
         taskq.register(myfun)
 
         # ------------------------------- done ------------------------------- #
-        await taskq.enqueue('myfun', (1,2),{'c':3},timeout=5)
-        item = await taskq.dequeue()
-        await taskq.execute(item)
+        await taskq.xenqueue('myfun', (1,2),{'c':3},timeout=5)
+        item = await taskq.xdequeue()
+        await taskq.xexecute(item)
 
         # ------------------------------- retry ------------------------------ #
         # await taskq.enqueue('myfun', (1,2),{'c':3},timeout=2)
