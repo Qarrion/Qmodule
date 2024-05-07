@@ -106,7 +106,7 @@ class Timez():
         num_digits = len(str(int(stamp_like))) 
         print(num_digits)
         if num_digits <= 10:
-            stamp = num_digits
+            stamp = stamp_like
         else :
             divisor = 10 ** (num_digits - 10)
             stamp = stamp_like / divisor
