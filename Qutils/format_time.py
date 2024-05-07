@@ -1,11 +1,15 @@
 from datetime import datetime
 from typing import Literal
-
+import pytz
 
 class _format:
 
-    @staticmethod
-    def seconds(seconds:float,fmt:Literal['hmsf','ms7f']='hmsf'):
+    tz_dict = {
+        "KST":pytz.timezone('Asia/Seoul'),
+        "UTC":pytz.timezone('UTC')
+    }
+    @classmethod
+    def seconds(cls, seconds:float,fmt:Literal['hmsf','ms7f']='hmsf'):
         seconds_sign = '+' if seconds >= 0 else '-'
         assert seconds_sign == '+', 'invalid sign'
         seconds_hms = abs(seconds)
@@ -27,8 +31,8 @@ class _format:
             )
         return seconds_formatted
     
-    @staticmethod
-    def datetime(datetime_naive:datetime, fmt:Literal['full','hmsf','ms7f']):
+    @classmethod
+    def datetime(cls, datetime_naive:datetime, fmt:Literal['full','hmsf','ms7f']):
         assert datetime_naive.tzinfo is None, "aware invalid"
         if fmt == 'full':
             formatted_time = datetime_naive.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
@@ -38,7 +42,33 @@ class _format:
             formatted_time = datetime_naive.strftime(':%S.%f') 
         return formatted_time
     
+    @classmethod    
+    def timestamp(cls, timestamp:datetime, fmt:Literal['full','hmsf','ms7f']):
+        datetime_naive = cls._from_stamp(timestamp,'KST').replace(tzinfo=None)
+        return cls.datetime(datetime_naive, fmt)
+    
+    @classmethod
+    def _from_stamp(cls, stamp:float, tz:Literal['KST','UTC']=None):
+        stamp = cls._to_ten_digit(stamp)
+        if tz is None:
+            date_time = datetime.fromtimestamp(stamp)
+        else:
+            date_time = datetime.fromtimestamp(stamp, cls.tz_dict[tz])
+
+        return date_time
+
+    def _to_ten_digit(stamp_like:float):
+        num_digits = len(str(int(stamp_like))) 
+        if num_digits <= 10:
+            stamp = stamp_like
+        else :
+            divisor = 10 ** (num_digits - 10)
+            stamp = stamp_like / divisor
+        return stamp  
+
+
 if __name__ =='__main__':
+    import time
     print("="*50)
     sec = 2.4342
     print(sec)
@@ -51,3 +81,22 @@ if __name__ =='__main__':
     print(_format.datetime(now,'full'))
     print(_format.datetime(now,'hmsf'))
     print(_format.datetime(now,'ms7f'))
+
+    print("="*50)
+    tsp = time.time()
+    print(tsp)
+    print(_format.timestamp(tsp,'full'))
+    print(_format.timestamp(tsp,'hmsf'))
+    print(_format.timestamp(tsp,'ms7f'))
+
+
+
+
+
+
+
+
+
+    # print(_format._from_stamp(tsp,'KST'))
+    # print(_format._from_stamp(tsp,'UTC'))
+    # print(_format._from_stamp(tsp))
