@@ -38,13 +38,13 @@ class Market:
 
     # columns = ['market','korean_name','english_name','market_warning','last_updated']
     
-    def __init__(self, logger:logging.Logger=None, debug=True):
+    def __init__(self, logger:logging.Logger=None):
         self.valider = Valider(logger)
         self.parser = Parser()
         self._custom = CustomLog(logger,'async')
-        self._debug = debug
+        
 
-    def get(self, session:requests.Session=None, key:Literal['status','header','payload','remain','text']=None):
+    def get(self, session:requests.Session=None, key:Literal['status','header','payload','remain','text']=None, msg=False):
         """ >>> # return result
         result = market.get()
         result['status']
@@ -59,11 +59,11 @@ class Market:
             resp = session.get(url=self.url_market, headers=self.headers, params=self.params)
 
         rslt = self.parser.response(resp)
-        if self._debug : self._msg_result('get_market',rslt,"api") 
+        if msg : self._msg_result('get_market',rslt,"api") 
         if key is not None: rslt = rslt[key]
         return rslt
     
-    async def xget(self, xclient:httpx.AsyncClient, key:Literal['status','header','payload','remain','text']=None):
+    async def xget(self, xclient:httpx.AsyncClient, key:Literal['status','header','payload','remain','text']=None, msg=False):
         """
         >>> # 
         async with market.xclient() as xclient:
@@ -71,7 +71,7 @@ class Market:
         """
         resp = await xclient.get(url=self.url_market, headers=self.headers, params=self.params)
         rslt = self.parser.response(resp)
-        if self._debug : self._msg_result('get_market',rslt,"xapi") 
+        if msg : self._msg_result('get_market',rslt,"xapi") 
         if key is not None: rslt = rslt[key]
         return rslt
 

@@ -1,11 +1,12 @@
 # ---------------------------------------------------------------------------- #
 #     https://docs.upbit.com/reference/%EB%B6%84minute-%EC%BA%94%EB%93%A4-1    #
 # ---------------------------------------------------------------------------- #
+from re import L
 import httpx
 from Qupbit.utils.logger_custom import CustomLog
 from Qupbit.tools.parser import Parser
 from Qupbit.tools.timez import Timez
-from datetime import datetime
+from datetime import datetime, timedelta
 from dateutil import parser
 from typing import Literal, List
 import requests
@@ -29,8 +30,10 @@ class Candle:
     def get(self, session:requests.Session=None, 
             market:str='KRW-BTC', to:str=None, count:int=200, tz:Literal['UTC','KST']='KST',
             key:Literal['status','header','payload','remain','text']=None):
-        """ >>> return result
-        # status, header, payload, remain[group, min, sec], text"""
+        """ >>> # 
+        totz = self._arg_to(date_time_str=to, tz=tz) if to is not None else None
+        return result
+        """
 
         totz = self._arg_to(date_time_str=to, tz=tz) if to is not None else None
         params=dict(market = market, count = count, to = totz)
@@ -56,7 +59,7 @@ class Candle:
         if key is not None: rslt = rslt[key]
         return rslt		
 
-    def _arg_to(self, date_time_str:str, tz:Literal['UTC','KST']='KST'):
+    def _arg_to(self, date_time_str:str, tz:Literal['UTC','KST']='KST') -> str:
         date_time = parser.parse(date_time_str)
         if self.timez.is_aware(date_time):
             date_time_aware = self.timez.as_timezone(date_time, tz)
@@ -69,6 +72,22 @@ class Candle:
             to = date_time_aware.isoformat(sep='T',timespec='seconds')
         return to
     
+    def to_ftime(self, naive:datetime, debug=False):
+        """>>> return (last_close, last_close)"""
+        assert not self.timez.is_aware(naive) , "invalid aware datetime"
+
+
+        last_trade = naive.replace(second=0,microsecond=0)
+        last_close = last_trade + timedelta(minutes=-1)
+
+        naive_str = self.timez.to_str(naive,2)
+        close_str = self.timez.to_str(last_close,2)
+        trade_str = self.timez.to_str(last_trade,2)
+
+        if debug: print(f" + naive({naive_str}) close({close_str}), trade({trade_str})")
+
+        return (close_str, trade_str)
+        
     def to_rows(self, payload:List[dict]):
 
         selected_rows =[
@@ -102,19 +121,19 @@ if __name__=='__main__':
     print(resp)
     print(pd.DataFrame(resp['payload']))
     resp = candle.get(None, 'KRW-ETH', None, 5,'KST','payload')
-    print(resp)
+    # print(resp[0:5])
 
-    eprint('rows') 
-    print(candle.to_rows(resp))
+    # eprint('rows') 
+    # print(candle.to_rows(resp))
     # ------------------------------------------------------------------------ #
     # eprint('get') 
-    # to ='2021-10-10T00:00:00+09:00'
+    to ='2021-10-10T00:00:00+09:00'
     # print(to)
     # candle._arg_to(to,tz='UTC')
     # candle._arg_to(to,tz='KST')
 
-    # resp = candle.get('KRW-ETH', None, 5,'KST')
-    # print(pd.DataFrame(resp['payload']))
+    resp = candle.get(None, 'KRW-ETH', None, 5,'KST')
+    print(pd.DataFrame(resp['payload']))
 
     # resp0 = candle.get('KRW-BTC', to, 5,'KST')
     # print(pd.DataFrame(resp0['payload']))

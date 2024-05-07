@@ -9,6 +9,7 @@ import httpx
 class Upbit:
     def __init__(self, logger:logging.Logger):
         self._custom  = CustomLog(logger,'async')
+        self._custom.info.msg('Upbit')
         self.market = Market(logger)
         self.candle = Candle(logger)
 
@@ -17,24 +18,28 @@ class Upbit:
         return httpx.AsyncClient()
 
     def get_market(self, session:requests.Session=None, quote:str=None, base:str=None) -> list:
+        """+ response -> result -> payload -> to_load"""
         payload = self.market.get(session,'payload')
         filtered = self.market.parser.market(payload, 'market', quote=quote, base=base)
         rows = self.market.to_rows(filtered)
         return rows
 
     async def xget_market(self, xclient:httpx.AsyncClient, quote:str=None, base:str=None) -> list:
+        """+ response -> result -> payload -> to_load"""
         payload = await self.market.xget(xclient,'payload')
         filtered = self.market.parser.market(payload, 'market', quote=quote, base=base)
         rows = self.market.to_rows(filtered)
         return rows
 
     def get_candle(self,session:requests.Session=None,market:str='KRW-BTC',to:str=None,count:int=200):
+        """+ response -> result -> payload -> to_load"""
         payload = self.candle.get(
             session=session,market=market,to=to,count=count,tz='KST',key='payload')
         rows = self.candle.to_rows(payload)
         return rows
     
     async def xget_candle(self, xclient:httpx.AsyncClient,market:str='KRW-BTC',to:str=None,count:int=200):
+        """+ response -> result -> payload -> to_load"""
         payload = await self.candle.xget(
             xclient=xclient,market=market,to=to,count=count,tz='KST',key='payload')
         rows = self.candle.to_rows(payload)
