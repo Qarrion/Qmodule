@@ -1,13 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timezone,timedelta
 from typing import Literal
 import pytz
 
 class _format:
+    
+    kst = timezone(timedelta(hours=9))
 
-    tz_dict = {
-        "KST":pytz.timezone('Asia/Seoul'),
-        "UTC":pytz.timezone('UTC')
-    }
     @classmethod
     def seconds(cls, seconds:float,fmt:Literal['hmsf','ms7f']='hmsf'):
         seconds_sign = '+' if seconds >= 0 else '-'
@@ -48,13 +46,9 @@ class _format:
         return cls.datetime(datetime_naive, fmt)
     
     @classmethod
-    def _from_stamp(cls, stamp:float, tz:Literal['KST','UTC']=None):
+    def _from_stamp(cls, stamp:float):
         stamp = cls._to_ten_digit(stamp)
-        if tz is None:
-            date_time = datetime.fromtimestamp(stamp)
-        else:
-            date_time = datetime.fromtimestamp(stamp, cls.tz_dict[tz])
-
+        date_time = datetime.fromtimestamp(stamp, cls.kst)
         return date_time
 
     def _to_ten_digit(stamp_like:float):
