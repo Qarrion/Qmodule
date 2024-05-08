@@ -8,6 +8,30 @@ import asyncio, time
 
 
 class Limiter:
+    """
+    >>> # initiate
+    limiter = Limiter()
+    limiter.set_rate(3, 1, 'outflow')
+
+    >>> # define
+    async def xfunc(x):
+        print(f'start {x}')
+        await asyncio.sleep(0.5)
+        print(f'finish {x}')
+
+    >>> # wrapper
+    xrfunc = limiter.wrapper(xfunc)
+
+    >>> # main
+    async def main():
+        tasks = []
+        for _ in range(10):
+            task = asyncio.create_task(xrfunc(_))
+            tasks.append(task)
+        await asyncio.gather(*tasks)
+    asyncio.run(main())
+    """
+
     def __init__(self, name:str='limiter'):
         
         try:
