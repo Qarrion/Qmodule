@@ -1,7 +1,7 @@
 from Qproduce.tools.timer import Timer
 from Qproduce.tools.nowst import Nowst
 from typing import Literal, Callable, List, Iterable
-import logging, asyncio
+import asyncio
 
 from Qproduce.utils.logger_custom import CustomLog
 
@@ -30,12 +30,20 @@ class Produce:
     await prod.produce()
 
     >>> # prod loop_task
-    p_worker = Produce(logger)
-    p_worker.set_timer('minute_at_seconds',10)
-    p_worker.set_task([work1, work2])
-    await p_worker.produce()
+    p_work = Produce(logger)
+    p_work.set_timer('minute_at_seconds',10)
+    p_work.set_task([work1, work2])
+    await p_work.produce()
     """
-    def __init__(self, logger:logging.Logger = None):
+    def __init__(self, name:str='produce'):
+        
+        try:
+            from Qlogger import Logger
+            logger = Logger(name,'head')
+        except ModuleNotFoundError as e:
+            logger = None
+            print(f"\033[31m No Module Qlogger \033[0m")
+
         self._custom = CustomLog(logger,'async')
         self._custom.info.msg('Produce')
         self._timer = Timer(logger)
@@ -114,9 +122,9 @@ class Produce:
 
     async def _await_with_timeout(self, async_def:Callable, timeout:int, msg = False):
         try:
-            if msg : self._custom.msg('task', self._custom.arg(async_def.__name__,3,'l',"-"), frame='produce', offset=Core.offset)
+            if msg : self._custom.info.msg('task', self._custom.arg(async_def.__name__,3,'l',"-"), frame='produce', offset=Core.offset)
             await asyncio.wait_for(async_def(), timeout)
-            if msg : self._custom.msg('task', self._custom.arg(async_def.__name__,3,'r',"-"), frame='produce', offset=Core.offset)
+            if msg : self._custom.info.msg('task', self._custom.arg(async_def.__name__,3,'r',"-"), frame='produce', offset=Core.offset)
 
         except asyncio.TimeoutError:
             print(f'Timeout!')
@@ -131,7 +139,6 @@ if __name__ == "__main__":
     #                                   base                                   #
     # ------------------------------------------------------------------------ #
     from Qproduce.utils.logger_color import ColorLog
-    log_blue = ColorLog('prod', 'blue')
     # log_green = ColorLog('prod', 'green')
     logger_y = ColorLog('work', 'yellow')
 
@@ -148,24 +155,24 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------ #
     #                                 sync test                                #
     # ------------------------------------------------------------------------ #
-    p_xsynctime =  Produce(log_blue)
+    p_xsynctime =  Produce('p_sync')
     p_xsynctime.set_timer('minute_at_seconds',55, msg=False)
     p_xsynctime.set_preset('xsync_time')
 
-    p_divider =  Produce(log_blue)
+    p_divider =  Produce('p_div')
     p_divider.set_timer('minute_at_seconds',0,msg=False)
     p_divider.set_preset('msg_divider')
     
-    p_worker =  Produce(log_blue)
-    p_worker.set_timer('minute_at_seconds',10)
-    p_worker.set_task(work1)
-    p_worker.set_task(work2)
+    p_work =  Produce('p_work')
+    p_work.set_timer('minute_at_seconds',10)
+    p_work.set_task(work1)
+    p_work.set_task(work2)
 
 
     async def produce():
         task1 = asyncio.create_task(p_xsynctime.produce())
-        task2 = asyncio.create_task(p_divider.produce())
-        task3 = asyncio.create_task(p_worker.produce())
+        task2 = asyncio.create_task(p_divider.produce(msg=False))
+        task3 = asyncio.create_task(p_work.produce())
 
         await asyncio.gather(task1, task2, task3)
 

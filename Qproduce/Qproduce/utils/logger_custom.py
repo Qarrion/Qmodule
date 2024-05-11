@@ -1,3 +1,5 @@
+# -------------------------------- ver 240510 -------------------------------- #
+
 from datetime import datetime, timedelta
 import threading
 import contextvars
@@ -27,28 +29,23 @@ class CustomLog:
         # -------------------------------------------------------------------- #
         #                                header                                #
         # -------------------------------------------------------------------- #
-        #! str_frame = self._get_frame(n_back=frame+1) if frame is not None else ""
         str_frame = self._get_frame(frame=frame)
         str_status = status
-
         HEADER = self._get_header(status=str_status,frame=str_frame)
+
         # -------------------------------------------------------------------- #
         #                                 body                                 #
         # -------------------------------------------------------------------- #
         str_args = ', '.join([f"{arg:<12}" for arg in args]) 
-        
         BODY = f" | {str_args:<40}" 
-        # BODY = f"{str_args:<40}" 
-        
+
         # -------------------------------------------------------------------- #
         #                                footter                               #
         # -------------------------------------------------------------------- #
         str_task = f" | {asyncio.current_task().get_name():<10}" if task else ""
         str_offset = self._get_offset(offset) if offset is not None else ""
-
         FOOTTER = f"{str_offset}{str_task}"
-        # if offset is not None : 
-            
+        # ------------------------------- final ------------------------------ #
         LOG_MSG = f"{HEADER}{BODY}{FOOTTER}"
         self._log_chained(LOG_MSG) 
 
@@ -93,7 +90,7 @@ class CustomLog:
     
     def _get_offset(self, offset:float):
         server_now = datetime.now() + timedelta(seconds=offset)
-        server = f" | {server_now.strftime('%Y-%m-%d %H:%M:%S')},{server_now.strftime('%f')[:3]}({offset:+.4f})"
+        server = f" | {server_now.strftime('%H:%M:%S')},{server_now.strftime('%f')[:3]}({offset:+.4f})"
         return server
     
     def _log_chained(self, msg):
