@@ -1,3 +1,5 @@
+# -------------------------------- ver 240510 -------------------------------- #
+
 from datetime import datetime, timedelta
 import threading
 import contextvars
@@ -60,12 +62,33 @@ class CustomLog:
         DIV_MSG = f"{BODY}{FOOTTER}"
         self._log_chained(DIV_MSG) 
 
-    #! def _get_frame(self, n_back=1):
-    #!     frame = inspect.currentframe()
-    #!     for _ in range(n_back):
-    #!         frame = frame.f_back
-    #!     return frame.f_code.co_name
-    #! ------------------------------------------------------------------------ #
+    def arg(self, text, width:Literal[1,2,3],align:Literal['left','right']='Left', fill="="):
+        if width ==1:
+            w=12
+        elif width ==2:
+            w=26
+        else:
+            w=40
+        if align in ['left','l']:
+            t = f"{text:<{w}}"
+        elif align in ['right','r']:
+            t = f"{text:>{w}}"
+
+        return t.replace(" ", fill)
+
+    def task_name(self, prefix:str=None):
+        if prefix is None:
+            prefix = self.logger.name
+
+        tasks = [t.get_name() for t in asyncio.all_tasks() if t.get_name().startswith(prefix)]
+        # print(tasks)
+        if tasks :
+            used = [int(t.get_name().split('-')[-1]) for t in asyncio.all_tasks() if t.get_name().startswith(prefix)]
+            newi = next((x for x in range(max(used) + 10) if x not in used),0)
+        else:
+            newi = 0
+        return f"{prefix}-{newi}"
+
     def _get_frame(self, frame):
         if frame is None:
             rslt = ""
@@ -78,7 +101,6 @@ class CustomLog:
                 cframe = cframe.f_back
             rslt = cframe.f_code.co_name
         return rslt
-    #! ------------------------------------------------------------------------ #
     
     def _get_header(self, status, frame):
         nspace = 18 - (len(frame) +len(status))
@@ -200,3 +222,9 @@ if __name__ == "__main__":
     print('# ---------------------------------- div --------------------------------- #')
     customlog.info.div()
     customlog.info.div(offset=0.1)
+
+    print('# ---------------------------------- arg --------------------------------- #')
+
+    customlog.info.msg('test', "hi", customlog.arg("left",1,'left',"-"))
+    customlog.info.msg('test', "hi", customlog.arg("left",2,'left',"-"))
+    customlog.info.msg('test', "hi", customlog.arg("left",2,'r',"-"))
