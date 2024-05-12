@@ -65,13 +65,13 @@ class Produce:
     # ------------------------------------------------------------------------ #
     def get_timer(self, every:Literal['minute_at_seconds','hour_at_minutes','day_at_hours',
                                     'every_seconds','every_minutes','every_hours'], 
-                at:float=5, tz:Literal['KST','UTC']='KST',msg=True):
+                at:float=5, tz:Literal['KST','UTC']='KST',msg=False):
         """ get timer preset"""
         return self._timer.wrapper(every,at,tz,msg)
 
     def set_timer(self, every:Literal['minute_at_seconds','hour_at_minutes','day_at_hours',
                                     'every_seconds','every_minutes','every_hours'], 
-                at:float=5, tz:Literal['KST','UTC']='KST',msg=True):
+                at:float=5, tz:Literal['KST','UTC']='KST',msg=False):
         self.timer = self.get_timer(every,at,tz,msg)
 
     # ------------------------------------------------------------------------ #
@@ -80,7 +80,7 @@ class Produce:
     def set_task(self, async_def:Callable, fname:str=None):
         if fname is None : fname = async_def.__name__ 
         self._tasks[fname] = async_def
-
+        self._custom.info.msg('xdef', fname)
 
     def set_preset(self, preset:Literal['xsync_time','msg_divider']):
         """
@@ -113,7 +113,6 @@ class Produce:
             await self._xadjust_offset(tgt_dtm, msg = False)
             for tname,tfunc in self._tasks.items():
                 if timeout is None: timeout = 50
-                # if msg : self._custom.msg('task', self._custom.arg(tname,3,'l',"-"), frame='produce', offset=Core.offset)
                 asyncio.create_task(self._await_with_timeout(tfunc,timeout,msg=msg))
             await self._xadjust_offset(tgt_dtm, msg = False)
 

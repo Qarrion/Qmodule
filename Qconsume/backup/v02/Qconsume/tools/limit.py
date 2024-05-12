@@ -72,7 +72,7 @@ class Limit:
     def __init__(self, logger:logging.Logger=None):
         self._custom = CustomLog(logger,'async')
 
-    def set_rate(self, max_worker:int, seconds:float, limit:Literal['inflow','outflow']):
+    def set_rate(self, max_worker:int, seconds:float, limit:Literal['inflow','outflow','midflow']):
         self._max_worker = max_worker
         self._seconds = seconds
         self._limit_type = limit
@@ -132,11 +132,3 @@ class Limit:
         
         if seconds > 0.0:
             await asyncio.sleep(seconds)
-
-        # if seconds > 0:
-        #     #?  tsp_ref 여기 출력 양식 변경
-        #     self._custom.debug.msg(self._limit_type, tsp_ref, seconds,frame='wait',task=True)
-        #     await asyncio.sleep(seconds)
-        # else:
-        #     self._custom.debug.msg(self._limit_type, tsp_ref, 0,frame='wait',task=True)
-

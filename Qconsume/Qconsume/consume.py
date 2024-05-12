@@ -1,107 +1,97 @@
 import asyncio
-import logging
 from typing import Literal, Callable
 
 from Qconsume.tools.taskq import Taskq
-from Qconsume.tools.limit import Limit
-import time
 
 from Qconsume.utils.logger_custom import CustomLog
 
 
-
+#TODO docstring -> example -> aeqzro
 class Consume:
     """
     >>> #basic
-    cons = Consume(logger)
-    cons.set_limiter(5,1,'outflow')
+    cons = Consume()
+    taskq = cons.taskq
 
+    >>> #produce
+    async def produce():
+        taskq.xenqueue(fname='consumer', args:tuple=(), kwargs:dict=None, 
+                      timeout:int=None, retry:int=0, msg=True)
+    
+    >>> #consume
+    async def consume():
+        await asyncio.create_task(cons.cumsume())
     """
-    def __init__(self, logger: logging.Logger = None):
+    def __init__(self, name:str='consume'):
+
+        try:
+            from Qlogger import Logger
+            logger = Logger(name, 'head')
+        except ModuleNotFoundError as e:
+            logger = None
+
         self._custom = CustomLog(logger,'async')
         self._custom.info.msg('Consume')
 
-        self._taskq = Taskq(logger)
-        self._limit = Limit(logger)
+        self._taskq = Taskq(logger) 
 
         self._tasks = {}
 
-    def set_limiter(self, max_worker:int, seconds:float, limit:Literal['inflow','outflow']):
-        self._is_limiter = True
-        self._limit.set_rate(max_worker=max_worker, seconds=seconds,limit=limit)
-
     def set_task(self, async_def: Callable, fname: str = None):
-        self._warning_default_core('consumer.register()')
         if fname is None : fname = async_def.__name__ 
-        self._tasks[fname] = self._limit._wrapper_throttle(async_def)
-        self._custom.info.msg('', fname, task=False)
+        self._tasks[fname] = async_def
+        self._custom.info.msg('xdef', fname)
 
-    def _warning_default_core(self, where):
-        if not hasattr(self, '_is_limiter'):
-            print(f"\033[31m [Warning in '{where}'] limiter has not been set! \033[0m")
-
-    def get_taskq(self):
+    def share_taskq(self):
+        """ >>> # in producer task : 
+        taskq.xenqueue(fname, args, kwargs, timeout, retry)"""
         return self._taskq
 
     @property
     def taskq(self):
         return self._taskq
     
-    def enqueue(self, fname:str, args:tuple=(), kwargs:dict=None, 
+    async def xenqueue(self, fname:str, args:tuple=(), kwargs:dict=None, 
                       timeout:int=None, retry:int=0, msg=True):
-        self._taskq.xenqueue(fname=fname, args=args, kwargs=kwargs,
+        
+        await self._taskq.xenqueue(fname=fname, args=args, kwargs=kwargs,
                             timeout=timeout,retry=retry, msg=msg)
-    async def consume(self):
+        
+    async def consume(self,msg=True):
         while True:
             item = await self._taskq.xdequeue()
-            # await self._taskq.xexecute(self._tasks, item)
-            task = asyncio.create_task(self._taskq.xexecute(self._tasks, item))
+            task = asyncio.create_task(self._taskq.xexecute(self._tasks, item,msg=msg))
             
     # ------------------------------------------------------------------------ #
     #                                  dev_msg                                 #
     # ------------------------------------------------------------------------ #
-
+    def _msg_consume(self):
+        if self._taskq.is_task_start():
+            if msg : self._custom.info.msg()
+        elif self._taskq.is_tasks_finish():
+            if msg : self._custom.info.msg()
+            self._custom.info.msg('task', self._custom.arg(async_def.__name__,3,'r',"-"), frame='produce', offset=Core.offset)
 
 if __name__ == "__main__":
-    from Qconsume .utils .logger_color import ColorLog
+    cons = Consume()
 
-    logger = ColorLog('cons','blue')
-    
-    cons = Consume(logger)
-    cons.set_limiter(5, 1, 'inflow')
+    # ------------------------------- producer ------------------------------- #
+    taskq = cons.taskq
+    async def producer():
+        await taskq.xenqueue(fname='consumer',args =(1,))
 
-    log_func = ColorLog('work', 'yellow')
-    async def myfun(a,b,c):
-        log_func.info('start')
-        await asyncio.sleep(0.4)
-        log_func.info('end')
+        
+    # ------------------------------- consumer ------------------------------- #
+    async def consumer(var):
+        await asyncio.sleep(var)
 
-    cons.set_task(myfun)
-
-    async def put():
-        taskq = cons.get_taskq()
-        await taskq.xenqueue('myfun',(1,0,0))
-        await asyncio.sleep(0.1)
-        await taskq.xenqueue('myfun',(2,0,0))
-        await asyncio.sleep(0.1)
-        await taskq.xenqueue('myfun',(3,0,0))
-        await asyncio.sleep(0.1)
-        # await taskq.xenqueue('myfun',(4,0,0))
-        # await taskq.xenqueue('myfun',(5,0,0))
-        # await taskq.xenqueue('myfun',(6,0,0))
-        # await taskq.xenqueue('myfun',(7,0,0))
-
-    # async def run():
-    #     item = await cons.dequeue()
-    #     await cons.execute(item)
+    cons.set_task(consumer)
 
     async def main():
-        # await put()
-        # await cons.consume()
-        task_putlike = asyncio.create_task(put())
+        task_produce = asyncio.create_task(producer())
         task_consume = asyncio.create_task(cons.consume())
 
-        await asyncio.gather(task_putlike, task_consume)
+        await asyncio.gather(task_produce,task_consume)
+
 
     asyncio.run(main())
-    

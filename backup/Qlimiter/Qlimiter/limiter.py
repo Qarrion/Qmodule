@@ -1,97 +1,82 @@
-import asyncio
-import logging
-from typing import Literal, Callable
 
-from Qlimiter.tools.taskq import Taskq
-import time
+from Qlimiter.utils.logger_custom import CustomLog
+from Qlimiter.utils.format_time import TimeFormat
+from typing import Callable, Literal
+
+import asyncio, time
 
 
 
-class Limiter(Taskq):
+class Limiter:
+    """
+    >>> # initiate
+    limiter = Limiter()
+    limiter.set_rate(3, 1, 'outflow')
 
-    def __init__(self, logger: logging.Logger = None):
-        super().__init__(logger)
-        self._custom.info.msg('Limiter')
+    >>> # define
+    async def xfunc(x):
+        print(f'start {x}')
+        await asyncio.sleep(0.5)
+        print(f'finish {x}')
 
-        self._limit:str = None
-        self._max_worker:int = None
-        self._seconds:int = None
+    >>> # wrapper
+    xrfunc = limiter.wrapper(xfunc)
 
-        self._semaphore:asyncio.Semaphore = None
+    >>> # main
+    async def main():
+        tasks = []
+        for _ in range(10):
+            task = asyncio.create_task(xrfunc(_))
+            tasks.append(task)
+        await asyncio.gather(*tasks)
+    asyncio.run(main())
+    """
 
-    def limiter(self, max_worker:int, seconds:float, limit:Literal['inflow','outflow']):
+    def __init__(self, name:str='limiter'):
+        
+        try:
+            from Qlogger import Logger
+            logger = Logger(name,'head')
+        except ModuleNotFoundError as e:
+            logger = None
+
+        self._custom = CustomLog(logger,'async')
+        self._custom.info.msg("Limiter")
+
+    def set_rate(self, max_worker:int, seconds:float, limit:Literal['inflow','outflow','midflow']):
         self._max_worker = max_worker
         self._seconds = seconds
-        self._limit = limit
+        self._limit_type = limit
 
         self._semaphore = asyncio.Semaphore(max_worker)
-        # self._custom.info.msg(limit,f"max({max_worker})",f"sec({seconds})",f"timeout({timeout})")
         self._custom.info.msg(limit,f"max({max_worker})",f"sec({seconds})")
-    
-    # ------------------------------------------------------------------------ #
-    #                                overriding                                #
-    # ------------------------------------------------------------------------ #
-    def register(self, async_def: Callable, fname: str = None):
-        if fname is None : fname = async_def.__name__ 
-        self._registry[fname] = self._wrapper_throttle(async_def)
-        self._custom.info.msg('', fname, task=False)
 
-
-    @property
-    def queue(self):
-        return self.queue
-    
-    async def consumer(self):
-        while True:
-            item = await self.enqueue()
-            await self.execute(item)
-            
-    def _wrapper_throttle(self, async_def:Callable):
-        async def wrapper(*args):
+    def wrapper(self, async_def:Callable):
+        """throttle"""
+        async def _wrapper(*args):
             propagate_exception = None
-            # msg_arg = (async_def.__name__, self._semaphore, self._max_worker)
+
             async with self._semaphore:
-                # self.msg.debug.semaphore("acquire", *msg_arg) 
-                self._msg_semaphore('acquire',async_def.__name__)
+                # self._msg_semaphore('acquire',async_def.__name__)
+                # if self._custom.info.msg('task', self._custom.arg(async_def.__name__,3,'l',"-"), frame='produce')
                 # ------------------------------------------------------------ #
                 try: 
                     tsp_start = time.time()     
                     result = await async_def(*args)
 
                 except Exception as e:
-                    # self.msg.error.exception('job',async_def.__name__, args)
                     self._custom.error.msg('job',async_def.__name__,str(args))
                     propagate_exception = e
                 # ------------------------------------------------------------ #
                 finally:
                     tsp_finish = time.time()
                     await self._wait_reset(tsp_start, tsp_finish)
-                    # self.msg.debug.semaphore("release", *msg_arg) 
-                    self._msg_semaphore('release',async_def.__name__)
+                    # self._msg_semaphore('release',async_def.__name__)
                     #? propagate exception to retry
                     if propagate_exception:
                         raise propagate_exception
-        return wrapper
+        return _wrapper
     
-    async def _wait_reset(self, tsp_start:float, tsp_finish):
-        #! TODO msg replace with methods _msg_xxx
-        if self._limit == 'inflow':
-            tsp_ref = tsp_start
-        elif self._limit == 'outflow':
-            tsp_ref = tsp_finish
-        elif self._limit == 'midflow':
-            tsp_ref = (tsp_start+tsp_finish)/2
-
-        seconds = tsp_ref + self._seconds - time.time()
-        if seconds > 0:
-            #?  tsp_ref 여기 출력 양식 변경
-            self._custom.debug.msg(self._limit, tsp_ref, seconds,frame='wait',task=True)
-            await asyncio.sleep(seconds)
-        else:
-            self._custom.debug.msg(self._limit, tsp_ref, 0,frame='wait',task=True)
-    # ------------------------------------------------------------------------ #
-    #                                  dev_msg                                 #
-    # ------------------------------------------------------------------------ #
     def _msg_semaphore(self, context:Literal['acquire','release'], fname):
         if context=="acquire":
             queue = f">s({self._semaphore._value}/{self._max_worker})"
@@ -101,33 +86,80 @@ class Limiter(Taskq):
             var01 = f">{queue:>11}"
         self._custom.debug.msg(context,fname,var01,frame='sema',task=True)
 
-if __name__ == "__main__":
-    from Qlimiter .utils .logger_color import ColorLog
+    async def _wait_reset(self, tsp_start:float, tsp_finish):
+        #! TODO msg replace with methods _msg_xxx
+        if self._limit_type == 'inflow':
+            tsp_ref = tsp_start
+        elif self._limit_type == 'outflow':
+            tsp_ref = tsp_finish
+        elif self._limit_type == 'midflow':
+            tsp_ref = (tsp_start+tsp_finish)/2
 
-    logger = ColorLog('limiter','blue')
-    
-    limiter = Limiter(logger)
-    limiter.limiter(5, 1, 'inflow')
+        seconds = tsp_ref + self._seconds - time.time()
+        seconds = max(seconds, 0.0)
+        msg_sec = TimeFormat.seconds(seconds,'hmsf')
+        msg_ref = TimeFormat.timestamp(tsp_ref,'hmsf')
+        self._custom.debug.msg(
+            self._limit_type,f"unit s ({self._seconds})",
+                msg_ref,msg_sec, task=True,frame='wait')
+        
+        if seconds > 0.0:
+            await asyncio.sleep(seconds)
 
-    log_func = ColorLog('work', 'yellow')
-    async def myfun(a,b,c):
-        log_func.info('start')
-        await asyncio.sleep(3)
-        log_func.info('end')
 
-    limiter.register(myfun)
+if __name__ =="__main__":
+    limiter = Limiter()
+    limiter.set_rate(3, 1, 'outflow')
 
-    async def put():
-        await limiter.enqueue('myfun',(1,2,3))
-        await limiter.enqueue('myfun',(2,3,4))
 
-    async def run():
-        item = await limiter.dequeue()
-        await limiter.execute(item)
+    # class 
+
+    #     def _unused_index(self):
+    #         tasks = [t.get_name() for t in asyncio.all_tasks() if t.get_name().startswith(self._prefix)]
+    #         usedi = [int(name.split('-')[-1]) for name in tasks]
+    #         i=0
+    #         while i in usedi:
+    #             i+=1
+    #         return i
+
+    #     async def run(self):
+    #         await asyncio.sleep(self.timer.remaining_seconds())
+    #         while not self._stop_event.is_set():
+    #             for i, job in enumerate(self._jobs):
+    #                 asyncio.create_task(job(),name = f'repeater-{self._unused_index()}')
+    #             await asyncio.sleep(self.timer.remaining_seconds())
+
+    async def xfunc(x):
+        print(f'start {x}')
+        await asyncio.sleep(0.5)
+        print(f'finish {x}')
+
+    xrfunc = limiter.wrapper(xfunc)
 
     async def main():
-        await put()
-        await run()
+        tasks = []
+        for _ in range(20):
+            # task = asyncio.create_task(xrfunc(_),name=limiter._custom.ith() )
+            task = asyncio.create_task(xrfunc(_),name=limiter._custom.task_name('lim'))
 
+        await asyncio.sleep(10)
     asyncio.run(main())
+
+
     
+
+# def init(alist:list):
+#     i=0
+#     while i not in alist:
+#         i+=1
+#     return i
+
+
+# async def main():
+#     tasks = []
+#     for _ in range(20):
+#         task = asyncio.create_task(xrfunc(_))
+#         tasks.append(task)
+
+#     await asyncio.gather(*tasks)
+# asyncio.run(main())

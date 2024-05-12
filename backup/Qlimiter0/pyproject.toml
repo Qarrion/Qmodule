@@ -1,6 +1,7 @@
 [project]
 name = "Qlimiter"
 version = "0.0.1"
+dependencies = []
 
 [tool.setuptools]
 packages = ["Qlimiter"]
