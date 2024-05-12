@@ -8,3 +8,8 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
+
+
+if __name__=='__main__':
+    logger.info('hi')
+    logger.debug('hihi')

@@ -2,7 +2,7 @@ from datetime import datetime, timezone,timedelta
 from typing import Literal
 import pytz
 
-class _format:
+class TimeFormat:
     
     kst = timezone(timedelta(hours=9))
 
