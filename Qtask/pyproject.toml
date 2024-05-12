@@ -1,0 +1,7 @@
+[project]
+name = "Qtask"
+version = "0.0.1"
+dependencies = ["ntplib","pytz"]
+
+[tool.setuptools]
+packages = ["Qtask"]
