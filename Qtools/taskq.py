@@ -1,160 +1,123 @@
-# -------------------------------- ver 240511 -------------------------------- #
-# frame, xname
-# -------------------------------- ver 240512 -------------------------------- #
-# TaskQue
+import asyncio
+import logging
+from typing import Callable
+
 from Qutils.logger_custom import CustomLog
 
-from typing import Callable, Literal
-import asyncio, logging, traceback
 
 
-    
+
 
 class Taskq:
 
     def __init__(self, logger:logging.Logger=None):
         self._custom = CustomLog(logger,'async')
+
+    # def __init__(self, name:str='channel'):
         
+    #     try:
+    #         from Qlogger import Logger
+    #         logger = Logger(name,'head')
+    #     except ModuleNotFoundError as e:
+    #         logger = None
+    #         print(f"\033[31m No Module Qlogger \033[0m")
+
+        self._custom = CustomLog(logger,'async')
+        # self._custom.info.msg('Taskq',name)
+
         self._queue = asyncio.Queue()
-        # self._task = {}
+        self._status = 'stop'
 
-        self._frame = '<taskq>'
+    def _msg_args(self, status, args, kwargs, retry):
+        if kwargs is None:
+            text= f"retry({retry}), {args}"    
+        else:
+            text= f"retry({retry}), {args + tuple(kwargs.values())}"
+        self._custom.info.msg(status, text,frame=2)
 
-        self._is_all_done = True
-
-    # def set_task(self, async_def: Callable, fname: str = None, msg=False):
-    #     if fname is None : fname = async_def.__name__ 
-    #     self._task[fname] = async_def
-    #     if msg: self._custom.info.msg('set_task', fname, frame=self._frame)
-
-    # ------------------------------------------------------------------------ #
-    #                                   async                                  #
-    # ------------------------------------------------------------------------ #
-    # -------------------------------- enqueue ------------------------------- #
-    async def xput_queue(self, fname:str, args:tuple=(), kwargs:dict=None, 
-                      timeout:int=None, retry:int=0, msg=False):
-        """enqueue fname, args, kwargs"""
-        item = (fname, args, kwargs, timeout, retry)
+    async def xput_queue(self, 
+        args:tuple=(),kwargs:dict=None, retry:int=0, msg=False):
+        item = (args,kwargs,retry)
         await self._queue.put(item)
-        if msg: self._custom.info.msg('xput_que', fname, f"{args}", frame=self._frame)
+        if msg: self._msg_args('item',args, kwargs, retry)
 
-
-    # -------------------------------- dequeue ------------------------------- #
-    async def xget_queue(self, msg=False):
-        fname, args, kwargs, timeout, retry = await self._queue.get()
-        if msg : self._custom.info.msg('xget_que',fname, f"{args}",frame=self._frame)
-        return (fname, args, kwargs, timeout, retry)
-
-    # -------------------------------- execute ------------------------------- #
-    async def xrun_queue(self,tasks:dict, item:tuple, msg=False):
-        """with timeout"""        
-        fname, args, kwargs, timeout, retry = item
-        if kwargs is None : kwargs = {}
-        # if not self._task:
-        #     print(f"\033[31m [Warning in 'xexecute()'] tasks has not been set! \033[0m")
-
+    async def xget_queue(self,msg=False):
+        args, kwargs, retry = await self._queue.get()
+        if msg: self._msg_args('item',args, kwargs, retry)
+        return (args, kwargs, retry)
+        
+    async def xrun_queue(self, xdef:Callable, item:tuple, timeout:int=None, maxtry=3, msg=False):
+        print( self._queue._unfinished_tasks, self._status)
+        self._msg_consume(xdef,msg=True)
+        args, kwargs, retry = item
         try:
-            if msg : self._custom.info.msg('xrun_que', fname, f"{args}",frame=self._frame)
-            await asyncio.wait_for(tasks[fname](*args, **kwargs), timeout=timeout)
-            
-        except Exception as e:
-            self._custom.warning.msg('except', fname, f"{args}", e.__class__.__name__,frame=self._frame)
-            # print(str(e))
-            # traceback.print_exc()
-
-            if retry < 3:
-                await self.xput_queue(fname, args, kwargs, timeout, retry+1, msg=False)
-                self._custom.warning.msg('retry',fname, f"{args}", f"retry({retry+1})", frame=self._frame)
+            if msg: self._msg_args('xdef',args, kwargs, retry)
+            if kwargs is None : 
+                await asyncio.wait_for(xdef(*args), timeout=timeout)
             else:
-                self._custom.error.msg('fail',fname, f"{args}", f"retry({retry})", frame=self._frame)
+                await asyncio.wait_for(xdef(*args, **kwargs), timeout=timeout)
+        except Exception as e:
+            if retry < maxtry:
+                self._custom.warning.msg('except',e.__class__.__name__)
+                await self.xput_queue(args, kwargs,retry+1,msg)
+            else:
+                self._custom.error.msg('failed',e.__class__.__name__)
         finally:
-            self._queue.task_done()
-
+            self.task_done()
+        self._msg_consume(xdef,msg=True)
+    
     def task_done(self):
         self._queue.task_done()
 
-    def is_tasks_start(self):
-        if self._queue._unfinished_tasks != 0 and self._is_all_done:
-            self._is_all_done = False
+    def is_starting(self):
+        if self._queue._unfinished_tasks != 0 and self._status=='stop':
+            self._status = 'start'
             return 1
         else:
             return 0
-    def is_tasks_finish(self):
-        if self._queue._unfinished_tasks == 0 and not self._is_all_done:
-            self._is_all_done = True
+    def is_stopping(self):
+        if self._queue._unfinished_tasks == 0 and self._status=='start':
+            self._status = 'stop'
             return 1
         else:
             return 0
 
-# ---------------------------------------------------------------------------- #
-#                               named singletone                               #
-# ---------------------------------------------------------------------------- #
-class TaskQue(Taskq):
-
-    _instances = {}
-
-    def __new__(cls, name:str, *args, **kwargs):
-        if name not in cls._instances:
-            instance = super(TaskQue, cls).__new__(cls)
-            cls._instances[name] = instance
-            instance._initialized = False
-        return cls._instances[name]
-
-    def __init__(self, name:str='taskq', msg:bool=False):
-        if not self._initialized:
-            try:
-                from Qlogger import Logger
-                logger = Logger(name, 'head')
-            except ModuleNotFoundError as e:
-                logger = None
-
-            self._name = name
-            self._custom = CustomLog(logger,'async')
-            if msg: self._custom.info.msg('TaskQue')
-
-            self._queue = asyncio.Queue()
-            self._task = {}
-            self._frame = f"<{name}>"
-            self._is_all_done = True
-            self._initialized = True
-
+    def _msg_consume(self, xdef, msg=True):
+        if self.is_starting():
+            if msg : self._custom.info.msg('task', self._custom.arg(xdef.__name__,3,'l',"-"), frame='xconsume')
+        elif self.is_stopping():
+            if msg : self._custom.info.msg('task', self._custom.arg(xdef.__name__,3,'r',"-"), frame='xconsume')
 
 if __name__ == "__main__":
 
-    async def myfun(a,b,c):
-        print('start')
-        await asyncio.sleep(3)
-        print('end')
+    # ------------------------------------------------------------------------ #
+    #                                  Channel                                 #
+    # ------------------------------------------------------------------------ #
+    # -------------------------------- common -------------------------------- #
+    taskq = Taskq()
 
+    async def xrun(x,y,z):
+        await asyncio.sleep(2)
+        print(x,y,z)
+
+    # --------------------------------- basic -------------------------------- #
     async def main():
-        # from Qtask.utils.logger_color import ColorLog
-        # logger = ColorLog('test','green')
-        from Qlogger import Logger
-        logger = Logger('task', 'head')
-        taskq = Taskq(logger)
-        # taskq.set_task(myfun,msg=True)
-
-        tasks = {}
-        tasks['myfun'] =  myfun
-        # ------------------------------- done ------------------------------- #
-        # await taskq.xenqueue('myfun', (1,2),{'c':3},timeout=5,msg=True)
-        # item = await taskq.xdequeue(msg=True)
-        # await taskq.xexecute(item,msg=True)
-
-        # ------------------------------- retry ------------------------------ #
-        await taskq.xput_queue('myfun', (1,2),{'c':3},timeout=2,msg=True)
+        await taskq.xput_queue((1,2,3), msg=True)
         item = await taskq.xget_queue(msg=True)
-        await taskq.xrun_queue(tasks, item,msg=True)
-        item = await taskq.xget_queue(msg=True)
-        await taskq.xrun_queue(tasks,item,msg=True)
-        item = await taskq.xget_queue(msg=True)
-        await taskq.xrun_queue(tasks,item,msg=True)
-        item = await taskq.xget_queue(msg=True)
-        await taskq.xrun_queue(tasks,item,msg=True)
-
+        await taskq.xrun_queue(xrun,item,msg=True)
 
     asyncio.run(main())
 
-    # loop = asyncio.get_event_loop()
-    # loop.run_until_complete(main())
-    # loop.close()
+    # ------------------------------- exception ------------------------------ #
+    # async def main():
+    #     await taskq.xput_queue((1,2,3), msg=True)
+    #     item = await taskq.xget_queue(msg=True)
+    #     await taskq.xrun_queue(xrun,item,timeout=1,msg=True)
+    #     item = await taskq.xget_queue(msg=True)
+    #     await taskq.xrun_queue(xrun,item,timeout=1,msg=True)
+    #     item = await taskq.xget_queue(msg=True)
+    #     await taskq.xrun_queue(xrun,item,timeout=1,msg=True)
+    #     item = await taskq.xget_queue(msg=True)
+    #     await taskq.xrun_queue(xrun,item,timeout=1,msg=True)
+
+    # asyncio.run(main())
