@@ -1,2 +1,2 @@
 
-from Qtask.task import Task, TaskQue, Limiter
+from Qtask.task import Task, Limiter, Channel
