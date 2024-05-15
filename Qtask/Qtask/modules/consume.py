@@ -53,7 +53,10 @@ class Consume:
         """"""
         self._consumer = xdef
         self._channel:Channel = channel
-        self._custom.info.msg('xdef', xdef.__name__, channel._name)
+        if channel is None:
+            self._custom.info.msg('xdef', xdef.__name__, 'None')
+        else:
+            self._custom.info.msg('xdef', xdef.__name__, channel._name)
 
     async def xput_channel(self,args: tuple, kwargs: dict = None, retry: int = 0, msg: bool = False):
         """arg 'channel' object should be assigned in the 'set_consumer'"""

@@ -66,7 +66,7 @@ class Produce:
         self.set_producer(_preset)
 
         if preset == 'xsync_time':
-            self._nowst.sync_offset(False)
+            self._nowst.sync_offset(True)
 
     # -------------------------------- divider ------------------------------- #
     async def work_msg_divider(self):
@@ -86,8 +86,10 @@ class Produce:
         """if self.xput_channel() is not called in 'xdef', arg 'channel' can be None"""
         self._producer = xdef
         self._channel = channel
-
-        self._custom.info.msg('xdef', xdef.__name__, channel._name)
+        if channel is None:
+            self._custom.info.msg('xdef', xdef.__name__, 'None')
+        else:
+            self._custom.info.msg('xdef', xdef.__name__, channel._name)
 
     async def xput_channel(self,args:tuple, kwargs:dict=None, retry=0, msg=False):
         """arg 'channel' object should be assigned in the 'set_producer'"""
@@ -133,26 +135,26 @@ class Produce:
     # ------------------------------------------------------------------------ #
 
 if __name__ == "__main__":
-
+ 
+    
     # ------------------------------------------------------------------------ #
     #                                  preset                                  #
     # ------------------------------------------------------------------------ #
-    # p_sync = Produce('p_sync')
-    # p_sync.set_timer('every_seconds', 5, msg=False)
-    # p_sync.set_preset('xsync_time')
+    p_sync = Produce('p_sync')
+    p_sync.set_timer('every_seconds', 10)
+    p_sync.set_preset('xsync_time')
+    p_divr = Produce('p_divr')
+    p_divr.set_timer('every_seconds', 20)
+    p_divr.set_preset('msg_divider')
 
-    # p_divr = Produce('p_divr')
-    # p_divr.set_timer('every_seconds', 10, msg=False)
-    # p_divr.set_preset('msg_divider')
 
-    # async def produce():
-    #     task1 = asyncio.create_task(p_sync.xproduce(msg=False))
-    #     task2 = asyncio.create_task(p_divr.xproduce(msg=False))
+    async def produce():
+        task1 = asyncio.create_task(p_sync.xproduce(msg=False))
+        task2 = asyncio.create_task(p_divr.xproduce(msg=False))
+        await asyncio.gather(task1, task2)
 
-    #     await asyncio.gather(task1, task2)
+    asyncio.run(produce())
 
-    # asyncio.run(produce())
-    
     # ------------------------------------------------------------------------ #
     #                                no channel                                #
     # ------------------------------------------------------------------------ #
@@ -173,27 +175,23 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------ #
     #                               with channel                               #
     # ------------------------------------------------------------------------ #
-    p_work = Produce('p_work')
-    p_work.set_timer('every_seconds', 10)
+    # p_work = Produce('p_work')
+    # p_work.set_timer('every_seconds', 10)
 
-    async def prod_task1():
-        await p_work.xput_channel(args=(1,2), msg=True)
-
-    #! set channel
-    ch01 = Channel()
-
-    p_work.set_producer(prod_task1,ch01)
-
-    async def produce():
-        task1 = asyncio.create_task(p_work.xproduce(msg=False))
-        await asyncio.gather(task1)
-
-    asyncio.run(produce())
     # async def prod_task1():
-    # async def prod_task2():
-    #     await taskq.xput_queue('consume', args=(1,2), msg=True)
+    #     await p_work.xput_channel(args=(1,2), msg=True)
 
-    # p_work.set_producer(prod_task1)
+    # #! set channel
+    # ch01 = Channel()
+
+    # p_work.set_producer(prod_task1,ch01)
+
+    # async def produce():
+    #     task1 = asyncio.create_task(p_work.xproduce(msg=False))
+    #     await asyncio.gather(task1)
+
+    # asyncio.run(produce())
+
 
 
     

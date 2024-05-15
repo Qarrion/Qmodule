@@ -46,9 +46,10 @@ class Nowst:
             self._core.offset = self.fetch_offset(msg=True, debug=False)
 
     def set_core(self, core, msg=False):
-        temp_offset = self._core.offset
+
+        # temp_offset = self._core.offset
         self._core = core 
-        self._core.offset = temp_offset
+        # self._core.offset = temp_offset
         name = self._core.name if hasattr(self._core, 'name') else 'none'
         offset = f"OFF({self._core.offset:+.3f})"
         buffer = f"BUF({self._core.buffer:+.3f})"
