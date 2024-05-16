@@ -7,7 +7,14 @@ from Qupbit.utils.logger_custom import CustomLog
 import httpx
 
 class Upbit:
-    def __init__(self, logger:logging.Logger):
+    def __init__(self, name:str='consume'):
+        try:
+            from Qlogger import Logger
+            logger = Logger(name, 'head')
+        except ModuleNotFoundError as e:
+            logger = None
+            print(f"\033[31m No Module Qlogger \033[0m")
+
         self._custom  = CustomLog(logger,'async')
         self._custom.info.msg('Upbit')
         self.market = Market(logger)
@@ -47,9 +54,7 @@ class Upbit:
 
 if __name__ == "__main__":
     import asyncio
-    from Qupbit.utils.logger_color import ColorLog
-    lgger = ColorLog('upbit', 'green')
-    upbit = Upbit(lgger)
+    upbit = Upbit()
 
     # ------------------------------------------------------------------------ #
     # rslt = upbit.get_market(quote='KRW')
