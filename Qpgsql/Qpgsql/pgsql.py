@@ -1,7 +1,8 @@
 from configparser import ConfigParser
 import sys, asyncio
+from typing import Literal
 import psycopg
-
+from psycopg.rows import namedtuple_row
 
 class Pgsql:
     def __init__(self):
@@ -31,7 +32,9 @@ class Pgsql:
     def _dev_help(self):
         print("https://www.psycopg.org/psycopg3/docs/advanced/async.html")
         
-    # -------------------------------- connect ------------------------------- #
+    # ------------------------------------------------------------------------ #
+    #                                  connect                                 #
+    # ------------------------------------------------------------------------ #
     def _get_connect_str(self):
         host=self.config.get('connect','host')
         port=self.config.get('connect','port')
@@ -53,11 +56,28 @@ class Pgsql:
     
 
     def connect(self):
+        """>>> psycopg.connect(self.conn_str)"""
         return psycopg.connect(self.conn_str)
 
     def xconnect(self):
         """>>> return psycopg.AsyncConnection.connect()"""
         return psycopg.AsyncConnection.connect(self.conn_str)
+
+    # ------------------------------------------------------------------------ #
+    #                                   utils                                  #
+    # ------------------------------------------------------------------------ #
+    def colnames(self, curs:psycopg.Cursor)->list:
+        return [d[0] for d in curs.description]
+    
+    def fetchall(self,conn:psycopg.Connection, query:str, key:Literal['tuple','namedtuple']='tuple'): 
+        curs = conn.cursor()
+        if key =='namedtuple':
+            curs.row_factory = namedtuple_row
+        curs.execute(query)
+        rows = curs.fetchall()
+        return rows
+    
+
 
 if __name__ == "__main__":
     pgsql = Pgsql()
