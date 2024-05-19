@@ -1,12 +1,15 @@
+# -------------------------------- ver 240518 -------------------------------- #
+# to_rows: namedtuple
+# ---------------------------------------------------------------------------- #
+
 # https://docs.upbit.com/reference/%EB%A7%88%EC%BC%93-%EC%BD%94%EB%93%9C-%EC%A1%B0%ED%9A%8C
 import asyncio
-from http import client
 from Qupbit.utils.logger_custom import CustomLog
 from Qupbit.tools.valider import Valider
 from Qupbit.tools.parser import Parser
 from typing import List, Literal
 import requests, httpx
-import logging
+from collections import namedtuple
 
 
 # from Qupbit.tools.tracer import Tracer 
@@ -38,7 +41,14 @@ class Market:
 
     # columns = ['market','korean_name','english_name','market_warning','last_updated']
     
-    def __init__(self, logger:logging.Logger=None):
+    def __init__(self, name:str='market'):
+        try:
+            from Qlogger import Logger
+            logger = Logger(name, 'head')
+        except ModuleNotFoundError as e:
+            logger = None
+            print(f"\033[31m No Module Qlogger \033[0m")
+
         self.valider = Valider(logger)
         self.parser = Parser()
         self._custom = CustomLog(logger,'async')
@@ -46,40 +56,56 @@ class Market:
 
     def get(self, session:requests.Session=None, key:Literal['status','header','payload','remain','text']=None, msg=False):
         """ >>> # return result
-        result = market.get()
-        result['status']
-        result['header']
-        result['payload']
-        result['remain']
-        result['text']
-        # status, header, payload, remain[group, min, sec], text"""
+        if session is None:
+            resp = requests.get()
+        else:
+            resp = session.get()
+        """
         if session is None:
             resp = requests.get(url=self.url_market, headers=self.headers, params=self.params)
         else:
             resp = session.get(url=self.url_market, headers=self.headers, params=self.params)
 
         rslt = self.parser.response(resp)
-        if msg : self._msg_result('get_market',rslt,"api") 
+        if msg : self._msg_result(status='market',result=rslt,frame="api") 
         if key is not None: rslt = rslt[key]
         return rslt
     
-    async def xget(self, xclient:httpx.AsyncClient, key:Literal['status','header','payload','remain','text']=None, msg=False):
+    async def xget(self, xclient:httpx.AsyncClient=None, key:Literal['status','header','payload','remain','text']=None, msg=False):
         """
         >>> # 
         async with market.xclient() as xclient:
             rslt = await market.xget(xclient)        
         """
+        is_context = False
+        if xclient is None:
+            xclient = httpx.AsyncClient()
+            is_context = True
+
         resp = await xclient.get(url=self.url_market, headers=self.headers, params=self.params)
         rslt = self.parser.response(resp)
-        if msg : self._msg_result('get_market',rslt,"xapi") 
+        if msg : self._msg_result(status='market',result=rslt,frame="xapi") 
         if key is not None: rslt = rslt[key]
+
+        if is_context : await xclient.aclose()
         return rslt
+    # async def xget(self, xclient:httpx.AsyncClient, key:Literal['status','header','payload','remain','text']=None, msg=False):
+    #     """
+    #     >>> # 
+    #     async with market.xclient() as xclient:
+    #         rslt = await market.xget(xclient)        
+    #     """
+    #     resp = await xclient.get(url=self.url_market, headers=self.headers, params=self.params)
+    #     rslt = self.parser.response(resp)
+    #     if msg : self._msg_result(status='market',result=rslt,frame="xapi") 
+    #     if key is not None: rslt = rslt[key]
+    #     return rslt
 
     def xclient(self):
         """>>> return httpx.AsyncClient() """
         return httpx.AsyncClient()
 
-    def to_rows(self,payload:List[dict], quote=None, base=None, market=None):
+    def to_rows(self,payload:List[dict], quote=None, base=None, market=None, key:Literal['tuple','namedtuple']='tuple'):
         """ >>> market.to_rows(result['payload']) 
         # market, korean_name, english_name, market_warning """
         selected_payload = self.parser.market(payload,'market', quote, base, market)
@@ -95,36 +121,37 @@ class Market:
             ) 
                 for d in selected_payload
         ]
+        if key=='namedtuple':
+            Market = namedtuple('Market',['market','korean_name','english_name','market_warning'])
+            selected_rows = [Market(*item) for item in selected_rows]
         return selected_rows
     
-    def _msg_result(self, group, result:dict, frame:str):
+    def _msg_result(self, status, result:dict, frame:str):
         remain = result['remain']
-        status = result['status']
-        if status == 200:
-            self._custom.debug.msg(group, remain['group']+"/g", f"{remain['min']}/m",f"{remain['sec']}/s",frame=frame)
+        if result['status'] == 200:
+            self._custom.debug.msg(status, remain['group']+"/g",f"{remain['sec']}/s", frame=frame)
         else:
-            self._custom.error.msg(group, result['text'],frame=2)    
+            self._custom.error.msg(status, result['text'], frame=frame)    
 
 if __name__=='__main__':
     from Qupbit.utils.print_divider import eprint
-    from Qupbit.utils.logger_color import ColorLog
-    logger = ColorLog('upbit', 'green')
+
     
-    market = Market(logger)
+    market = Market()
 
     # ---------------------------------- get --------------------------------- #
     eprint('get1')
-    rslt = market.get()
-    print(rslt)
-    print(rslt.keys())
-    eprint('payload')
-    print(rslt['payload'][0:5])
+    rslt = market.get(msg=True)
+    # print(rslt)
+    # print(rslt.keys())
+    # eprint('payload')
+    # print(rslt['payload'][0:5])
     
-    eprint('get2')
-    rslt = market.get(None, 'payload')
-    eprint('rows')
-    rows = market.to_rows(payload=rslt)
-    print(rows[0:5])
+    # eprint('get2')
+    # rslt = market.get(None, 'payload')
+    # eprint('rows')
+    # rows = market.to_rows(payload=rslt)
+    # print(rows[0:5])
 
     # --------------------------------- async -------------------------------- #
 
