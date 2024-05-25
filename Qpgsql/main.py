@@ -55,11 +55,19 @@ sql = Pgsql()
 # print(dir(rows[0]))
 # print(rows[0]._fields)
 
+# # ----------------------------------- time ----------------------------------- #
+# query = "select * from candle_m1"
+# with sql.connect() as conn:
+#     with conn.cursor() as curs:
+#         curs.execute(query)
+#         rows = curs.fetchall()
 # ----------------------------------- time ----------------------------------- #
 query = "select * from candle_m1"
+# query = "show timezone"
 with sql.connect() as conn:
     with conn.cursor() as curs:
         curs.execute(query)
         rows = curs.fetchall()
 
+print(rows[0])
 # rows

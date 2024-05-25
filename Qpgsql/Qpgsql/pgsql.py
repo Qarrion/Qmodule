@@ -1,3 +1,7 @@
+# -------------------------------- ver 240525 -------------------------------- #
+# option 'kst'
+
+
 from configparser import ConfigParser
 import sys, asyncio
 from typing import Literal
@@ -41,7 +45,9 @@ class Pgsql:
         user=self.config.get('connect','user')
         password=self.config.get('connect','password')
         dbname=self.config.get('connect','database')
-        conn_str = f"dbname={dbname} user={user} password={password} host={host} port={port}"
+        options = "'-c timezone=Asia/Seoul'"
+        conn_str = f"dbname={dbname} user={user} password={password} host={host} port={port} options={options}"
+        # conn_str = f"dbname={dbname} user={user} password={password} host={host} port={port}"
         return conn_str
 
     def _connect_kwargs(self):
