@@ -1,3 +1,5 @@
+# -------------------------------- ver 240526 -------------------------------- #
+# interrupt
 import re
 from Qtask.tools.timer import Timer
 from Qtask.tools.nowst import Nowst
@@ -14,7 +16,7 @@ class Core:
 
 class Produce:
     
-    def __init__(self, name:str='produce', init_offset=False):
+    def __init__(self, name:str='produce', init_offset=False, msg=True):
         
         try:
             from Qlogger import Logger
@@ -24,7 +26,7 @@ class Produce:
             print(f"\033[31m No Module Qlogger \033[0m")
 
         self._custom = CustomLog(logger,'async')
-        self._custom.info.msg('Produce',name)
+        if msg : self._custom.info.msg('Produce',name)
         self._timer = Timer(logger)
         self._nowst = Nowst(logger, init_offset = init_offset)
 
@@ -81,20 +83,22 @@ class Produce:
     # ------------------------------------------------------------------------ #
     #                                 Produce                                  #
     # ------------------------------------------------------------------------ #
+    def set_channel(self, channel:Channel):
+        self._channel = channel
 
     def set_producer(self, xdef:Callable, channel:Channel=None):
-        """if self.xput_channel() is not called in 'xdef', arg 'channel' can be None"""
+        """arg 'channel' object should be assigned in the 'set_producer' or 'set_channel'"""
         self._producer = xdef
-        self._channel = channel
         if channel is None:
             self._custom.info.msg('xdef', xdef.__name__, 'None')
         else:
+            self._channel = channel
             self._custom.info.msg('xdef', xdef.__name__, channel._name)
 
-    async def xput_channel(self,args:tuple, kwargs:dict=None, retry=0, msg=False):
-        """arg 'channel' object should be assigned in the 'set_producer'"""
+    async def xput_channel(self,args:tuple=(), kwargs:dict=None, retry=0, msg=False):
+        """args = () for no arg consumer"""
         if self._channel is None:  
-            print(f"\033[31m [Warning in 'xproduce()'] 'channel' has not been set! \033[0m")
+            print(f"\033[31m [Warning in 'xput_channel()'] 'channel' has not been set! \033[0m")
         await self._channel.xput_queue(args,kwargs,retry,msg)
 
     async def xproduce(self, xdef:Callable=None, timeout=None, msg=True):
@@ -108,12 +112,19 @@ class Produce:
 
         timer = self.timer
         while True:
-            tot_sec, tgt_dtm = timer() 
-            await asyncio.sleep(tot_sec)
-            await self._xadjust_offset(tgt_dtm, msg = False)
-            if timeout is None: timeout = 50
-            asyncio.create_task(self._await_with_timeout(self._producer,timeout,msg=msg))
-            await self._xadjust_offset(tgt_dtm, msg = False)
+            try:
+                tot_sec, tgt_dtm = timer() 
+                await asyncio.sleep(tot_sec)
+                await self._xadjust_offset(tgt_dtm, msg = False)
+                if timeout is None: timeout = 50
+                asyncio.create_task(self._await_with_timeout(self._producer,timeout,msg=msg))
+                await self._xadjust_offset(tgt_dtm, msg = False)
+            except asyncio.exceptions.CancelledError:
+                print(f"\033[33m Interrupted ! loop_xproduce ({self._producer.__name__}) \033[0m")
+                break
+            except Exception as e:
+                print(e.__class__.__name__)
+                break
 
     async def _xadjust_offset(self, tgt_dtm, msg=False):
         await self._nowst.xadjust_offset_change(tgt_dtm, msg)
@@ -146,7 +157,6 @@ if __name__ == "__main__":
     p_divr = Produce('p_divr')
     p_divr.set_timer('every_seconds', 20)
     p_divr.set_preset('msg_divider')
-
 
     async def produce():
         task1 = asyncio.create_task(p_sync.xproduce(msg=False))

@@ -1,6 +1,9 @@
 # -------------------------------- ver 240511 -------------------------------- #
 # tools
+# -------------------------------- ver 240527 -------------------------------- #
+# limiter return
 
+import inspect
 import logging
 from Qtask.utils.logger_custom import CustomLog
 from Qtask.utils.format_time import TimeFormat
@@ -9,30 +12,6 @@ from typing import Callable, Literal
 from functools import wraps
 import asyncio, time
 
-
-# class Limit:
-#     """
-#     >>> # initiate
-#     limiter = Limiter(logger)
-#     limiter.set_rate(max_worker:int, seconds:float, limit:Literal['inflow','outflow','midflow'])
-#     >>> # define
-#     async def xfunc(x):
-#         print(f'start {x}')
-#         await asyncio.sleep(0.5)
-#         print(f'finish {x}')
-
-#     >>> # wrapper
-#     xfunc_limit = limiter.wrapper(xdef:Callable, propagate=True, msg=False)
-
-#     >>> # main
-#     async def main():
-#         tasks = []
-#         for _ in range(10):
-#             task = asyncio.create_task(xfunc_limit(_))
-#             tasks.append(task)
-#         await asyncio.gather(*tasks)
-#     asyncio.run(main())
-    # """
 class Limiter:
     _instances = {}
 
@@ -44,7 +23,17 @@ class Limiter:
         return cls._instances[name]
     
     def __init__(self, name:str='limiter'):
-        """named singleton"""
+        """ 
+        >>> # named singleton
+        limiter = Limiter('limiter')
+        limiter.set_rate(3, 1, 'outflow')
+        xldef = limiter.wrapper(xdef,propagate=False,msg=True)
+
+        >>> # case
+        limiter = Limiter('g_mkt')._set(5,1,'outflow')
+
+        
+        """
         if not self._initialized:
             try:
                 from Qlogger import Logger
@@ -58,7 +47,7 @@ class Limiter:
         # self._frame = '<limit>'
 
     def _set(self, max_worker:int, seconds:float, limit:Literal['inflow','outflow','midflow']):
-        self.set_rate(max_worker, seconds,limit)
+        self.set_rate(max_worker, seconds, limit)
         return self
     
     # def __init__(self, logger:logging.Logger):
@@ -72,13 +61,11 @@ class Limiter:
         self._limit_type = limit
 
         self._semaphore = asyncio.Semaphore(max_worker)
-        self._custom.info.msg('set_rate', limit,f"max({max_worker})",f"sec({seconds})" )
+        self._custom.info.msg('wrapper', limit,f"max({max_worker})",f"sec({seconds})" )
 
     def wrapper(self, xdef:Callable, propagate=True, msg=False):
-        """throttle"""
-        self._custom.info.msg('xdef', xdef.__name__ )
-        
-        async def _wrapper(*args):
+        @wraps(xdef)
+        async def _wrapper(*args,**kwargs):
             propagate_exception = None
 
             async with self._semaphore:
@@ -88,10 +75,11 @@ class Limiter:
                 # ------------------------------------------------------------ #
                 try: 
                     tsp_start = time.time()     
-                    result = await xdef(*args)
+                    result = await xdef(*args, **kwargs)
 
                 except Exception as e:
-                    self._custom.error.msg('except',xdef.__name__,str(args) )
+
+                    self._custom.error.msg('except',xdef.__name__,str(args),str(kwargs) )
                     propagate_exception = e
                 # ------------------------------------------------------------ #
                 finally:
@@ -100,7 +88,10 @@ class Limiter:
                     # if msg : self._msg_semaphore('release',xdef.__name__)
                     if propagate_exception and propagate: #? propagate exception to retry
                         raise propagate_exception
-        _wrapper.__name__ = xdef.__name__
+                    
+                return result
+                    
+        self._custom.info.msg('xdef', xdef.__name__ )
         return _wrapper
     
     def _msg_semaphore(self, context:Literal['acquire','release'], fname):
@@ -133,14 +124,13 @@ class Limiter:
         self._custom.info.msg('reset',self._limit_type,msg_ref,msg_sec ,frame=xdef.__name__)
 
 
-
-
 if __name__ =="__main__":
-    from Qlogger import Logger
-    logger = Logger('limiter', 'head')
-    limiter = Limiter(logger)
+    # from Qlogger import Logger
+    # logger = Logger('limiter', 'head')
+    limiter = Limiter()
     limiter.set_rate(3, 1, 'outflow')
 
+    @limiter.wrapper
     async def xfunc(x):
         print(f'start {x}')
         await asyncio.sleep(0.5)
@@ -152,9 +142,9 @@ if __name__ =="__main__":
         raise ValueError("raise error")
         # print(f'finish {x}')
 
-    xrfunc = limiter.wrapper(xfunc,propagate=False,msg=True)
+    # xrfunc = limiter.wrapper(xfunc,propagate=False,msg=True)
     xrerro = limiter.wrapper(xerro,propagate=False,msg=True)
-
+    
     async def main():
         tasks = []
         for _ in range(5):
@@ -162,7 +152,7 @@ if __name__ =="__main__":
                 if _ == 3:
                     task = asyncio.create_task(xrerro(_),name=limiter._custom.ith() )
                 else:
-                    task = asyncio.create_task(xrfunc(_),name=limiter._custom.ith() )
+                    task = asyncio.create_task(xfunc(_),name=limiter._custom.ith() )
             except Exception as e:
                 print(e)
 

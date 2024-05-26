@@ -1,3 +1,6 @@
+# -------------------------------- ver 240526 -------------------------------- #
+# interrupt
+
 import asyncio
 from typing import Callable
 
@@ -31,7 +34,7 @@ class Consume:
         await asyncio.gather(task_produce,task_consume)
     asyncio.run(main())
     """    
-    def __init__(self, name:str='consume'):
+    def __init__(self, name:str='consume',msg=True):
         try:
             from Qlogger import Logger
             logger = Logger(name, 'head')
@@ -40,7 +43,7 @@ class Consume:
             print(f"\033[31m No Module Qlogger \033[0m")
 
         self._custom = CustomLog(logger,'async')
-        self._custom.info.msg('Consume',name)
+        if msg : self._custom.info.msg('Consume',name)
 
         self._channel:Channel = None
         self._consumer = None
@@ -49,26 +52,28 @@ class Consume:
     # ------------------------------------------------------------------------ #
     #                                  Consume                                 #
     # ------------------------------------------------------------------------ #
-    def set_consumer(self, xdef: Callable, channel:Channel):
-        """"""
+    def set_channel(self, channel:Channel):
+        self._channel = channel
+        
+    def set_consumer(self, xdef: Callable, channel:Channel=None):
+        """arg 'channel' object should be assigned in the 'set_producer' or 'set_channel'"""
         self._consumer = xdef
-        self._channel:Channel = channel
         if channel is None:
             self._custom.info.msg('xdef', xdef.__name__, 'None')
         else:
+            self._channel:Channel = channel
             self._custom.info.msg('xdef', xdef.__name__, channel._name)
 
-    async def xput_channel(self,args: tuple, kwargs: dict = None, retry: int = 0, msg: bool = False):
-        """arg 'channel' object should be assigned in the 'set_consumer'"""
+    async def xput_channel(self, args: tuple=(), kwargs: dict = None, retry: int = 0, msg: bool = False):
+        """args = () for no arg consumer"""
         is_msg = True if msg else self._debug_queue
 
         if self._channel is None:  
-            print(f"\033[31m [Warning in 'xproduce()'] 'channel' has not been set! \033[0m")
+            print(f"\033[31m [Warning in 'xput_channel()'] 'channel' has not been set! \033[0m")
         await self._channel.xput_queue(args,kwargs,retry, is_msg)
 
     async def xget_channel(self, msg=False):
         is_msg = True if msg else self._debug_queue
-        """arg 'channel' object should be assigned in the 'set_consumer'"""
         item = await self._channel.xget_queue(is_msg)
         return item
 
@@ -81,10 +86,16 @@ class Consume:
     async def xconsume(self, timeout:int=None, maxtry:int=3, msg=False):
         is_msg = self._debug_queue
         while True:
-            item = await self.xget_channel(msg=is_msg)
-            task = asyncio.create_task(
-                self.xrun_channel(self._consumer,item,timeout,maxtry,msg=msg))
-            
+            try:
+                item = await self.xget_channel(msg=is_msg)
+                task = asyncio.create_task(
+                    self.xrun_channel(self._consumer,item,timeout,maxtry,msg=msg))
+            except asyncio.exceptions.CancelledError:
+                print(f"\033[33m Interrupted ! loop_xconsume ({self._consumer.__name__}) \033[0m")
+                break      
+            except Exception as e:
+                print(e.__class__.__name__)      
+                break      
     # ------------------------------------------------------------------------ #
     #                                  dev_msg                                 #
     # ------------------------------------------------------------------------ #

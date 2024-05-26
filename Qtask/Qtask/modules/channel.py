@@ -9,7 +9,7 @@ import asyncio, logging
 
 class Channel:
 
-    def __init__(self, name:str='channel'):
+    def __init__(self, name:str='channel',msg=True):
         
         try:
             from Qlogger import Logger
@@ -21,7 +21,7 @@ class Channel:
         self._name = name
         self._custom = CustomLog(logger,'async')
 
-        self._custom.info.msg('Channel',name)
+        if msg: self._custom.info.msg('Channel',name)
         self._queue = asyncio.Queue()
         self._status = 'stop'
 
@@ -34,6 +34,7 @@ class Channel:
         
     async def xput_queue(self, 
         args:tuple=(),kwargs:dict=None, retry:int=0, msg=False):
+        """args = () for no arg consumer"""
         item = (args,kwargs,retry)
         await self._queue.put(item)
         if msg: self._msg_args('item',args, kwargs, retry)
