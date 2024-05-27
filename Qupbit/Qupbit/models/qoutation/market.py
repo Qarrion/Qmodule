@@ -118,11 +118,12 @@ class Market:
                 # d['market_event']['caution']['DEPOSIT_AMOUNT_SOARING'],
                 # d['market_event']['caution']['GLOBAL_PRICE_DIFFERENCES'],
                 # d['market_event']['caution']['CONCENTRATION_OF_SMALL_ACCOUNTS']
+                'fetch'
             ) 
                 for d in selected_payload
         ]
         if key=='namedtuple':
-            Market = namedtuple('Market',['market','korean_name','english_name','market_warning'])
+            Market = namedtuple('Market',['market','korean_name','english_name','market_warning','note'])
             selected_rows = [Market(*item) for item in selected_rows]
         return selected_rows
     

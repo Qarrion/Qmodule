@@ -1,10 +1,17 @@
 import re
 import requests
 from typing import List
+from datetime import datetime
+import pytz
+
+
+
 
 class Parser():
      
     _re_remaining_req = re.compile(r"group=([\w-]+); min=([0-9]+); sec=([0-9]+)")
+    _tz_kst = pytz.timezone('Asia/Seoul')
+    _tz_gmt = pytz.timezone('GMT')
 
     def remaining(self, remaining_req):
         """resp.headers['Remaining-Req']"""
@@ -22,6 +29,7 @@ class Parser():
         response_dict['header'] = resp.headers
         response_dict['remain'] = self.remaining(resp.headers['Remaining-Req'])
         response_dict['url'] = resp.url
+        response_dict['time'] = self.header_date(resp.headers,None)
         
         if response_dict['status'] == 200:
             response_dict['payload'] = resp.json()  
@@ -31,6 +39,20 @@ class Parser():
             response_dict['text'] = resp.text
         return response_dict
     
+    def header_date(self, header, fallback=None):
+        try:
+            date_naive  = datetime.strptime(header['Date'], '%a, %d %b %Y %H:%M:%S GMT')
+            date_gmt = self._tz_gmt.localize(date_naive)
+            date_kst = date_gmt.astimezone(self._tz_kst)
+        except Exception as e:
+            print("header['Date] exception")
+            print(header['Date'])
+            if fallback is None:
+                date_kst = pytz.timezone('Asia/Seoul')
+            else:
+                date_kst = fallback
+        return date_kst
+
     def market(self, payload:List[dict], key, quote=None, base=None, market=None):
         """ >>> parser.market() 
         # list comprehension """

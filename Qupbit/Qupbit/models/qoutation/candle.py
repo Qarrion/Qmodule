@@ -43,7 +43,7 @@ class Candle:
         return result
         """
 
-        totz = self._to_api_to(date_time_str=to, tz=tz) if to is not None else None
+        totz = self._to_api_str(date_time_str=to, tz=tz) if to is not None else None
         # print(f"[totz] {totz}")
         params=dict(market = market, count = count, to = totz)
 
@@ -65,7 +65,7 @@ class Candle:
             xclient = httpx.AsyncClient()
             is_context = True
 
-        totz = self._to_api_to(date_time_str=to, tz=tz) if to is not None else None
+        totz = self._to_api_str(date_time_str=to, tz=tz) if to is not None else None
         params=dict(market = market, count = count, to = totz)
         resp = await xclient.get(url=self.url_candle, headers=self.headers, params=params)
         rslt = self.parser.response(resp)
@@ -75,7 +75,7 @@ class Candle:
         if is_context : await xclient.aclose()
         return rslt			
 
-    def _to_api_to(self, date_time_str:str, tz:Literal['UTC','KST']='KST') -> str:
+    def _to_api_str(self, date_time_str:str, tz:Literal['UTC','KST']='KST') -> str:
         date_time = parser.parse(date_time_str)
         if self.timez.is_aware(date_time):
             date_time_aware = self.timez.as_timezone(date_time, tz)
@@ -88,8 +88,8 @@ class Candle:
             to = date_time_aware.isoformat(sep='T',timespec='seconds')
         return to
     
-    def last_time(self, naive:datetime=None, msg=False):
-        """>>> return Last(time, stable, close, trade)"""
+    def last_time(self, naive:datetime=None, rtype:Literal['kst','str']='str', msg=False):
+        """>>> return Last(time, stable, close, trade) '%Y-%m-%dT%H:%M:%S' """
         if naive is None:
             naive=datetime.now()
         assert not self.timez.is_aware(naive) , "invalid aware datetime"
@@ -102,14 +102,21 @@ class Candle:
         last_trade = naive.replace(second=0,microsecond=0)
         last_close = last_trade + timedelta(minutes=-1)
 
-        naive_str = self.timez.to_str(naive,2)
-        stable_str = self.timez.to_str(naive_stable,2)
-        close_str = self.timez.to_str(last_close,2)
-        trade_str = self.timez.to_str(last_trade,2)
+        if rtype == 'str':
+            last = self.timez.to_str(naive,2)
+            stable = self.timez.to_str(naive_stable,2)
+            close = self.timez.to_str(last_close,2)
+            trade = self.timez.to_str(last_trade,2)
 
-        if msg: print(f" + naive({naive_str}) close({close_str}), trade({trade_str})")
-        Last = namedtuple('Last',['time','stable','close','trade'])
-        return Last(naive_str, stable_str, close_str, trade_str)
+        elif rtype =='kst':
+            last = self.timez.as_localize(naive,'KST')
+            stable = self.timez.as_localize(naive_stable,'KST')
+            close = self.timez.as_localize(last_close,'KST')
+            trade = self.timez.as_localize(last_trade,'KST')
+
+        if msg: print(f" + last({last}) stable({stable}) close({close}), trade({trade})")
+        Last = namedtuple('Last',['last','stable','close','trade'])
+        return Last(last, stable, close, trade)
         
     def _to_sql_kst(self, date_time_str:str):
         date_time_navie = datetime.strptime(date_time_str, '%Y-%m-%dT%H:%M:%S') 
@@ -123,9 +130,7 @@ class Candle:
         selected_rows =[
             (
                 d['market'], 
-                # self.timez.as_localize(d['candle_date_time_kst'],'KST'),
                 self._to_sql_kst(d['candle_date_time_kst']),
-                # d['candle_date_time_kst'],
                 d['opening_price'],d['high_price'],d['low_price'],d['low_price'],
                 d['candle_acc_trade_price'], d['candle_acc_trade_volume']
             ) 
@@ -142,22 +147,44 @@ class Candle:
         if result['status'] == 200:
             self._custom.debug.msg(status, remain['group']+"/g",f"{remain['sec']}/s", market, frame=frame)
         else:
-            self._custom.error.msg(status, result['text'], frame=frame)   
+            self._custom.error.msg(status, f"code({result['status']})", result['text'], market, frame=frame)   
 
 if __name__=='__main__':
     import pandas as pd
     from Qupbit.tools.timez import Timez
     from Qupbit.utils.print_divider import eprint
 
+
     candle = Candle()
+
+    async def main():
+        async with httpx.AsyncClient() as xclient:
+            resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+            print(resp['payload'][0])
+            print(resp['time'])
+            print(candle.to_rows(resp['payload'],key='namedtuple')[0].time)
+    asyncio.run(main())
+
     # print(candle._to_api_to('2023-01-01T00:00:00+09:00','KST'))
     # print(candle._to_api_to('2023-01-01T00:00:00','UTC'))
+    # header = candle.get(key='header')
+    # date_gmt = datetime.strptime(header['Date'], '%a, %d %b %Y %H:%M:%S GMT')
+    # print(type(date_gmt))
+
+    # import pytz
+    # print(type(datetime.now(pytz.timezone('Asia/Seoul'))))
+
+    # print(candle.get(key='header'))
 
     # str_kst ='2023-01-01T00:00:00'
-    str_kst ='2024-01-01T06:05:00'
-    print(str_kst)
-    rows = candle.get(to=str_kst, tz='KST',count=5, key='payload',msg=True)
-    print(pd.DataFrame(rows))
+    # str_kst ='2024-01-01T06:05:00'
+    # print(str_kst)
+    # rows = candle.get(to=str_kst, tz='KST',count=5, key='payload',msg=True)
+    # print(pd.DataFrame(rows))
+    # print(rows[0]['candle_date_time_utc'],rows[0]['candle_date_time_kst'])
+    # print(candle._to_api_str(rows[0]['candle_date_time_utc'],'UTC'))
+    # print(candle._to_api_str(rows[0]['candle_date_time_kst'],'KST'))
+    # print(candle._to_sql_kst(rows[0]['candle_date_time_kst']))
     # from datetime import datetime   
     # print(candle.last_time(datetime(2024,1,1,5,5,1,1)))
     # print(candle.last_time(datetime(2024,1,1,5,5,0,0)))
@@ -254,7 +281,7 @@ if __name__=='__main__':
     # Timez.from_stamp(Timez._to_ten_digit(stamp_like),'KST')
 
     # --------------------------------- async -------------------------------- #
-    async def main():
-        await candle.xget(msg=True)
+    # async def main():
+    #     await candle.xget(msg=True)
 
-    asyncio.run(main())
+    # asyncio.run(main())
