@@ -88,35 +88,52 @@ class Candle:
             to = date_time_aware.isoformat(sep='T',timespec='seconds')
         return to
     
-    def last_time(self, naive:datetime=None, rtype:Literal['kst','str']='str', msg=False):
+    # def last_time(self, naive:datetime=None, rtype:Literal['kst','str']='str', msg=False):
+    #     """>>> return Last(time, stable, close, trade) '%Y-%m-%dT%H:%M:%S' """
+    #     if naive is None:
+    #         naive=datetime.now()
+    #     # assert not self.timez.is_aware(naive) , "invalid aware datetime"
+
+    #     if naive.second==0:
+    #         naive_stable = naive.replace(second=1,microsecond=0)           
+    #     else:
+    #         naive_stable = naive
+
+    #     last_trade = naive.replace(second=0,microsecond=0)
+    #     last_close = last_trade + timedelta(minutes=-1)
+
+    #     if rtype == 'str':
+    #         last = self.timez.to_str(naive,2)
+    #         stable = self.timez.to_str(naive_stable,2)
+    #         close = self.timez.to_str(last_close,2)
+    #         trade = self.timez.to_str(last_trade,2)
+
+    #     elif rtype =='kst':
+    #         last = self.timez.as_localize(naive,'KST')
+    #         stable = self.timez.as_localize(naive_stable,'KST')
+    #         close = self.timez.as_localize(last_close,'KST')
+    #         trade = self.timez.as_localize(last_trade,'KST')
+
+    #     if msg: print(f" + last({last}) stable({stable}) close({close}), trade({trade})")
+    #     Last = namedtuple('Last',['last','stable','close','trade'])
+    #     return Last(last, stable, close, trade)
+
+    def last_time(self, date_time:datetime, msg=False):
         """>>> return Last(time, stable, close, trade) '%Y-%m-%dT%H:%M:%S' """
-        if naive is None:
-            naive=datetime.now()
-        assert not self.timez.is_aware(naive) , "invalid aware datetime"
 
-        if naive.second==0:
-            naive_stable = naive.replace(second=1,microsecond=0)           
+        target = date_time
+
+        if date_time.second==0:
+            stable = date_time.replace(second=1,microsecond=0)           
         else:
-            naive_stable = naive
+            stable = date_time
 
-        last_trade = naive.replace(second=0,microsecond=0)
-        last_close = last_trade + timedelta(minutes=-1)
+        trade = date_time.replace(second=0,microsecond=0)
+        close = trade + timedelta(minutes=-1)
 
-        if rtype == 'str':
-            last = self.timez.to_str(naive,2)
-            stable = self.timez.to_str(naive_stable,2)
-            close = self.timez.to_str(last_close,2)
-            trade = self.timez.to_str(last_trade,2)
-
-        elif rtype =='kst':
-            last = self.timez.as_localize(naive,'KST')
-            stable = self.timez.as_localize(naive_stable,'KST')
-            close = self.timez.as_localize(last_close,'KST')
-            trade = self.timez.as_localize(last_trade,'KST')
-
-        if msg: print(f" + last({last}) stable({stable}) close({close}), trade({trade})")
+        if msg: print(f" + target({target}) stable({stable}) close({close}), trade({trade})")
         Last = namedtuple('Last',['last','stable','close','trade'])
-        return Last(last, stable, close, trade)
+        return Last(target, stable, close, trade)
         
     def _to_sql_kst(self, date_time_str:str):
         date_time_navie = datetime.strptime(date_time_str, '%Y-%m-%dT%H:%M:%S') 
