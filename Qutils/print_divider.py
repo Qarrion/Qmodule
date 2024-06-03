@@ -1,1 +1,1 @@
-eprint = lambda x: print(f"{"="*60} [{x}]")
+eprint = lambda x,n=80: print(f"{"="*n} [{x}]")
