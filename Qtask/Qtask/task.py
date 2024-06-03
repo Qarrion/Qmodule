@@ -7,6 +7,7 @@ from Qtask.modules.produce import Produce
 from Qtask.modules.consume import Consume
 from Qtask.modules.channel import Channel
 from Qtask.modules.limiter import Limiter
+from Qtask.modules.balance import Balance
 from Qtask.utils.logger_custom import CustomLog
 import asyncio
 class xdebug:
@@ -78,34 +79,37 @@ class Task:
         """+ produce preset"""
         self.produce.set_preset(preset=preset)
 
-    def set_producer(self,xdef:Callable=None):
+    def set_xproducer(self,xdef:Callable=None, msg=False):
         """+ produce
         + if xdef is none then default without arguments producer
+        + msg for | xput_queue....item |
         >>>  # producer
-        xput_channel(args=(),kwargs=None,retry=0,msg=False)
+        xput_channel(args=(),kwargs=None,retry=0)
         """
         # channel = self.channel
         if xdef is None:
-            self.produce.set_producer(xdef=self.producer, channel=None)
+            self.produce.set_xproducer(xdef=self.xproducer, channel=None, msg=msg)
         else:
-            self.produce.set_producer(xdef=xdef, channel=None)
+            self.produce.set_xproducer(xdef=xdef, channel=None,msg=msg)
 
-    async def xput_channel(self,args:tuple=(), kwargs:dict=None, retry= 0, msg= False):
-        """args = () for no arg consumer"""
-        await self.produce.xput_channel(args,kwargs,retry,msg)
+    async def xput_channel(self,args:tuple=(), kwargs:dict=None, retry= 0):
+        """ 
+        + in xproduce custom xdef -> set_producer(xdef)
+        + args = () for no arg consumer"""
+        await self.produce.xput_channel(args,kwargs,retry)
 
     async def xrun_xproduce(self,xdef:Callable=None,timeout=None,msg=True):
         await self.produce.xproduce(xdef=xdef,timeout=timeout,msg=msg)
 
-    async def producer(self):
+    async def xproducer(self):
         """default without arguments producer"""
         await self.xput_channel()
     # ------------------------------------------------------------------------ #
     #                                   cons                                   #
     # ------------------------------------------------------------------------ #
-    def set_consumer(self,xdef:Callable):
-        # channel = self.channel
-        self.consume.set_consumer(xdef=xdef, channel=None)
+    def set_xconsumer(self,xdef:Callable,msg_get = False, msg_put = False, msg_run = False):
+        self.consume.set_xconsumer(xdef=xdef, channel=None,
+                                   msg_get=msg_get,msg_put=msg_put,msg_run=msg_run)
 
     async def xrun_xconsume(self,timeout:int=None, maxtry:int=3, msg=False):
         await self.consume.xconsume(timeout=timeout, maxtry=maxtry, msg=msg)
@@ -124,14 +128,14 @@ if __name__ == "__main__":
     
     async def pub():
         for i in range(10):
-            await t_task.xput_channel(args=(i/10,),msg=True)
+            await t_task.xput_channel(args=(i/10,))
 
-    t_task.set_producer(pub)
+    t_task.set_xproducer(pub)
 
     async def sub(sec):
         await asyncio.sleep(sec)
 
-    t_task.set_consumer(sub)
+    t_task.set_xconsumer(sub)
 
     async def main():
         p_task = asyncio.create_task(t_task.xrun_xproduce())

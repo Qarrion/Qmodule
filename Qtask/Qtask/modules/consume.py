@@ -14,7 +14,6 @@ class Consume:
     """>>> # consume
     ch01 = Channel()
     cons = Consume()
-    cons._debug_queue = True
     >>> # ------------------------------- producer ------------------------------- #
     async def producer():
         await cons.xput_channel(args =(1,))
@@ -48,15 +47,23 @@ class Consume:
         self._channel:Channel = None
         self._consumer = None
 
-        self._debug_queue = False
+        self._is_msg_channel_get = False
+        self._is_msg_channel_put = False
+        self._is_msg_channel_run = False
+
     # ------------------------------------------------------------------------ #
     #                                  Consume                                 #
     # ------------------------------------------------------------------------ #
     def set_channel(self, channel:Channel):
         self._channel = channel
         
-    def set_consumer(self, xdef: Callable, channel:Channel=None):
-        """arg 'channel' object should be assigned in the 'set_producer' or 'set_channel'"""
+    def set_xconsumer(self, xdef: Callable, channel:Channel=None, 
+                                            msg_get=False, msg_put=False, msg_run=False):
+        """arg 'channel' object should be assigned in the 'set_producer' or 'set_channel'
+        + msg for | xget_queue....item | """
+        self._is_msg_channel_get = msg_get
+        self._is_msg_channel_put = msg_put
+        self._is_msg_channel_run = msg_run
         self._consumer = xdef
         if channel is None:
             self._custom.info.msg('xdef', xdef.__name__, 'None')
@@ -64,30 +71,35 @@ class Consume:
             self._channel:Channel = channel
             self._custom.info.msg('xdef', xdef.__name__, channel._name)
 
-    async def xput_channel(self, args: tuple=(), kwargs: dict = None, retry: int = 0, msg: bool = False):
-        """args = () for no arg consumer"""
-        is_msg = True if msg else self._debug_queue
-
+    async def xput_channel(self, args: tuple=(), kwargs: dict = None, retry: int = 0):
+        """
+        + args = () for no arg consumer
+        + msg in set_xproducer"""
+        msg_put = self._is_msg_channel_put
         if self._channel is None:  
             print(f"\033[31m [Warning in 'xput_channel()'] 'channel' has not been set! \033[0m")
-        await self._channel.xput_queue(args,kwargs,retry, is_msg)
+        await self._channel.xput_queue(args,kwargs,retry, msg_put)
 
-    async def xget_channel(self, msg=False):
-        is_msg = True if msg else self._debug_queue
-        item = await self._channel.xget_queue(is_msg)
+
+    # -------------------------- run_without_context ------------------------- #
+    async def xget_channel(self):
+        """+ msg in set_xproducer"""
+        msg_get = self._is_msg_channel_get
+        item = await self._channel.xget_queue(msg_get)
         return item
-
+    
     async def xrun_channel(self, xdef:Callable, item:tuple, timeout:int=None, maxtry=3, msg=False):
-        is_msg = True if msg else self._debug_queue
-        self._msg_consume(xdef,msg=True)
-        await self._channel.xrun_queue(xdef,item,timeout,maxtry,is_msg)
-        self._msg_consume(xdef,msg=True)
+        msg_run = self._is_msg_channel_run
+        self._msg_consume(xdef, msg=msg)
+        await self._channel.xrun_queue(xdef,item,timeout,maxtry,msg_run)
+        self._msg_consume(xdef, msg=msg)
 
     async def xconsume(self, timeout:int=None, maxtry:int=3, msg=False):
-        is_msg = self._debug_queue
+        assert self._consumer is not None, "no _consumer"
+
         while True:
             try:
-                item = await self.xget_channel(msg=is_msg)
+                item = await self.xget_channel()
                 task = asyncio.create_task(
                     self.xrun_channel(self._consumer,item,timeout,maxtry,msg=msg))
             except asyncio.exceptions.CancelledError:
@@ -95,7 +107,30 @@ class Consume:
                 break      
             except Exception as e:
                 print(e.__class__.__name__)      
-                break      
+                # break      
+    
+    # --------------------------- run_with_context --------------------------- #
+    # async def xget_channel_with_timeout(self, timeout:int):
+    #     """+ msg in set_xproducer"""
+    #     msg_get = self._is_msg_channel_get
+    #     item = await self._channel.xget_queue_with_timeout(timeout=timeout,msg=msg_get)
+    #     return item
+    
+    # async def xconsume_with_xsess(self,timeout:int=None, maxtry:int=3, msg=False):
+    #     assert self._consumer is not None, "no _consumer"
+
+    #     while True:
+    #         try:
+    #             item = await self.xget_channel_with_timeout(1)
+    #             with 
+
+
+
+
+    #         except Exception as e:
+    #             print(e.__class__.__name__)      
+                     
+
     # ------------------------------------------------------------------------ #
     #                                  dev_msg                                 #
     # ------------------------------------------------------------------------ #
@@ -110,7 +145,6 @@ if __name__ == "__main__":
     #                                  consume                                 #
     # ------------------------------------------------------------------------ #
     cons = Consume()
-    cons._debug_queue = True
     # ------------------------------- producer ------------------------------- #
     async def producer():
         await cons.xput_channel(args =(1,))
@@ -125,12 +159,17 @@ if __name__ == "__main__":
     #! channel
     ch01 = Channel()
 
-    cons.set_consumer(consumer,ch01)
+    cons.set_xconsumer(consumer,ch01,msg_put=True,msg_get=True,msg_run=True)
+
+    # async def main():
+    #     task_produce = asyncio.create_task(producer())
+    #     task_consume = asyncio.create_task(cons.xconsume(msg=True))
+
+    #     await asyncio.gather(task_produce,task_consume)
 
     async def main():
-        task_produce = asyncio.create_task(producer())
-        task_consume = asyncio.create_task(cons.xconsume())
+        task_consume = asyncio.create_task(cons.xconsume_with_xsess(msg=True))
 
-        await asyncio.gather(task_produce,task_consume)
+        await asyncio.gather(task_consume)
 
     asyncio.run(main())

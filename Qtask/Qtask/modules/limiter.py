@@ -70,6 +70,7 @@ class Limiter:
         self._custom.info.msg('wrapper', limit,f"max({max_worker})",f"sec({seconds})" )
 
     def wrapper(self, xdef:Callable):
+        @wraps(xdef)
         async def wrapper(*args, **kwargs):
             propagate_exception = None
             async with self._semaphore:
@@ -88,27 +89,6 @@ class Limiter:
                         raise propagate_exception
         self._custom.info.msg('xdef', xdef.__name__ )
         return wrapper
-    
-    # def wrapper2(self, xdef:Callable, propagate=True, msg=False):
-    #     async def _wrapper(*args,**kwargs):
-    #         propagate_exception = None
-    #         async with self._semaphore:
-    #             if msg: self._custom.info.msg('start', frame=xdef.__name__)    
-    #             try: 
-    #                 tsp_start = time.time()     
-    #                 result = await xdef(*args, **kwargs)
-    #             except Exception as e:
-    #                 self._custom.error.msg('except',xdef.__name__,str(args),str(kwargs) )
-    #                 propagate_exception = e
-    #             finally:
-    #                 tsp_finish = time.time()
-    #                 await self.wait_reset(xdef, tsp_start, tsp_finish,msg=msg)
-    #                 if propagate_exception and propagate: #? propagate exception to retry
-    #                     raise propagate_exception
-    #             return result
-                    
-    #     self._custom.info.msg('xdef', xdef.__name__ )
-    #     return _wrapper
     
     def _msg_semaphore(self, context:Literal['acquire','release'], fname):
         if context=="acquire":

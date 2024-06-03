@@ -43,6 +43,11 @@ class Channel:
         args, kwargs, retry = await self._queue.get()
         if msg: self._msg_args('item',args, kwargs, retry)
         return (args, kwargs, retry)
+
+    async def xget_queue_with_timeout(self, timeout:int, msg=False):
+        args, kwargs, retry = await asyncio.wait_for(self._queue.get(), timeout=timeout)
+        if msg: self._msg_args('item',args, kwargs, retry)
+        return (args, kwargs, retry)
         
     async def xrun_queue(self, xdef:Callable, item:tuple, timeout:int=None, maxtry=3, msg=False):
         args, kwargs, retry = item
@@ -57,7 +62,7 @@ class Channel:
         except Exception as e:
             if retry < maxtry:
                 self._custom.warning.msg('except',e.__class__.__name__)
-                await self.xput_queue(args, kwargs,retry+1,msg)
+                await self.xput_queue(args, kwargs,retry+1,msg=True)
             else:
                 self._custom.error.msg('failed',e.__class__.__name__)
         finally:
