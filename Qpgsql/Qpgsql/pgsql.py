@@ -32,6 +32,7 @@ class Pgsql:
             ---------------------                  
         """)
         self.conn_str = self._get_connect_str()
+        self.namedtuple_row=namedtuple_row
 
     def _dev_help(self):
         print("https://www.psycopg.org/psycopg3/docs/advanced/async.html")
@@ -76,11 +77,19 @@ class Pgsql:
         return [d[0] for d in curs.description]
     
     def fetchall(self,conn:psycopg.Connection, query:str, key:Literal['tuple','namedtuple']='tuple'): 
-        curs = conn.cursor()
-        if key =='namedtuple':
-            curs.row_factory = namedtuple_row
-        curs.execute(query)
-        rows = curs.fetchall()
+        with conn.cursor() as curs:
+            if key =='namedtuple':
+                curs.row_factory = namedtuple_row
+            curs.execute(query)
+            rows = curs.fetchall()
+        return rows
+    
+    async def xfetchall(self,xconn:psycopg.AsyncConnection, query:str, key:Literal['tuple','namedtuple']='tuple'): 
+        async with xconn.cursor() as xcurs:
+            if key =='namedtuple':
+                xcurs.row_factory = namedtuple_row
+            await xcurs.execute(query)
+            rows = await xcurs.fetchall()
         return rows
     
 
@@ -121,4 +130,12 @@ async with await psycopg.AsyncConnection.connect(
         # will return (1, 100, "abc'def")
         async for record in acur:
             print(record)
+"""
+
+"""
+with pgsql.connect() as conn:
+    with conn.cursor() as curs:
+        curs.row_factory = pgsql.namedtuple_row
+        curs.execute("select * from market_list where market = 'KRW-BTC'")
+        rows = curs.fetchall()
 """
