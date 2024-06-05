@@ -36,8 +36,8 @@ class Nowst:
     server_list = ["pool.ntp.org","kr.pool.ntp.org","ntp.ubuntu.com"]
     # server_list = ["pool.ntp.org","kr.pool.ntp.org","time.windows.com","time.nist.gov","ntp.ubuntu.com"]
     
-    def __init__(self, logger:logging.Logger=None, init_offset=True):
-        self._custom = CustomLog(logger,'sync')
+    def __init__(self, logger:logging.Logger=None, clsname:str='Nowst', init_offset=True):
+        self._custom = CustomLog(logger,clsname,'sync')
         self._frame = '<nowst>'
         # self._custom.info.msg(self._frame)
 

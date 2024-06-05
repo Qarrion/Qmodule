@@ -79,18 +79,22 @@ class Task:
         """+ produce preset"""
         self.produce.set_preset(preset=preset)
 
-    def set_xproducer(self,xdef:Callable=None, msg=False):
+    def set_xproducer(self,xdef:Callable=None, args:tuple=None, kwargs:dict=None, msg=False):
         """+ produce
-        + if xdef is none then default without arguments producer
+        + if xdef is none then default without arguments producer with args, kwargs
         + msg for | xput_queue....item |
         >>>  # producer
         xput_channel(args=(),kwargs=None,retry=0)
         """
-        # channel = self.channel
+
         if xdef is None:
-            self.produce.set_xproducer(xdef=self.xproducer, channel=None, msg=msg)
+
+            async def xproducer():
+                await self.xput_channel(args=args, kwargs=kwargs)
+
+            self.produce.set_xproducer(xdef=xproducer, channel=None, msg=msg)
         else:
-            self.produce.set_xproducer(xdef=xdef, channel=None,msg=msg)
+            self.produce.set_xproducer(xdef=xdef, channel=None, msg=msg)
 
     async def xput_channel(self,args:tuple=(), kwargs:dict=None, retry= 0):
         """ 
@@ -101,9 +105,9 @@ class Task:
     async def xrun_xproduce(self,xdef:Callable=None,timeout=None,msg=True):
         await self.produce.xproduce(xdef=xdef,timeout=timeout,msg=msg)
 
-    async def xproducer(self):
-        """default without arguments producer"""
-        await self.xput_channel()
+    # async def xproducer(self):
+    #     """default without arguments producer"""
+    #     await self.xput_channel()
     # ------------------------------------------------------------------------ #
     #                                   cons                                   #
     # ------------------------------------------------------------------------ #

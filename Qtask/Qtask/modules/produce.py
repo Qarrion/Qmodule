@@ -15,9 +15,27 @@ class Core:
     name:str = 'Produce'
 
 class Produce:
-    
+    """
+    >>> # produce 
+    prod = Produce()
+    prod.set_timer('every_seconds', 2)
+
+    >>> # ------------------------------- producer ------------------------------- #
+    async def prod_task1():
+        await prod.xput_channel(args=(1,2))
+        print('put')
+
+    ch01 = Channel()
+    prod.set_xproducer(prod_task1,ch01,msg=True)
+
+    async def main():
+        task1 = asyncio.create_task(prod.xproduce(msg=True))
+        await asyncio.gather(task1)
+    asyncio.run(main())
+    """    
+
     def __init__(self, name:str='produce', init_offset=False, msg=True):
-        
+        CLSNAME = 'Produce'
         try:
             from Qlogger import Logger
             logger = Logger(name,'head')
@@ -25,10 +43,10 @@ class Produce:
             logger = None
             print(f"\033[31m No Module Qlogger \033[0m")
 
-        self._custom = CustomLog(logger,'async')
-        if msg : self._custom.info.msg('Produce',name)
-        self._timer = Timer(logger)
-        self._nowst = Nowst(logger, init_offset = init_offset)
+        self._custom = CustomLog(logger,CLSNAME,'async')
+        if msg : self._custom.info.msg(name)
+        self._timer = Timer(logger,CLSNAME)
+        self._nowst = Nowst(logger,CLSNAME, init_offset = init_offset)
 
         self._timer.set_core(Core)
         self._nowst.set_core(Core)
@@ -129,6 +147,7 @@ class Produce:
                 await asyncio.sleep(tot_sec)
                 await self._xadjust_offset(tgt_dtm, msg = False)
                 if timeout is None: timeout = 50
+
                 asyncio.create_task(self._await_with_timeout(self._producer,timeout,msg=msg))
                 await self._xadjust_offset(tgt_dtm, msg = False)
             except asyncio.exceptions.CancelledError:
@@ -197,20 +216,20 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------ #
     #                               with channel                               #
     # ------------------------------------------------------------------------ #
-    p_work = Produce('p_work')
-    p_work.set_timer('every_seconds', 2)
+    prod = Produce('p_work')
+    prod.set_timer('every_seconds', 2)
 
     async def prod_task1():
-        await p_work.xput_channel(args=(1,2))
+        await prod.xput_channel(args=(1,2))
         print('put')
 
     #! set channel
     ch01 = Channel()
 
-    p_work.set_xproducer(prod_task1,ch01,msg=True)
+    prod.set_xproducer(prod_task1,ch01,msg=True)
 
     async def produce():
-        task1 = asyncio.create_task(p_work.xproduce(msg=True))
+        task1 = asyncio.create_task(prod.xproduce(msg=True))
         await asyncio.gather(task1)
 
     asyncio.run(produce())

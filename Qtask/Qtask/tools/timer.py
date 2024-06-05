@@ -86,8 +86,8 @@ class Timer:
     "KST":pytz.timezone('Asia/Seoul'),
     "UTC":pytz.timezone('UTC')}
 
-    def __init__(self, logger:logging.Logger=None):
-        self._custom = CustomLog(logger,'async')
+    def __init__(self, logger:logging.Logger=None, clsname:str='Timer'):
+        self._custom = CustomLog(logger,clsname,'async')
         self._frame = '<timer>'
         # self._custom.info.msg(self._frame)
 

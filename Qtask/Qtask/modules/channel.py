@@ -8,9 +8,24 @@ import asyncio, logging
 
 
 class Channel:
+    """
+    >>> # channel
+    channel = Channel()
 
+    >>> # ------------------------------- consumer ------------------------------- #
+    async def xrun(x,y,z):
+        await asyncio.sleep(2)
+        print(x,y,z)
+
+    >>> # --------------------------------- basic -------------------------------- #
+    async def main():
+        await channel.xput_queue((1,2,3), msg=True)
+        item = await channel.xget_queue(msg=True)
+        await channel.xrun_queue(xrun,item,msg=True)
+    asyncio.run(main())
+    """
     def __init__(self, name:str='channel',msg=True):
-        
+        CLSNAME = 'Channel'
         try:
             from Qlogger import Logger
             logger = Logger(name,'head')
@@ -19,9 +34,9 @@ class Channel:
             print(f"\033[31m No Module Qlogger \033[0m")
 
         self._name = name
-        self._custom = CustomLog(logger,'async')
+        self._custom = CustomLog(logger,CLSNAME,'async')
 
-        if msg: self._custom.info.msg('Channel',name)
+        if msg: self._custom.info.msg(name)
         self._queue = asyncio.Queue()
         self._status = 'stop'
 
@@ -96,12 +111,12 @@ if __name__ == "__main__":
         print(x,y,z)
 
     # --------------------------------- basic -------------------------------- #
-    # async def main():
-    #     await channel.xput_queue((1,2,3), msg=True)
-    #     item = await channel.xget_queue(msg=True)
-    #     await channel.xrun_queue(xrun,item,msg=True)
+    async def main():
+        await channel.xput_queue((1,2,3), msg=True)
+        item = await channel.xget_queue(msg=True)
+        await channel.xrun_queue(xrun,item,msg=True)
 
-    # asyncio.run(main())
+    asyncio.run(main())
 
     # ------------------------------- exception ------------------------------ #
     async def main():

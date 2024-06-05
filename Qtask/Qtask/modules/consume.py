@@ -24,16 +24,17 @@ class Consume:
         print('start')
         await asyncio.sleep(3)
         print('finish')
-    cons.set_consumer(consumer,ch01)
+    cons.set_consumer(consumer,ch01,msg_put=True,msg_get=True,msg_run=True)
 
     >>> # --------------------------------- main --------------------------------- #
     async def main():
         task_produce = asyncio.create_task(producer())
-        task_consume = asyncio.create_task(cons.xconsume())
+        task_consume = asyncio.create_task(cons.xconsume(msg=True))
         await asyncio.gather(task_produce,task_consume)
     asyncio.run(main())
     """    
     def __init__(self, name:str='consume',msg=True):
+        CLSNAME = 'Consume'
         try:
             from Qlogger import Logger
             logger = Logger(name, 'head')
@@ -41,8 +42,8 @@ class Consume:
             logger = None
             print(f"\033[31m No Module Qlogger \033[0m")
 
-        self._custom = CustomLog(logger,'async')
-        if msg : self._custom.info.msg('Consume',name)
+        self._custom = CustomLog(logger,CLSNAME,'async')
+        if msg : self._custom.info.msg(name)
 
         self._channel:Channel = None
         self._consumer = None
@@ -108,28 +109,6 @@ class Consume:
             except Exception as e:
                 print(e.__class__.__name__)      
                 # break      
-    
-    # --------------------------- run_with_context --------------------------- #
-    # async def xget_channel_with_timeout(self, timeout:int):
-    #     """+ msg in set_xproducer"""
-    #     msg_get = self._is_msg_channel_get
-    #     item = await self._channel.xget_queue_with_timeout(timeout=timeout,msg=msg_get)
-    #     return item
-    
-    # async def xconsume_with_xsess(self,timeout:int=None, maxtry:int=3, msg=False):
-    #     assert self._consumer is not None, "no _consumer"
-
-    #     while True:
-    #         try:
-    #             item = await self.xget_channel_with_timeout(1)
-    #             with 
-
-
-
-
-    #         except Exception as e:
-    #             print(e.__class__.__name__)      
-                     
 
     # ------------------------------------------------------------------------ #
     #                                  dev_msg                                 #

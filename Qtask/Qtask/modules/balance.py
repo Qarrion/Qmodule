@@ -1,6 +1,6 @@
 import asyncio, uuid
 from typing import Callable, Literal
-import httpx
+
 from Qtask.utils.logger_custom import CustomLog
 from collections import namedtuple
 
@@ -9,6 +9,7 @@ import time
 class Balance:
 
     def __init__(self, name:str='balance',msg=True):
+        CLSNAME = 'Balance'
         try:
             from Qlogger import Logger
             logger = Logger(name, 'head')
@@ -16,14 +17,15 @@ class Balance:
             logger = None
             print(f"\033[31m No Module Qlogger \033[0m")
 
-        self._custom = CustomLog(logger,'async')
-        if msg : self._custom.info.msg('Balance',name)
+        self._custom = CustomLog(logger,CLSNAME,'async')
+        if msg : self._custom.info.msg(name)
 
         self.i_queue = asyncio.Queue()
         self._xworkers = dict()
         self._xcontext = None
         self._lock = asyncio.Lock()
         self._status='stop'
+        self._async_context = None
 
         # ------------------------------ config ------------------------------ #
         self._n_retry = 3
@@ -35,11 +37,17 @@ class Balance:
             name = xdef.__name__
         self._xworkers[name] = xdef
 
-    def set_xcontext(self, xcontext:Callable):
-        """ 
-        + with xbalance
+    def set_xcontext(self, xcontext:Callable, with_type:Literal['async_with','async_with_await']='async_with'):
+        """ + with xbalance
         + xdef(xcontext, args, kwargs)"""
         self._xcontext = xcontext
+        if with_type == 'async_with':
+            self._async_context = self._async_with
+        elif with_type =='async_with_await':
+            self._async_context = self._async_with_await
+        else:
+            self._async_context = None
+
 
     # ------------------------------------------------------------------------ #
     #                                    run                                   #
@@ -65,12 +73,12 @@ class Balance:
         except Exception as e:
             if item.retry < 3:
                 await self._xput_i_queue(
-                    name=item.name, args=item.args, kwargs=item.kwargs, retry=item.kwargs+1)
+                    name=item.name, args=item.args, kwargs=item.kwargs, retry=item.retry +1)
             else:
                 result = None
-                item.future.set_result(result)
         finally:
             self.i_queue.task_done()
+            item.future.set_result(result)
 
             if await self._is_stopping():
                 text = item.name if xcontext is None else f"{item.name}_with_{xcontext.__class__.__name__}"
@@ -84,13 +92,17 @@ class Balance:
             item:Item = await self.i_queue.get()
             asyncio.create_task(self._xrun_work(item))
 
+    async def xrun_with_xcontext(self):
+        await self._async_context()
+
     # ------------------------------------------------------------------------ #
     #                                    sub                                   #
     # ------------------------------------------------------------------------ #
-    async def xrun_with_await_xcontext(self):
+    async def _async_with_await(self):
+        #! sql
         while True:
             async with await self._xcontext() as xcontext:
-                print('reconnect')
+                self._custom.info.msg('serve', 'reconnect', frame='xrun_with')
                 while True:
                     try:
                         item:Item = await asyncio.wait_for(self.i_queue.get(),timeout=self._n_reconnect)
@@ -101,11 +113,11 @@ class Balance:
                         else:
                             pass
 
-    async def xrun_with_xcontext(self):
+    async def _async_with(self):
+        #! api
         while True:
             async with self._xcontext() as xcontext:
-            # async with httpx.AsyncClient() as xcontext:
-                print('reconnect')
+                self._custom.info.msg('serve', 'reconnect', frame='xrun_with')
                 while True:
                     try:
                         item:Item = await asyncio.wait_for(self.i_queue.get(),timeout=self._n_reconnect)
@@ -142,18 +154,16 @@ class Balance:
                 return 1
             else:
                 return 0
-
-
     # ------------------------------------------------------------------------ #
     #                                   fetch                                  #
     # ------------------------------------------------------------------------ #
     async def xfetch(self, name, args=(), kwargs:dict=None):
         future = await self._xput_i_queue(name=name, args=args, kwargs=kwargs)
-        return future
-
+        result = await future
+        return result
 
 if __name__ == "__main__":
-
+    import httpx
     # async def asleep(sec:int):
     async def asleep(context, sec:int):
         print(f"s---{sec}")
@@ -163,39 +173,32 @@ if __name__ == "__main__":
 
     sv = Balance()
     sv.set_xworker(asleep)
-
     sv.set_xcontext(httpx.AsyncClient)
     
-    async def work():
-
-        tasks = [
-            asyncio.create_task( sv.xfetch('asleep', (1,))),
-            asyncio.create_task( sv.xfetch('asleep', (2,))),
-            asyncio.create_task( sv.xfetch('asleep', (3,)))
-        ]
-
-        await asyncio.gather(*tasks)
+    # async def work():
+    #     tasks = [
+    #         asyncio.create_task( sv.xfetch('asleep', (1,))),
+    #         asyncio.create_task( sv.xfetch('asleep', (2,))),
+    #         asyncio.create_task( sv.xfetch('asleep', (3,)))
+    #     ]
+    #     await asyncio.gather(*tasks)
 
     async def works():
-        await  sv.xfetch('asleep', (1,))
-        await  sv.xfetch('asleep', (2,))
-        await  sv.xfetch('asleep', (3,))
+        aa = await sv.xfetch('asleep', (2,))
+        print(aa)
+        bb = await  sv.xfetch('asleep', (2,))
+        print(bb)
+        cc = await  sv.xfetch('asleep', (3,))
+        print(cc)
 
     async def main():
 
         tasks = [
-            # asyncio.create_task(sv.xrun()),
             asyncio.create_task(sv.xrun_with_xcontext()),
-            # asyncio.create_task(sv.xrun_with_xclient()),
-
             asyncio.create_task(works()),
 
         ]
 
         await asyncio.gather(*tasks)
 
-
-
     asyncio.run(main())
-
-    # httpx.AsyncClient()

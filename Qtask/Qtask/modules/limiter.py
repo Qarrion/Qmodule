@@ -43,19 +43,14 @@ class Limiter:
             except ModuleNotFoundError as e:
                 logger = None
 
-            self._custom = CustomLog(logger,'async')
-            self._custom.info.msg("Limiter",name)
+            self._custom = CustomLog(logger,"Limiter",'async')
+            self._custom.info.msg(name)
             self._initialized = True
-        # self._frame = '<limit>'
 
     def _set(self, max_worker:int, seconds:float, limit:Literal['inflow','outflow','midflow']):
         self.set_rate(max_worker, seconds, limit)
         return self
     
-    # def __init__(self, logger:logging.Logger):
-    #     self._custom = CustomLog(logger,'async')
-    #     self._custom.info.msg("Limiter")
-    #     self._frame = '<limit>'
 
     def set_rate(self, max_worker:int, seconds:float, limit:Literal['inflow','outflow','midflow'],
                 propagate=True, msg=False):
@@ -67,10 +62,10 @@ class Limiter:
         self._msg = msg
 
         self._semaphore = asyncio.Semaphore(max_worker)
-        self._custom.info.msg('wrapper', limit,f"max({max_worker})",f"sec({seconds})" )
+        self._custom.info.msg('conf', limit,f"max({max_worker})",f"sec({seconds})" )
 
     def wrapper(self, xdef:Callable):
-        @wraps(xdef)
+        # @wraps(xdef)
         async def wrapper(*args, **kwargs):
             propagate_exception = None
             async with self._semaphore:
@@ -85,8 +80,9 @@ class Limiter:
                 finally:
                     tsp_finish = time.time()
                     await self.wait_reset(xdef, tsp_start, tsp_finish,msg=self._msg)
-                    if propagate_exception and self._propagate: #? propagate exception to retry
+                    if propagate_exception is not None and self._propagate: #? propagate exception to retry
                         raise propagate_exception
+        
         self._custom.info.msg('xdef', xdef.__name__ )
         return wrapper
     
