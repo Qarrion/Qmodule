@@ -53,23 +53,24 @@ class Limiter:
     
 
     def set_rate(self, max_worker:int, seconds:float, limit:Literal['inflow','outflow','midflow'],
-                propagate=True, msg=False):
+                propagate=True, msg_stt=False, msg_end=True):
         self._max_worker = max_worker
         self._seconds = seconds
         self._limit_type = limit
 
         self._propagate = propagate
-        self._msg = msg
+        self._msg_stt = msg_stt
+        self._msg_end = msg_end
 
         self._semaphore = asyncio.Semaphore(max_worker)
         self._custom.info.msg('conf', limit,f"max({max_worker})",f"sec({seconds})" )
 
     def wrapper(self, xdef:Callable):
-        # @wraps(xdef)
+        @wraps(xdef)
         async def wrapper(*args, **kwargs):
             propagate_exception = None
             async with self._semaphore:
-                if self._msg: self._custom.info.msg('start', frame=xdef.__name__)   
+                if self._msg_stt: self._custom.info.msg('start', frame=xdef.__name__)   
                 try: 
                     tsp_start = time.time()     
                     result = await xdef(*args, **kwargs)
@@ -79,7 +80,7 @@ class Limiter:
                     propagate_exception = e
                 finally:
                     tsp_finish = time.time()
-                    await self.wait_reset(xdef, tsp_start, tsp_finish,msg=self._msg)
+                    await self.wait_reset(xdef, tsp_start, tsp_finish,msg=self._msg_end)
                     if propagate_exception is not None and self._propagate: #? propagate exception to retry
                         raise propagate_exception
         

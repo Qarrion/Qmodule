@@ -1,7 +1,7 @@
 from typing import Callable
 from Qtask.utils.logger_custom import CustomLog
 import asyncio, logging
-
+import traceback
 
 
 
@@ -80,6 +80,7 @@ class Channel:
                 await self.xput_queue(args, kwargs,retry+1,msg=True)
             else:
                 self._custom.error.msg('failed',e.__class__.__name__)
+                traceback.print_exc()
         finally:
             self.task_done()
     

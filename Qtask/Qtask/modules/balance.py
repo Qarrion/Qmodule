@@ -48,7 +48,8 @@ class Balance:
         else:
             self._async_context = None
 
-
+    def _debug_workers(self):
+        print(self._xworkers.keys())
     # ------------------------------------------------------------------------ #
     #                                    run                                   #
     # ------------------------------------------------------------------------ #
@@ -76,6 +77,7 @@ class Balance:
                     name=item.name, args=item.args, kwargs=item.kwargs, retry=item.retry +1)
             else:
                 result = None
+                print(e)
         finally:
             self.i_queue.task_done()
             item.future.set_result(result)
@@ -158,6 +160,8 @@ class Balance:
     #                                   fetch                                  #
     # ------------------------------------------------------------------------ #
     async def xfetch(self, name, args=(), kwargs:dict=None):
+        if not isinstance(args,tuple): 
+            print(f"\033[31m args is not tuple \033[0m")
         future = await self._xput_i_queue(name=name, args=args, kwargs=kwargs)
         result = await future
         return result

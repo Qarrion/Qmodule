@@ -35,19 +35,17 @@ class xdebug:
 
 class Task:
 
-    def __init__(self,name:str='Task'):
-        """
-        + each instance shares same channel 
-        + all instance shares offset (in produce)
-        """
-        try:    
+    def __init__(self,name:str='task',msg=True):
+        CLSNAME = 'Task'
+        try:
             from Qlogger import Logger
-            logger = Logger(name,'head')
+            logger = Logger(name, 'head')
         except ModuleNotFoundError as e:
             logger = None
             print(f"\033[31m No Module Qlogger \033[0m")
-        self._custom = CustomLog(logger,'async')
-        self._custom.info.msg("Task",name)
+
+        self._custom = CustomLog(logger,CLSNAME,'async')
+        if msg : self._custom.info.msg(name)
         
         self.channel = Channel(name,msg=False)
         self.consume = Consume(name,msg=False)
