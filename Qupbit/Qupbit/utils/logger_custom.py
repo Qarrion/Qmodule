@@ -1,6 +1,8 @@
 # -------------------------------- ver 240510 -------------------------------- #
 # -------------------------------- ver 240511 -------------------------------- #
 # def ith(prefix:str)
+# -------------------------------- ver 240606 -------------------------------- #
+# def clsname
 from datetime import datetime, timedelta
 import threading
 import contextvars
@@ -15,9 +17,14 @@ class CustomLog:
     """>>> #
     customlog.msg(status, *args, task_name=True, n_back=1)
     """
-    def __init__(self, logger:logging.Logger,
+    def __init__(self, 
+                 logger:logging.Logger,
+                 clsname:str,
                  context:Literal['sync', 'thread', 'async'] = 'sync'):
+
         self.logger = logger
+        self.clsinst = f"{clsname:<7} - {self.logger.name:<7} | "
+
         if context == 'sync':
             self.method = _Sync()
         elif context =='thread':
@@ -30,9 +37,10 @@ class CustomLog:
         # -------------------------------------------------------------------- #
         #                                header                                #
         # -------------------------------------------------------------------- #
+        
         str_frame = self._get_frame(frame=frame)
         str_status = status
-        HEADER = self._get_header(status=str_status,frame=str_frame)
+        HEADER = self.clsinst + self._get_header(status=str_status,frame=str_frame)
 
         # -------------------------------------------------------------------- #
         #                                 body                                 #
@@ -51,7 +59,7 @@ class CustomLog:
         self._log_chained(LOG_MSG) 
 
     def div(self, task=False, offset:float|None=None):
-        BODY = f"{'='*61}"
+        BODY = f"{'='*81}"
         str_task = f" | {asyncio.current_task().get_name():<10}" if task else ""
         str_offset = self._get_offset(offset) if offset is not None else ""
         FOOTTER = f"{str_offset}{str_task}"
@@ -176,16 +184,18 @@ if __name__ == "__main__":
     logger.setLevel(logging.DEBUG) 
     handler = logging.StreamHandler() 
     handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s | %(levelname)-7s | %(name)-7s | %(message)-40s | [%(threadName)s]')
+    # formatter = logging.Formatter('%(asctime)s | %(levelname)-7s | %(name)-7s | %(message)-40s | [%(threadName)s]')
+    formatter = logging.Formatter('%(asctime)s | %(levelname)-7s | %(message)-40s | [%(threadName)s]')
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
     print('# ------------------------------- functions ------------------------------- #')
-    customlog = CustomLog(logger, 'sync')
+    customlog = CustomLog(logger, 'Myclass')
     customlog.msg('args','val1') 
-    customlog.msg('args','val1','val2') 
-    customlog.msg('args','val1','val2','val3') 
-    customlog.msg('text','looooooooooooooooooooooooooooooooong')
+    customlog2 = CustomLog(logger, 'Myclas')
+    customlog2.msg('args','val1','val2') 
+    customlog2.msg('args','val1','val2','val3') 
+    customlog2.msg('text','looooooooooooooooooooooooooooooooong')
 
     print('# --------------------------------- chain -------------------------------- #')
     customlog.msg('args','val1','val2','val3')

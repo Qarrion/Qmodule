@@ -39,15 +39,21 @@ class Market:
     headers = {"Accept": "application/json"}
     params = {"isDetails": 'true'}
 
+
+    Row = namedtuple('Market',['market','korean_name','english_name','market_warning','note'])
     # columns = ['market','korean_name','english_name','market_warning','last_updated']
     
-    def __init__(self, name:str='market'):
-        try:
+    def __init__(self,name:str='market',msg=True):
+        CLSNAME = 'Market'
+        try:    
             from Qlogger import Logger
-            logger = Logger(name, 'head')
+            logger = Logger(name,'head')
         except ModuleNotFoundError as e:
             logger = None
             print(f"\033[31m No Module Qlogger \033[0m")
+
+        self._custom = CustomLog(logger,CLSNAME,'async')
+        if msg : self._custom.info.msg(name)
 
         self.valider = Valider(logger)
         self.parser = Parser()
@@ -123,16 +129,22 @@ class Market:
                 for d in selected_payload
         ]
         if key=='namedtuple':
-            Market = namedtuple('Market',['market','korean_name','english_name','market_warning','note'])
-            selected_rows = [Market(*item) for item in selected_rows]
+            
+            selected_rows = [self.Row(*item) for item in selected_rows]
         return selected_rows
     
     def _msg_result(self, status, result:dict, frame:str):
         remain = result['remain']
         if result['status'] == 200:
-            self._custom.debug.msg(status, remain['group']+"/g",f"{remain['sec']}/s", frame=frame)
+            self._custom.info.msg(status, remain['group']+"/g",f"{remain['sec']}/s", frame=frame)
         else:
             self._custom.error.msg(status, result['text'], frame=frame)    
+
+    def to_dict(self, row:Row):
+        if isinstance(row, self.Row):
+            return row._asdict()
+        else:
+            print(f"\033[31m row is not instance Row({self.Row.index} \033[0m")
 
 if __name__=='__main__':
     from Qupbit.utils.print_divider import eprint
@@ -148,11 +160,11 @@ if __name__=='__main__':
     # eprint('payload')
     # print(rslt['payload'][0:5])
     
-    # eprint('get2')
-    # rslt = market.get(None, 'payload')
-    # eprint('rows')
-    # rows = market.to_rows(payload=rslt)
-    # print(rows[0:5])
+    eprint('get2')
+    rslt = market.get(None, 'payload')
+    eprint('rows')
+    rows = market.to_rows(payload=rslt)
+    print(rows[0:5])
 
     # --------------------------------- async -------------------------------- #
 

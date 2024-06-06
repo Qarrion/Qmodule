@@ -12,37 +12,47 @@ from datetime import datetime, timedelta
 from dateutil import parser
 from typing import Literal, List
 import requests
-import logging
+from datetime import datetime
 
+
+Row = namedtuple('Candle',['market','time','open','high','low','close','amount','volume'])
 
 class Candle:
     """ >>> #
     candle = Candle()
-    candle.get('KRW-BTC', to, 5,'KST')
+    candle.get(session,'KRW-BTC', to, 5,'KST')
+    candle.xget(xclient,'KRW-BTC', to, 5,'KST')
     """
+    Last = namedtuple('Last',['last','stable','close','trade'])
     url_candle='https://api.upbit.com/v1/candles/minutes/1'
     headers = {"Accept": "application/json"}
 
-    def __init__(self, name:str='candle'):
-        try:
+
+
+    def __init__(self,name:str='candle',msg=True):
+        CLSNAME = 'Candle'
+        try:    
             from Qlogger import Logger
-            logger = Logger(name, 'head')
+            logger = Logger(name,'head')
         except ModuleNotFoundError as e:
             logger = None
             print(f"\033[31m No Module Qlogger \033[0m")
 
-        self._custom = CustomLog(logger,'async')
+        self._custom = CustomLog(logger,CLSNAME,'async')
+        if msg : self._custom.info.msg(name)
+
         self.parser = Parser()
         self.timez = Timez()
 
+        self.xclient = httpx.AsyncClient
+
     def get(self, session:requests.Session=None, 
             market:str='KRW-BTC', to:str=None, count:int=200, tz:Literal['UTC','KST']='KST',
-            key:Literal['status','header','payload','remain','text']=None, msg=False):
+            key:Literal['status','header','payload','remain','text','time']=None, msg=False):
         """ >>> # 
         totz = self._arg_to(date_time_str=to, tz=tz) if to is not None else None
         return result
         """
-
         totz = self._to_api_str(date_time_str=to, tz=tz) if to is not None else None
         # print(f"[totz] {totz}")
         params=dict(market = market, count = count, to = totz)
@@ -59,7 +69,7 @@ class Candle:
 
     async def xget(self, xclient:httpx.AsyncClient=None, 
                    market:str='KRW-BTC', to:str=None, count:int=200, tz:Literal['UTC','KST']='KST',
-                   key:Literal['status','header','payload','remain','text']=None, msg=False):
+                   key:Literal['status','header','payload','remain','text','time']=None, msg=False):
         is_context = False
         if xclient is None:
             xclient = httpx.AsyncClient()
@@ -118,7 +128,7 @@ class Candle:
     #     Last = namedtuple('Last',['last','stable','close','trade'])
     #     return Last(last, stable, close, trade)
 
-    def last_time(self, date_time:datetime, msg=False):
+    def chk_time(self, date_time:datetime, chk=False, msg=False):
         """>>> return Last(time, stable, close, trade) '%Y-%m-%dT%H:%M:%S' """
 
         target = date_time
@@ -132,9 +142,14 @@ class Candle:
         close = trade + timedelta(minutes=-1)
 
         if msg: print(f" + target({target}) stable({stable}) close({close}), trade({trade})")
-        Last = namedtuple('Last',['last','stable','close','trade'])
-        return Last(target, stable, close, trade)
-        
+        if chk:
+            return self.Last(self._T(target), self._T(stable), self._T(close), self._T(trade))
+        else:
+            return self.Last(target, stable, close, trade)
+
+    def _T(self, aware):
+        return datetime.strftime(aware,'%Y-%m-%dT%H:%M:%S')
+
     def _to_sql_kst(self, date_time_str:str):
         date_time_navie = datetime.strptime(date_time_str, '%Y-%m-%dT%H:%M:%S') 
         return self.timez.as_localize(date_time_naive=date_time_navie,tz='KST')
@@ -154,10 +169,32 @@ class Candle:
                 for d in payload
         ]
         if key=='namedtuple':
-            Candle = namedtuple('Candle',['market','time','open','high','low','close','amount','volume'])
-            selected_rows = [Candle(*item) for item in selected_rows]
+            
+            selected_rows = [Row(*item) for item in selected_rows]
 
         return selected_rows        
+
+    # def fill_gaps(self, rows:List[Row], stime_trade):
+    # TODO
+    def complete_zero_volume(self, rows:List[Row], dtime_now_trade):
+        if rows[0].trade < dtime_now_trade:
+            # c = rows[0].close
+            # row = rows[0]._replace(time=dtime_now_trade, amount=0, volume=0, open=c,high=c,low=c,close=c)
+            row = self.zero_volume_row(prev_row=row[0],time=dtime_now_trade)
+            rows.insert(0,row)
+        
+        prev = rows[0]
+        for row in rows[1:-1]:
+            if prev.time + timedelta(minutes=1) != row.time:
+                pass
+
+    def zero_volume_row(self,prev_row:Row, time:datetime=None):
+        m = prev_row.market
+        c = prev_row.close
+        t = prev_row.time + timedelta(minutes=1) if time is None else time
+        return Row(market=m,time=t,open=c,high=c,low=c,close=c,amount=0,volume=0)
+
+    # def 
 
     def _msg_result(self,status, result:dict, market, frame:str):
         remain = result['remain']
