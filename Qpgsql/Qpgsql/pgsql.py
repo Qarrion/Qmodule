@@ -9,7 +9,7 @@ import psycopg
 from psycopg.rows import namedtuple_row
 
 class Pgsql:
-    def __init__(self):
+    def __init__(self, msg=False):
         """psycopg wrapper"""
         self.config = ConfigParser()
 
