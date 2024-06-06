@@ -1,6 +1,8 @@
 # -------------------------------- ver 240510 -------------------------------- #
 # -------------------------------- ver 240511 -------------------------------- #
 # def ith(prefix:str)
+# -------------------------------- ver 240606 -------------------------------- #
+# def clsname
 from datetime import datetime, timedelta
 import threading
 import contextvars
@@ -19,9 +21,10 @@ class CustomLog:
                  logger:logging.Logger,
                  clsname:str,
                  context:Literal['sync', 'thread', 'async'] = 'sync'):
+
         self.logger = logger
-        print(self.logger.name)
-        self.clsname= clsname
+        self.clsinst = f"{clsname:<7} - {self.logger.name:<7} | "
+
         if context == 'sync':
             self.method = _Sync()
         elif context =='thread':
@@ -34,10 +37,10 @@ class CustomLog:
         # -------------------------------------------------------------------- #
         #                                header                                #
         # -------------------------------------------------------------------- #
-        str_clsname = f"{self.clsname:<7} - {self.logger.name:<7}| "
+        
         str_frame = self._get_frame(frame=frame)
         str_status = status
-        HEADER = str_clsname + self._get_header(status=str_status,frame=str_frame)
+        HEADER = self.clsinst + self._get_header(status=str_status,frame=str_frame)
 
         # -------------------------------------------------------------------- #
         #                                 body                                 #
@@ -56,7 +59,7 @@ class CustomLog:
         self._log_chained(LOG_MSG) 
 
     def div(self, task=False, offset:float|None=None):
-        BODY = f"{'='*61}"
+        BODY = f"{'='*81}"
         str_task = f" | {asyncio.current_task().get_name():<10}" if task else ""
         str_offset = self._get_offset(offset) if offset is not None else ""
         FOOTTER = f"{str_offset}{str_task}"
