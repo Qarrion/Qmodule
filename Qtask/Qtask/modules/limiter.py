@@ -2,8 +2,8 @@
 # tools
 # -------------------------------- ver 240527 -------------------------------- #
 # limiter return
-# -------------------------------- ver 240528 -------------------------------- #
-# no wraps
+# -------------------------------- ver 240607 -------------------------------- #
+# xdef hint remove
 
 import inspect
 import logging
@@ -65,7 +65,7 @@ class Limiter:
         self._semaphore = asyncio.Semaphore(max_worker)
         self._custom.info.msg('conf', limit,f"max({max_worker})",f"sec({seconds})" )
 
-    def wrapper(self, xdef:Callable):
+    def wrapper(self, xdef):
         @wraps(xdef)
         async def wrapper(*args, **kwargs):
             propagate_exception = None

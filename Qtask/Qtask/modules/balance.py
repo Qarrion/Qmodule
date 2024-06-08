@@ -1,3 +1,9 @@
+# -------------------------------- ver 240606 -------------------------------- #
+# return xdef in set_worker
+# -------------------------------- ver 240607 -------------------------------- #
+# xdef hint remove
+
+from functools import wraps
 import asyncio, uuid
 from typing import Callable, Literal
 
@@ -31,11 +37,13 @@ class Balance:
         self._n_retry = 3
         self._n_reconnect = 60
 
-    def set_xworker(self, xdef:Callable, name:str=None):
+    # xdef:Callable [x] -> interferes with displaying function information in the IDE 
+    def set_xworker(self, xdef, name:str=None):
         self._custom.info.msg('xdef', xdef.__name__)
         if name is None:
             name = xdef.__name__
         self._xworkers[name] = xdef
+        return xdef
 
     def set_xcontext(self, xcontext:Callable, with_type:Literal['async_with','async_with_await']='async_with'):
         """ + with xbalance
