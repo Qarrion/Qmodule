@@ -69,6 +69,9 @@ class Timez():
     @staticmethod
     def is_aware(date_time:datetime):
         return date_time.tzinfo is not None
+    
+    def is_naive(date_time:datetime):
+        return date_time.tzinfo is None
 
     @staticmethod
     def to_str_slice(date_time:datetime, date="%Y-%m-%d", time='%H:%M:%S'):
@@ -84,11 +87,24 @@ class Timez():
     #                                 from type                                #
     # ------------------------------------------------------------------------ #
     @classmethod
-    def from_str(cls, date_time_str, fmt:int=0):
+    def from_str(cls, date_time_str, fmt:int=0, only_naive=False):
+        """
+        0: parser.parse
+        1:'%Y-%m-%d %H:%M:%S'
+        2:'%Y-%m-%dT%H:%M:%S'
+        3:'%Y-%m-%d %H:%M:%S%z'
+        4:'%Y-%m-%dT%H:%M:%S%z'
+        5:'%Y-%m-%d %H:%M:%S.%f%z'
+        6:'%Y-%m-%dT%H:%M:%S.%f%z'
+        7:'%Y-%m-%dT%H:%M:%SZ'
+        """
         if fmt == 0:
             date_time = parser.parse(date_time_str)
         else:
             date_time = datetime.strptime(date_time_str,cls.fmt_dict[fmt])
+
+        if only_naive :
+            assert cls.is_naive(date_time), "assert! date_time_str is not naive"
 
         return date_time
 
