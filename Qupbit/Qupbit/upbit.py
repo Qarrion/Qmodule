@@ -48,7 +48,7 @@ class Upbit:
         return self.candle.chk_time(now_naive,rtype,msg=msg)
 
     def uti_kst(self, date_time_str:str):
-        return self.candle._to_sql_kst(date_time_str=date_time_str)
+        return self.candle._stime_to_kst(date_time_str=date_time_str)
 
     # ------------------------------------------------------------------------ #
     #                                  market                                  #

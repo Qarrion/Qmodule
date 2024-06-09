@@ -23,11 +23,9 @@ class Candle:
     candle.get(session,'KRW-BTC', to, 5,'KST')
     candle.xget(xclient,'KRW-BTC', to, 5,'KST')
     """
-    Last = namedtuple('Last',['last','stable','close','trade'])
+    Last = namedtuple('Last',['input','stable','close','trade'])
     url_candle='https://api.upbit.com/v1/candles/minutes/1'
     headers = {"Accept": "application/json"}
-
-
 
     def __init__(self,name:str='candle',msg=True):
         CLSNAME = 'Candle'
@@ -53,7 +51,7 @@ class Candle:
         totz = self._arg_to(date_time_str=to, tz=tz) if to is not None else None
         return result
         """
-        totz = self._to_api_str(date_time_str=to, tz=tz) if to is not None else None
+        totz = self._stime_to_arg(date_time_str=to, tz=tz) if to is not None else None
         # print(f"[totz] {totz}")
         params=dict(market = market, count = count, to = totz)
 
@@ -75,7 +73,7 @@ class Candle:
             xclient = httpx.AsyncClient()
             is_context = True
 
-        totz = self._to_api_str(date_time_str=to, tz=tz) if to is not None else None
+        totz = self._stime_to_arg(date_time_str=to, tz=tz) if to is not None else None
         params=dict(market = market, count = count, to = totz)
         resp = await xclient.get(url=self.url_candle, headers=self.headers, params=params)
         rslt = self.parser.response(resp)
@@ -85,53 +83,12 @@ class Candle:
         if is_context : await xclient.aclose()
         return rslt			
 
-    def _to_api_str(self, date_time_str:str, tz:Literal['UTC','KST']='KST') -> str:
-        date_time = parser.parse(date_time_str)
-        if self.timez.is_aware(date_time):
-            date_time_aware = self.timez.as_timezone(date_time, tz)
-        else:
-            date_time_aware = self.timez.as_localize(date_time, tz)
-
-        if tz=='UTC':
-            to = datetime.strftime(date_time_aware,'%Y-%m-%dT%H:%M:%SZ')
-        elif tz == 'KST':
-            to = date_time_aware.isoformat(sep='T',timespec='seconds')
-        return to
-    
-    # def last_time(self, naive:datetime=None, rtype:Literal['kst','str']='str', msg=False):
-    #     """>>> return Last(time, stable, close, trade) '%Y-%m-%dT%H:%M:%S' """
-    #     if naive is None:
-    #         naive=datetime.now()
-    #     # assert not self.timez.is_aware(naive) , "invalid aware datetime"
-
-    #     if naive.second==0:
-    #         naive_stable = naive.replace(second=1,microsecond=0)           
-    #     else:
-    #         naive_stable = naive
-
-    #     last_trade = naive.replace(second=0,microsecond=0)
-    #     last_close = last_trade + timedelta(minutes=-1)
-
-    #     if rtype == 'str':
-    #         last = self.timez.to_str(naive,2)
-    #         stable = self.timez.to_str(naive_stable,2)
-    #         close = self.timez.to_str(last_close,2)
-    #         trade = self.timez.to_str(last_trade,2)
-
-    #     elif rtype =='kst':
-    #         last = self.timez.as_localize(naive,'KST')
-    #         stable = self.timez.as_localize(naive_stable,'KST')
-    #         close = self.timez.as_localize(last_close,'KST')
-    #         trade = self.timez.as_localize(last_trade,'KST')
-
-    #     if msg: print(f" + last({last}) stable({stable}) close({close}), trade({trade})")
-    #     Last = namedtuple('Last',['last','stable','close','trade'])
-    #     return Last(last, stable, close, trade)
-
     def chk_time(self, date_time:datetime, chk=False, msg=False):
-        """>>> return Last(time, stable, close, trade) '%Y-%m-%dT%H:%M:%S' """
+        """>>> # Last namedtuple
+        return Last(input, stable, close, trade) '%Y-%m-%dT%H:%M:%S' 
+        stable = input + min 1 if sec = 0 else input"""
 
-        target = date_time
+        input = date_time
 
         if date_time.second==0:
             stable = date_time.replace(second=1,microsecond=0)           
@@ -141,19 +98,16 @@ class Candle:
         trade = date_time.replace(second=0,microsecond=0)
         close = trade + timedelta(minutes=-1)
 
-        if msg: print(f" + target({target}) stable({stable}) close({close}), trade({trade})")
+        if msg: print(f" + input({input}) stable({stable}) close({close}), trade({trade})")
         if chk:
-            return self.Last(self._T(target), self._T(stable), self._T(close), self._T(trade))
+            return self.Last(
+                self.timez.to_str(input , fmt=2 ), 
+                self.timez.to_str(stable , fmt=2 ), 
+                self.timez.to_str(close , fmt=2 ), 
+                self.timez.to_str(trade , fmt=2 ))
         else:
-            return self.Last(target, stable, close, trade)
+            return self.Last(input, stable, close, trade)
 
-    def _T(self, aware):
-        return datetime.strftime(aware,'%Y-%m-%dT%H:%M:%S')
-
-    def _to_sql_kst(self, date_time_str:str):
-        date_time_navie = datetime.strptime(date_time_str, '%Y-%m-%dT%H:%M:%S') 
-        return self.timez.as_localize(date_time_naive=date_time_navie,tz='KST')
-    
     def to_rows(self, payload:List[dict],key:Literal['tuple','namedtuple']='tuple'):
         """
         + market, (candle_date_time_utc), candle_date_time_kst[str->localize], 
@@ -162,7 +116,7 @@ class Candle:
         selected_rows =[
             (
                 d['market'], 
-                self._to_sql_kst(d['candle_date_time_kst']),
+                self._stime_to_kst(d['candle_date_time_kst']),
                 d['opening_price'],d['high_price'],d['low_price'],d['low_price'],
                 d['candle_acc_trade_price'], d['candle_acc_trade_volume']
             ) 
@@ -174,32 +128,70 @@ class Candle:
 
         return selected_rows        
 
-    # def fill_gaps(self, rows:List[Row], stime_trade):
-    # TODO
-    def complete_zero_volume(self, rows:List[Row], dtime_now_trade):
-        if rows[0].trade < dtime_now_trade:
-            # c = rows[0].close
-            # row = rows[0]._replace(time=dtime_now_trade, amount=0, volume=0, open=c,high=c,low=c,close=c)
-            row = self.zero_volume_row(prev_row=row[0],time=dtime_now_trade)
-            rows.insert(0,row)
-        
-        prev = rows[0]
-        for row in rows[1:-1]:
-            if prev.time + timedelta(minutes=1) != row.time:
-                pass
+    def complete_rows(self, rows:List[Row], stime_trade:str, cut_trade:bool):
+        """ 
+        + stime_trade : date_time_naive 
+        + cut_trade : trade (incomplete) close (complete)
+        """
 
-    def zero_volume_row(self,prev_row:Row, time:datetime=None):
+        if rows:
+            dtime_now_trade_naive = self.timez.from_str(stime_trade,fmt=0,only_naive=True)
+            dtime_now_trade_kst = self.timez.as_localize(dtime_now_trade_naive, tz='KST')
+
+            if rows[0].time < dtime_now_trade_kst:
+                row_zero = self._zero_volume_row(prev_row=rows[0],time=dtime_now_trade_kst)
+                rows.insert(0,row_zero)
+            
+            rows_add = []
+            for i, row_big in enumerate(rows[:-1]):
+                row_small = rows[i+1]
+                while row_big.time != row_small.time + timedelta(minutes=1):
+                    row_zero = self._zero_volume_row(prev_row=row_small)
+                    rows_add.append(row_zero)
+                    row_small = row_zero
+
+            rows.extend(rows_add)
+            rows.sort(key=lambda x:x.time, reverse=True)
+
+            if cut_trade: del rows[0]
+
+        return rows
+        # [Candle(market='KRW-BTC', time=datetime.datetime(2024, 6, 7, 21, 31, ...),
+        # Candle(market='KRW-BTC', time=datetime.datetime(2024, 6, 7, 21, 29, ...),
+        # Candle(market='KRW-BTC', time=datetime.datetime(2024, 6, 7, 21, 28, ...)]
+
+
+    # ------------------------------------------------------------------------ #
+    #                                   utils                                  #
+    # ------------------------------------------------------------------------ #
+
+    def _stime_to_arg(self, date_time_str:str, tz:Literal['UTC','KST']='KST') -> str:
+        date_time_naive = self.timez.from_str(date_time_str, fmt=0, only_naive=True)
+        date_time_aware = self.timez.as_localize(date_time_naive, tz)
+
+        if tz=='UTC': 
+            to = datetime.strftime(date_time_aware,'%Y-%m-%dT%H:%M:%SZ')
+        elif tz == 'KST':
+            to = date_time_aware.isoformat(sep='T',timespec='seconds')
+
+        return to
+
+    def _stime_to_kst(self, date_time_str:str):
+        # date_time_navie = datetime.strptime(date_time_str, '%Y-%m-%dT%H:%M:%S') 
+        date_time_naive = self.timez.from_str(date_time_str, fmt=0, only_naive=True)
+        date_time_aware = self.timez.as_localize(date_time_naive=date_time_naive,tz='KST')
+        return date_time_aware
+    
+    def _zero_volume_row(self,prev_row:Row, time:datetime=None):
         m = prev_row.market
         c = prev_row.close
         t = prev_row.time + timedelta(minutes=1) if time is None else time
         return Row(market=m,time=t,open=c,high=c,low=c,close=c,amount=0,volume=0)
 
-    # def 
-
     def _msg_result(self,status, result:dict, market, frame:str):
         remain = result['remain']
         if result['status'] == 200:
-            self._custom.debug.msg(status, remain['group']+"/g",f"{remain['sec']}/s", market, frame=frame)
+            self._custom.info.msg(status, remain['group']+"/g",f"{remain['sec']}/s", market, frame=frame)
         else:
             self._custom.error.msg(status, f"code({result['status']})", result['text'], market, frame=frame)   
 
