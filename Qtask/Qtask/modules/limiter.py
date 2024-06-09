@@ -4,6 +4,8 @@
 # limiter return
 # -------------------------------- ver 240607 -------------------------------- #
 # xdef hint remove
+# -------------------------------- ver 240609 -------------------------------- #
+# kwargs limit=True
 
 import inspect
 import logging
@@ -54,6 +56,7 @@ class Limiter:
 
     def set_rate(self, max_worker:int, seconds:float, limit:Literal['inflow','outflow','midflow'],
                 propagate=True, msg_stt=False, msg_end=True):
+        
         self._max_worker = max_worker
         self._seconds = seconds
         self._limit_type = limit
@@ -67,25 +70,51 @@ class Limiter:
 
     def wrapper(self, xdef):
         @wraps(xdef)
-        async def wrapper(*args, **kwargs):
-            propagate_exception = None
-            async with self._semaphore:
-                if self._msg_stt: self._custom.info.msg('start', frame=xdef.__name__)   
-                try: 
-                    tsp_start = time.time()     
-                    result = await xdef(*args, **kwargs)
-                    return result
-                except Exception as e:
-                    self._custom.error.msg('except',xdef.__name__,str(args),str(kwargs) )
-                    propagate_exception = e
-                finally:
-                    tsp_finish = time.time()
-                    await self.wait_reset(xdef, tsp_start, tsp_finish,msg=self._msg_end)
-                    if propagate_exception is not None and self._propagate: #? propagate exception to retry
-                        raise propagate_exception
+        async def wrapper(*args, limit=True, **kwargs):
+            if limit:
+                propagate_exception = None
+                async with self._semaphore:
+                    if self._msg_stt: self._custom.info.msg('start', frame=xdef.__name__)   
+                    try: 
+                        tsp_start = time.time()     
+                        result = await xdef(*args, **kwargs)
+                        return result
+                    except Exception as e:
+                        self._custom.error.msg('except',xdef.__name__,str(args),str(kwargs) )
+                        propagate_exception = e
+                    finally:
+                        tsp_finish = time.time()
+                        await self.wait_reset(xdef, tsp_start, tsp_finish,msg=self._msg_end)
+                        if propagate_exception is not None and self._propagate: #? propagate exception to retry
+                            raise propagate_exception
+            else:
+                result = await xdef(*args, **kwargs)
+                return result
         
         self._custom.info.msg('xdef', xdef.__name__ )
         return wrapper
+    
+    # def wrapper(self, xdef):
+    #     @wraps(xdef)
+    #     async def wrapper(*args, **kwargs):
+    #         propagate_exception = None
+    #         async with self._semaphore:
+    #             if self._msg_stt: self._custom.info.msg('start', frame=xdef.__name__)   
+    #             try: 
+    #                 tsp_start = time.time()     
+    #                 result = await xdef(*args, **kwargs)
+    #                 return result
+    #             except Exception as e:
+    #                 self._custom.error.msg('except',xdef.__name__,str(args),str(kwargs) )
+    #                 propagate_exception = e
+    #             finally:
+    #                 tsp_finish = time.time()
+    #                 await self.wait_reset(xdef, tsp_start, tsp_finish,msg=self._msg_end)
+    #                 if propagate_exception is not None and self._propagate: #? propagate exception to retry
+    #                     raise propagate_exception
+        
+    #     self._custom.info.msg('xdef', xdef.__name__ )
+    #     return wrapper
     
     def _msg_semaphore(self, context:Literal['acquire','release'], fname):
         if context=="acquire":
@@ -123,7 +152,7 @@ if __name__ =="__main__":
     limiter = Limiter()
     limiter.set_rate(3, 1, 'outflow')
 
-    @limiter.wrapper2
+    @limiter.wrapper
     async def xfunc(x):
         print(f'start {x}')
         await asyncio.sleep(0.5)
@@ -137,7 +166,7 @@ if __name__ =="__main__":
         # print(f'finish {x}')
 
     # xrfunc = limiter.wrapper(xfunc,propagate=False,msg=True)
-    xrerro = limiter.wrapper(xerro,propagate=False,msg=False)
+    xrerro = limiter.wrapper(xerro)
     
     async def main():
         tasks = []

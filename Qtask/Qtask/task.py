@@ -22,9 +22,9 @@ class xdebug:
             print(f"\033[43m !! Interrupted !! \033[0m")
 
     @classmethod
-    async def gather(self, tasks:list):
+    async def gather(self, *args):
         try:
-            await asyncio.gather(*tasks)
+            await asyncio.gather(*args)
             # print('1')
         except asyncio.exceptions.CancelledError:
             print(f"\033[43m !! all task closed !! \033[0m")
