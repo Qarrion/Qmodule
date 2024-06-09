@@ -1,5 +1,9 @@
 from typing import Literal
 
+# https://misc.flogisoft.com/bash/tip_colors_and_formatting
+
+# "\033[32m  \033[0m"
+# "\033[31m  \033[0m"
 
 def cprint(msg, color:Literal['red','green']):
     name = ['green', 'red', 'reset']
@@ -16,3 +20,4 @@ def cprint(msg, color:Literal['red','green']):
 if __name__ == "__main__":
     cprint('hi','green')
     cprint('hi','red')
+
