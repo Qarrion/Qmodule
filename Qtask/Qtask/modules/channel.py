@@ -1,6 +1,6 @@
 from typing import Callable
 from Qtask.utils.logger_custom import CustomLog
-import asyncio, logging
+import asyncio
 import traceback
 
 
@@ -37,6 +37,7 @@ class Channel:
         self._custom = CustomLog(logger,CLSNAME,'async')
 
         if msg: self._custom.info.msg(name)
+        self._lock = asyncio.Lock()
         self._queue = asyncio.Queue()
         self._status = 'stop'
 
@@ -45,7 +46,7 @@ class Channel:
             text= f"retry({retry}), {args}"    
         else:
             text= f"retry({retry}), {args + tuple(kwargs.values())}"
-        self._custom.info.msg(status, text,frame=2)
+        self._custom.info.msg(status, text, frame=2)
         
     async def xput_queue(self, 
         args:tuple=(),kwargs:dict=None, retry:int=0, msg=False):
@@ -55,6 +56,7 @@ class Channel:
         if msg: self._msg_args('item',args, kwargs, retry)
 
     async def xget_queue(self,msg=False):
+        """return (args, kwargs, retry) """
         args, kwargs, retry = await self._queue.get()
         if msg: self._msg_args('item',args, kwargs, retry)
         return (args, kwargs, retry)
@@ -78,6 +80,7 @@ class Channel:
             if retry < maxtry:
                 self._custom.warning.msg('except',e.__class__.__name__)
                 await self.xput_queue(args, kwargs,retry+1,msg=True)
+                # traceback.print_exc()
             else:
                 self._custom.error.msg('failed',e.__class__.__name__)
                 traceback.print_exc()

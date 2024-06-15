@@ -79,6 +79,10 @@ class Balance:
             else:
                 result = await asyncio.wait_for(self._xworkers[item.name](xcontext, *item.args, **kwargs),50)
 
+        except asyncio.exceptions.CancelledError as e:
+            task_name = asyncio.current_task().get_name()
+            print(f"\033[33m Interrupted ! in balance ({task_name}) \033[0m")
+
         except Exception as e:
             if item.retry < 3:
                 await self._xput_i_queue(
@@ -88,7 +92,8 @@ class Balance:
                 print(e)
         finally:
             self.i_queue.task_done()
-            item.future.set_result(result)
+            if not item.future.cancelled():
+                item.future.set_result(result)
 
             if await self._is_stopping():
                 text = item.name if xcontext is None else f"{item.name}_with_{xcontext.__class__.__name__}"

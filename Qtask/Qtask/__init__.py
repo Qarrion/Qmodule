@@ -1,2 +1,2 @@
 
-from Qtask.task import Task, Limiter, Channel, Produce, Consume, Balance, xdebug
+from Qtask.task import Task, Limiter, Channel, Producer, Consumer, Balancer, xdebug

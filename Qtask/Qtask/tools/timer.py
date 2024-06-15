@@ -86,12 +86,13 @@ class Timer:
     "KST":pytz.timezone('Asia/Seoul'),
     "UTC":pytz.timezone('UTC')}
 
-    def __init__(self, logger:logging.Logger=None, clsname:str='Timer'):
+    def __init__(self, logger:logging.Logger=None, clsname:str='Timer',core=None):
         self._custom = CustomLog(logger,clsname,'async')
         self._frame = '<timer>'
         # self._custom.info.msg(self._frame)
 
-        self._core = _core
+        # self._core = _core
+        self._core = _core if core is None else core
         self._buffer_ms_delta = timedelta(milliseconds=self._core.buffer*1000)
     # ------------------------------------------------------------------------ #
     #                                   core                                   #

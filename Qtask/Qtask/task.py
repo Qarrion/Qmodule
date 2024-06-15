@@ -1,13 +1,13 @@
 # -------------------------------- ver 240521 -------------------------------- #
 # set_channel
-from re import T
+import traceback
 from typing import Callable, Literal
 
-from Qtask.modules.produce import Produce
-from Qtask.modules.consume import Consume
+from Qtask.modules.producer import Producer
+from Qtask.modules.consumer import Consumer
 from Qtask.modules.channel import Channel
 from Qtask.modules.limiter import Limiter
-from Qtask.modules.balance import Balance
+from Qtask.modules.balancer import Balancer
 from Qtask.utils.logger_custom import CustomLog
 import asyncio
 class xdebug:
@@ -31,6 +31,7 @@ class xdebug:
 
         except Exception as e:
             print(e.__class__.__name__)
+            traceback.print_exc()
 
 
 class Task:
@@ -48,8 +49,8 @@ class Task:
         if msg : self._custom.info.msg(name)
         
         self.channel = Channel(name,msg=False)
-        self.consume = Consume(name,msg=False)
-        self.produce = Produce(name,msg=False)
+        self.consume = Consumer(name,msg=False)
+        self.produce = Producer(name,msg=False)
 
         self.consume.set_channel(self.channel)
         self.produce.set_channel(self.channel)
@@ -90,9 +91,9 @@ class Task:
             async def xproducer():
                 await self.xput_channel(args=args, kwargs=kwargs)
 
-            self.produce.set_xproducer(xdef=xproducer, channel=None, msg=msg)
+            self.produce.set_xworker(xdef=xproducer, channel=None, msg_put=msg)
         else:
-            self.produce.set_xproducer(xdef=xdef, channel=None, msg=msg)
+            self.produce.set_xworker(xdef=xdef, channel=None, msg_put=msg)
 
     async def xput_channel(self,args:tuple=(), kwargs:dict=None, retry= 0):
         """ 
@@ -101,7 +102,7 @@ class Task:
         await self.produce.xput_channel(args,kwargs,retry)
 
     async def xrun_xproduce(self,xdef:Callable=None,timeout=None,msg=True):
-        await self.produce.xproduce(xdef=xdef,timeout=timeout,msg=msg)
+        await self.produce.xproduce(xdef=xdef,timeout=timeout,msg_div=msg)
 
     # async def xproducer(self):
     #     """default without arguments producer"""
@@ -110,13 +111,17 @@ class Task:
     #                                   cons                                   #
     # ------------------------------------------------------------------------ #
     def set_xconsumer(self,xdef:Callable,msg_get = False, msg_put = False, msg_run = False):
-        self.consume.set_xconsumer(xdef=xdef, channel=None,
+        self.consume.set_xworker(xdef=xdef, channel=None,
                                    msg_get=msg_get,msg_put=msg_put,msg_run=msg_run)
 
     async def xrun_xconsume(self,timeout:int=None, maxtry:int=3, msg=False):
-        await self.consume.xconsume(timeout=timeout, maxtry=maxtry, msg=msg)
+        await self.consume.xconsume(timeout=timeout, maxtry=maxtry, msg_div=msg)
 
 
+    def task_done(self):
+        self.channel._queue.task_done()
+    def get_unfinished_task(self):
+        return self.channel._queue._unfinished_tasks
 
 if __name__ == "__main__":
 

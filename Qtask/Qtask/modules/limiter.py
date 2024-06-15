@@ -32,7 +32,7 @@ class Limiter:
         limiter = Limiter('limiter')
         limiter.set_rate(3, 1, 'outflow')
         xldef = limiter.wrapper(xdef,propagate=False,msg=True)
-
+        xldef(limit=False)
         >>> # case
         limiter = Limiter('g_mkt')._set(5,1,'outflow')
 
@@ -79,6 +79,9 @@ class Limiter:
                         tsp_start = time.time()     
                         result = await xdef(*args, **kwargs)
                         return result
+                    except asyncio.exceptions.CancelledError as e:
+                        task_name = asyncio.current_task().get_name()
+                        print(f"\033[33m Interrupted ! limiter ({task_name}) \033[0m")
                     except Exception as e:
                         self._custom.error.msg('except',xdef.__name__,str(args),str(kwargs) )
                         propagate_exception = e
@@ -93,28 +96,6 @@ class Limiter:
         
         self._custom.info.msg('xdef', xdef.__name__ )
         return wrapper
-    
-    # def wrapper(self, xdef):
-    #     @wraps(xdef)
-    #     async def wrapper(*args, **kwargs):
-    #         propagate_exception = None
-    #         async with self._semaphore:
-    #             if self._msg_stt: self._custom.info.msg('start', frame=xdef.__name__)   
-    #             try: 
-    #                 tsp_start = time.time()     
-    #                 result = await xdef(*args, **kwargs)
-    #                 return result
-    #             except Exception as e:
-    #                 self._custom.error.msg('except',xdef.__name__,str(args),str(kwargs) )
-    #                 propagate_exception = e
-    #             finally:
-    #                 tsp_finish = time.time()
-    #                 await self.wait_reset(xdef, tsp_start, tsp_finish,msg=self._msg_end)
-    #                 if propagate_exception is not None and self._propagate: #? propagate exception to retry
-    #                     raise propagate_exception
-        
-    #     self._custom.info.msg('xdef', xdef.__name__ )
-    #     return wrapper
     
     def _msg_semaphore(self, context:Literal['acquire','release'], fname):
         if context=="acquire":
