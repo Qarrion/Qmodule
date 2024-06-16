@@ -14,7 +14,7 @@ from Qtask.utils.format_time import TimeFormat
 from typing import Callable, Literal
 
 from functools import wraps
-import asyncio, time
+import asyncio, time, traceback
 
 class Limiter:
     _instances = {}
@@ -31,7 +31,7 @@ class Limiter:
         >>> # named singleton
         limiter = Limiter('limiter')
         limiter.set_rate(3, 1, 'outflow')
-        xldef = limiter.wrapper(xdef,propagate=False,msg=True)
+        xldef = limiter.wrapper(xdef,traceback=False,msg=True)
         xldef(limit=False)
         >>> # case
         limiter = Limiter('g_mkt')._set(5,1,'outflow')
@@ -50,18 +50,18 @@ class Limiter:
             self._initialized = True
 
     def _set(self, max_worker:int, seconds:float, limit:Literal['inflow','outflow','midflow']):
-        self.set_rate(max_worker, seconds, limit)
+        self.set_config(max_worker, seconds, limit)
         return self
     
 
-    def set_rate(self, max_worker:int, seconds:float, limit:Literal['inflow','outflow','midflow'],
-                propagate=True, msg_stt=False, msg_end=True):
+    def set_config(self, max_worker:int, seconds:float, limit:Literal['inflow','outflow','midflow'],
+                traceback=False, msg_stt=False, msg_end=False):
         
         self._max_worker = max_worker
         self._seconds = seconds
         self._limit_type = limit
 
-        self._propagate = propagate
+        self._traceback = traceback
         self._msg_stt = msg_stt
         self._msg_end = msg_end
 
@@ -72,24 +72,27 @@ class Limiter:
         @wraps(xdef)
         async def wrapper(*args, limit=True, **kwargs):
             if limit:
-                propagate_exception = None
                 async with self._semaphore:
                     if self._msg_stt: self._custom.info.msg('start', frame=xdef.__name__)   
                     try: 
                         tsp_start = time.time()     
                         result = await xdef(*args, **kwargs)
                         return result
+                    
                     except asyncio.exceptions.CancelledError as e:
                         task_name = asyncio.current_task().get_name()
                         print(f"\033[33m Interrupted ! limiter ({task_name}) \033[0m")
+                        raise e
+
                     except Exception as e:
-                        self._custom.error.msg('except',xdef.__name__,str(args),str(kwargs) )
-                        propagate_exception = e
-                    finally:
+                        self._custom.error.msg('except',xdef.__name__,e.__class__.__name__,frame='task' )
+                        raise e
+                        
+                    finally: # before raise e
                         tsp_finish = time.time()
-                        await self.wait_reset(xdef, tsp_start, tsp_finish,msg=self._msg_end)
-                        if propagate_exception is not None and self._propagate: #? propagate exception to retry
-                            raise propagate_exception
+                        if self._traceback: traceback.print_exc()
+                        await self.wait_reset(xdef, tsp_start, tsp_finish, msg=self._msg_end)
+
             else:
                 result = await xdef(*args, **kwargs)
                 return result
@@ -97,14 +100,6 @@ class Limiter:
         self._custom.info.msg('xdef', xdef.__name__ )
         return wrapper
     
-    def _msg_semaphore(self, context:Literal['acquire','release'], fname):
-        if context=="acquire":
-            queue = f"({self._semaphore._value}/{self._max_worker})"
-            self._custom.info.msg('acquire',fname,self._custom.arg(f'sema{queue}',2,'l',"-") )
-        elif context =="release":
-            queue = f"({self._semaphore._value+1}/{self._max_worker})<"
-            self._custom.info.msg('release',fname,self._custom.arg(f'sema{queue}',2,'r',"-") )
-
     async def wait_reset(self, xdef, tsp_start:float, tsp_finish, msg=False):
 
         if self._limit_type == 'inflow':
@@ -124,14 +119,14 @@ class Limiter:
     def _msg_wait_reset(self, xdef, seconds:float, tsp_ref:float):
         msg_sec = TimeFormat.seconds(seconds,'hmsf')
         msg_ref = TimeFormat.timestamp(tsp_ref,'hmsf')
-        self._custom.info.msg('reset',self._limit_type,msg_ref,msg_sec ,frame=xdef.__name__)
+        self._custom.info.msg('throttle',self._limit_type,msg_ref,msg_sec ,frame='task')
 
 
 if __name__ =="__main__":
     # from Qlogger import Logger
     # logger = Logger('limiter', 'head')
     limiter = Limiter()
-    limiter.set_rate(3, 1, 'outflow')
+    limiter.set_config(3, 1, 'outflow')
 
     @limiter.wrapper
     async def xfunc(x):

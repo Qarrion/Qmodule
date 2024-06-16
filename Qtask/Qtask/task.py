@@ -101,8 +101,8 @@ class Task:
         + args = () for no arg consumer"""
         await self.produce.xput_channel(args,kwargs,retry)
 
-    async def xrun_xproduce(self,xdef:Callable=None,timeout=None,msg=True):
-        await self.produce.xproduce(xdef=xdef,timeout=timeout,msg_div=msg)
+    async def xrun_xproduce(self,timeout=None,msg=True):
+        await self.produce.xproduce(timeout=timeout,msg_div=msg)
 
     # async def xproducer(self):
     #     """default without arguments producer"""

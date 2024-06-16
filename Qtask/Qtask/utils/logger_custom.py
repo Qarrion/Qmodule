@@ -60,7 +60,15 @@ class CustomLog:
         self._log_chained(LOG_MSG) 
 
     def div(self, task=False, offset:float|None=None):
-        BODY = f"{'='*81}"
+        BODY = f"{'='*84}"
+        str_task = f" | {asyncio.current_task().get_name():<10}" if task else ""
+        str_offset = self._get_offset(offset) if offset is not None else ""
+        FOOTTER = f"{str_offset}{str_task}"
+        DIV_MSG = f"{BODY}{FOOTTER}"
+        self._log_chained(DIV_MSG) 
+
+    def full(self, text, task=False, offset:float|None=None):
+        BODY = f"{text:<84}"
         str_task = f" | {asyncio.current_task().get_name():<10}" if task else ""
         str_offset = self._get_offset(offset) if offset is not None else ""
         FOOTTER = f"{str_offset}{str_task}"
@@ -238,3 +246,6 @@ if __name__ == "__main__":
     customlog.info.msg('test', "hi", customlog.arg("left",1,'left',"-"))
     customlog.info.msg('test', "hi", customlog.arg("left",2,'left',"-"))
     customlog.info.msg('test', "hi", customlog.arg("left",2,'r',"-"))
+    
+    print('# --------------------------------- full --------------------------------- #')
+    customlog.info.full("ddddddddddddddddddddddddddddddddddddddddddddddd")
