@@ -23,7 +23,8 @@ class CustomLog:
                  context:Literal['sync', 'thread', 'async'] = 'sync'):
 
         self.logger = logger
-        self.clsinst = f"{clsname:<7} - {self.logger.name:<7} | "
+        dots ='.' * (20 - len(clsname) - len(self.logger.name) - 2)
+        self.clsinst = f"{clsname}{dots}({self.logger.name}) | "
 
         if context == 'sync':
             self.method = _Sync()
@@ -33,7 +34,7 @@ class CustomLog:
             self.method = _Async()
 
     def msg(self, status, *args, frame:int|str|None=1, task=False, offset:float|None=None):
-        """>>> #{func.status:<20} {arg:12}"""
+        """>>> #frame='task' -> get_task()"""
         # -------------------------------------------------------------------- #
         #                                header                                #
         # -------------------------------------------------------------------- #
@@ -59,7 +60,15 @@ class CustomLog:
         self._log_chained(LOG_MSG) 
 
     def div(self, task=False, offset:float|None=None):
-        BODY = f"{'='*81}"
+        BODY = f"{'='*84}"
+        str_task = f" | {asyncio.current_task().get_name():<10}" if task else ""
+        str_offset = self._get_offset(offset) if offset is not None else ""
+        FOOTTER = f"{str_offset}{str_task}"
+        DIV_MSG = f"{BODY}{FOOTTER}"
+        self._log_chained(DIV_MSG) 
+
+    def full(self, text, task=False, offset:float|None=None):
+        BODY = f"{text:<84}"
         str_task = f" | {asyncio.current_task().get_name():<10}" if task else ""
         str_offset = self._get_offset(offset) if offset is not None else ""
         FOOTTER = f"{str_offset}{str_task}"
@@ -97,7 +106,10 @@ class CustomLog:
         if frame is None:
             rslt = ""
         elif isinstance(frame , str):
-            rslt = frame
+            if frame == 'task':
+                rslt = asyncio.current_task().get_name()
+            else:
+                rslt = frame
         elif isinstance(frame, int):
             n_back = frame + 1
             cframe = inspect.currentframe()
@@ -180,7 +192,7 @@ class _Async:
 # ---------------------------------------------------------------------------- #
 if __name__ == "__main__":
     import asyncio
-    logger = logging.getLogger('mylog')
+    logger = logging.getLogger('mylodg')
     logger.setLevel(logging.DEBUG) 
     handler = logging.StreamHandler() 
     handler.setLevel(logging.DEBUG)
@@ -190,7 +202,7 @@ if __name__ == "__main__":
     logger.addHandler(handler)
 
     print('# ------------------------------- functions ------------------------------- #')
-    customlog = CustomLog(logger, 'Myclass')
+    customlog = CustomLog(logger, 'Mycladdd')
     customlog.msg('args','val1') 
     customlog2 = CustomLog(logger, 'Myclas')
     customlog2.msg('args','val1','val2') 
@@ -234,3 +246,6 @@ if __name__ == "__main__":
     customlog.info.msg('test', "hi", customlog.arg("left",1,'left',"-"))
     customlog.info.msg('test', "hi", customlog.arg("left",2,'left',"-"))
     customlog.info.msg('test', "hi", customlog.arg("left",2,'r',"-"))
+
+    print('# --------------------------------- full --------------------------------- #')
+    customlog.info.full("ddddddddddddddddddddddddddddddddddddddddddddddd")
