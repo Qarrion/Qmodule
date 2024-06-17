@@ -46,7 +46,7 @@ class Task:
             print(f"\033[31m No Module Qlogger \033[0m")
 
         self._custom = CustomLog(logger,CLSNAME,'async')
-        if msg : self._custom.info.msg(name)
+        if msg : self._custom.info.ini(name)
         
         self.channel = Channel(name,msg=False)
         self.consume = Consumer(name,msg=False)

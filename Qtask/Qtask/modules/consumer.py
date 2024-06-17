@@ -3,6 +3,7 @@
 
 import asyncio
 from functools import partial
+from re import M
 import traceback
 from typing import Callable
 
@@ -44,8 +45,8 @@ class Consumer:
             logger = None
             print(f"\033[31m No Module Qlogger \033[0m")
 
-        self._custom = CustomLog(logger,CLSNAME,'async')
-        if msg : self._custom.info.msg(name)
+        self._custom = CustomLog(logger, CLSNAME, 'async')
+        if msg : self._custom.info.ini(name)
 
         self._channel:Channel = None
         self._xworker = None
@@ -55,22 +56,20 @@ class Consumer:
     # ------------------------------------------------------------------------ #
     def set_channel(self, channel:Channel):
         self._channel:Channel = channel
-        self._custom.info.msg('inst', f"channel({channel._name})")
+        self._custom.info.msg(channel._name,"","")
         
     def set_xworker(self, xdef: Callable, channel:Channel=None, 
                                             msg_get=False, msg_put=False, msg_run=False):
         """arg 'channel' object should be assigned in the 'set_producer' or 'set_channel'
         + msg for | xget_queue....item | """
 
+        self._custom.info.msg(xdef.__name__,"","")
         self._xworker = xdef
         self._msg_channel_get = msg_get
         self._msg_channel_put = msg_put
         self._msg_channel_run = msg_run
 
-        if channel is None:
-            self._custom.info.msg('xdef', f"xworker({xdef.__name__})")
-        else:
-            self._custom.info.msg('xdef', f"xworker({xdef.__name__})")
+        if channel is not None:
             self.set_channel(channel)
 
     def set_partial(self, func, *args, **kwargs):
@@ -89,14 +88,14 @@ class Consumer:
         """+ msg in set_xworker"""
         return await self._channel.xget_queue(msg=self._msg_channel_get)
     
-    async def xrun_channel(self, xdef:Callable, item:tuple, timeout:int=None, maxtry=3, msg=False):
+    async def xrun_channel(self, xdef:Callable, item:tuple, timeout:int=None, maxtry=3, msg_div=False):
         if self._channel.is_starting():
-            if msg : self._custom.info.msg('task', self._custom.arg(xdef.__name__,3,'l',"-"), frame='xconsume')
+            if msg_div : self._custom.info.msg(xdef.__name__,widths=(3,),aligns=("<"),paddings=("-"))
 
-        await self._channel.xrun_queue(xdef,item,timeout,maxtry,msg=self._msg_channel_run)
+        await self._channel.xrun_queue(xdef, item, timeout, maxtry,msg=self._msg_channel_run)
 
         if self._channel.is_stopping():
-            if msg : self._custom.info.msg('task', self._custom.arg(xdef.__name__,3,'r',"-"), frame='xconsume')
+            if msg_div : self._custom.info.msg(xdef.__name__,widths=(3,),aligns=(">"),paddings=("-"))
 
     async def xconsume(self, timeout:int=None, maxtry:int=3, msg_div=False):
         if not self._xworker:  
@@ -106,7 +105,7 @@ class Consumer:
         while True:
             try:
                 item = await self.xget_channel()
-                task = asyncio.create_task(self.xrun_channel(self._xworker,item,timeout,maxtry,msg=msg_div))
+                task = asyncio.create_task(self.xrun_channel(self._xworker,item,timeout,maxtry,msg_div=msg_div))
             except asyncio.exceptions.CancelledError:
                 print(f"\033[33m Interrupted ! loop_xconsume ({self._xworker.__name__}) \033[0m")
                 break      
@@ -123,23 +122,24 @@ if __name__ == "__main__":
     # ------------------------------- producer ------------------------------- #
     async def producer():
         await cons.xput_channel(args =(1,))
-        await cons.xput_channel(args =(1,))
+        # await cons.xput_channel(args =(1,))
     
     # ------------------------------- consumer ------------------------------- #
     async def consumer(var):
         print('start')
+        raise ValueError
         await asyncio.sleep(3)
         print('finish')
 
-    #! channel
-    ch01 = Channel()
-    cons.set_xworker(consumer,ch01,msg_run=True)
+    # #! channel
+    ch01 = Channel(msg=False)
+    cons.set_xworker(consumer,ch01,msg_get=True, msg_put=True, msg_run=True)
 
-    # async def main():
-    #     task_produce = asyncio.create_task(producer())
-    #     task_consume = asyncio.create_task(cons.xconsume(msg=True))
+    # # async def main():
+    # #     task_produce = asyncio.create_task(producer())
+    # #     task_consume = asyncio.create_task(cons.xconsume(msg=True))
 
-    #     await asyncio.gather(task_produce,task_consume)
+    # #     await asyncio.gather(task_produce,task_consume)
 
     async def main():
         tasks =[

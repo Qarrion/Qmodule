@@ -36,41 +36,41 @@ class Channel:
         self._name = name
         self._custom = CustomLog(logger,CLSNAME,'async')
 
-        if msg: self._custom.info.msg(name)
+        if msg: self._custom.info.ini(name)
         self._lock = asyncio.Lock()
         self._queue = asyncio.Queue()
         self._status = 'stop'
 
-    def _msg_args(self, status, args, kwargs, retry):
-        if kwargs is None:
-            text= f"retry({retry}), {args}"    
-        else:
-            text= f"retry({retry}), {args + tuple(kwargs.values())}"
-        self._custom.info.msg(status, text, frame=2)
+    # def _msg_args(self, status, args, kwargs, retry):
+    #     if kwargs is None:
+    #         text= f"retry({retry}), {args}"    
+    #     else:
+    #         text= f"retry({retry}), {args + tuple(kwargs.values())}"
+    #     self._custom.info.msg(status, text, frame=2)
         
     async def xput_queue(self, 
         args:tuple=(),kwargs:dict=None, retry:int=0, msg=False):
         """args = () for no arg consumer"""
         item = (args,kwargs,retry)
         await self._queue.put(item)
-        if msg: self._msg_args('item',args, kwargs, retry)
+        if msg: self._custom.info.msg(str(args),f'retry({retry})','')
 
     async def xget_queue(self,msg=False):
         """return (args, kwargs, retry) """
         args, kwargs, retry = await self._queue.get()
-        if msg: self._msg_args('item',args, kwargs, retry)
+        if msg: self._custom.info.msg(str(args),f'retry({retry})','')
         return (args, kwargs, retry)
 
     async def xget_queue_with_timeout(self, timeout:int, msg=False):
         args, kwargs, retry = await asyncio.wait_for(self._queue.get(), timeout=timeout)
-        if msg: self._msg_args('item',args, kwargs, retry)
+        if msg: self._custom.info.msg(str(args),f'retry({retry})','')
         return (args, kwargs, retry)
         
     async def xrun_queue(self, xdef:Callable, item:tuple, timeout:int=None, maxtry=3, msg=False):
         args, kwargs, retry = item
 
         try:
-            if msg: self._msg_args('xdef',args, kwargs, retry)
+            if msg: self._custom.info.msg(str(args),f'retry({retry})','')
             if kwargs is None : 
                 await asyncio.wait_for(xdef(*args), timeout=timeout)
             else:

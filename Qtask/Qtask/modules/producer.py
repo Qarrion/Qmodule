@@ -46,8 +46,8 @@ class Producer:
             logger = None
             print(f"\033[31m No Module Qlogger \033[0m")
 
-        self._custom = CustomLog(logger,CLSNAME,'async')
-        if msg : self._custom.info.msg(name)
+        self._custom = CustomLog(logger, CLSNAME, 'async')
+        if msg : self._custom.info.ini(name)
 
         self._timer = Timer(logger,CLSNAME,Core)
         self._nowst = Nowst(logger,CLSNAME,Core,offset=offset)
@@ -84,8 +84,8 @@ class Producer:
         """+ print divider"""
         self._timer._dev_divider(offset=Core.offset)
         task, group = all_tasks()
-        self._custom.full(str(task))
-        self._custom.full(str(group))
+        self._custom.max(str(task))
+        self._custom.max(str(group))
 
     # ------------------------------- synctime ------------------------------- #
     async def work_xsync_time(self):
@@ -98,7 +98,7 @@ class Producer:
     # ------------------------------------------------------------------------ #
     def set_channel(self, channel:Channel):
         self._channel = channel
-        self._custom.info.msg('inst', f"channel({channel._name})")
+        self._custom.info.msg(channel._name,"","")
 
     def set_xworker(self, xdef:Callable, channel:Channel=None, msg_put=False):
         """
@@ -107,11 +107,8 @@ class Producer:
         """
         self._xworker = xdef
         self._msg_channel_put = msg_put
-
-        if channel is None:
-            self._custom.info.msg('xdef', f"xworker({xdef.__name__})")
-        else:
-            self._custom.info.msg('xdef', f"xworker({xdef.__name__})")
+        self._custom.info.msg(xdef.__name__,"",widths=(2,1))
+        if channel is not None:
             self.set_channel(channel)
 
     def set_partial(self, func, *args, **kwargs):
@@ -149,9 +146,12 @@ class Producer:
                     await asyncio.sleep(tot_sec)
                     await self._nowst.xadjust_offset_change(tgt_dtm, msg = msg_adjust)
 
-                    if msg_div: self._custom.info.msg('exec', self._custom.arg(self._xworker.__name__,3,'l',"-"), offset=Core.offset)
+                    # if msg_div: self._custom.info.msg('exec', self._custom.arg(self._xworker.__name__,3,'l',"-"), offset=Core.offset)
+                    if msg_div : self._custom.info.msg(self._xworker.__name__,widths=(3,),aligns=("<"),paddings=("-"),offset=Core.offset)
+
                     await asyncio.wait_for(self._xworker(), timeout)
-                    if msg_div: self._custom.info.msg('exec', self._custom.arg(self._xworker.__name__,3,'r',"-"), offset=Core.offset)
+                    if msg_div : self._custom.info.msg(self._xworker.__name__,widths=(3,),aligns=(">"),paddings=("-"),offset=Core.offset)
+                    # if msg_div: self._custom.info.msg('exec', self._custom.arg(self._xworker.__name__,3,'r',"-"), offset=Core.offset)
 
                     await self._nowst.xadjust_offset_change(tgt_dtm, msg = msg_adjust)
                 except asyncio.exceptions.CancelledError:
@@ -169,41 +169,41 @@ if __name__ == "__main__":
     ch = Channel()
 
     prod = Producer(offset=True)
-    prod.set_timer('every_seconds', 10)
+    # prod.set_timer('every_seconds', 10,msg=True)
 
     # --------------------------------- plain -------------------------------- #
-    # async def xworkeR():
-    #     await prod.xput_channel(args=(1,)) 
+    async def xworkeR():
+        await prod.xput_channel(args=(1,)) 
 
-    # prod.set_xworker(xworkeR,ch)
+    prod.set_xworker(xworkeR,ch)
 
     # -------------------------------- partial ------------------------------- #
-    async def xworkeR(x):
-        await prod.xput_channel(args=(x,)) 
+    # async def xworkeR(x):
+    #     await prod.xput_channel(args=(x,)) 
 
-    xWorkeR = prod.set_partial(xworkeR,x=2)
-    prod.set_xworker(xWorkeR,ch)
+    # xWorkeR = prod.set_partial(xworkeR,x=2)
+    # prod.set_xworker(xWorkeR,ch)
 
-    async def main():
-        await prod.xproduce()
+    # async def main():
+    #     await prod.xproduce()
 
-    asyncio.run(main())
+    # asyncio.run(main())
     # ------------------------------------------------------------------------ #
     #                                  preset                                  #
     # ------------------------------------------------------------------------ #
-    # p_sync = Produce('p_sync')
-    # p_sync.set_timer('every_seconds', 10)
-    # p_sync.set_preset('xsync_time')
-    # p_divr = Produce('p_divr')
-    # p_divr.set_timer('every_seconds', 20)
-    # p_divr.set_preset('msg_divider')
+    p_sync = Producer('p_sync')
+    p_sync.set_timer('every_seconds', 10)
+    p_sync.set_preset('xsync_time')
+    p_divr = Producer('p_divr')
+    p_divr.set_timer('every_seconds', 20)
+    p_divr.set_preset('msg_divider')
 
-    # async def produce():
-    #     task1 = asyncio.create_task(p_sync.xproduce(msg=False))
-    #     task2 = asyncio.create_task(p_divr.xproduce(msg=False))
-    #     await asyncio.gather(task1, task2)
+    async def produce():
+        task1 = asyncio.create_task(p_sync.xproduce(msg_div=False))
+        task2 = asyncio.create_task(p_divr.xproduce(msg_div=False))
+        await asyncio.gather(task1, task2)
 
-    # asyncio.run(produce())
+    asyncio.run(produce())
 
 
 

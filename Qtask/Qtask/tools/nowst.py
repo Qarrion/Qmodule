@@ -37,9 +37,8 @@ class Nowst:
     # server_list = ["pool.ntp.org","kr.pool.ntp.org","time.windows.com","time.nist.gov","ntp.ubuntu.com"]
     
     def __init__(self, logger:logging.Logger=None, clsname:str='Nowst', core = None, offset=True):
-        self._custom = CustomLog(logger,clsname,'sync')
+        self._custom = CustomLog(logger,clsname,'async')
         self._frame = '<nowst>'
-        # self._custom.info.msg(self._frame)
 
         self._core = _core if core is None else core
         if offset :
@@ -54,14 +53,13 @@ class Nowst:
         offset = f"OFF({self._core.offset:+.3f})"
         buffer = f"BUF({self._core.buffer:+.3f})"
         
-        if msg: self._custom.info.msg('set_core',f"({name})",offset,buffer,frame=self._frame)
+        if msg: self._custom.info.msg(f"({name})",offset,buffer)
         
     def now_stamp(self, msg=False)->float:
         """with offset"""
         now_local = time.time()
         now_stamp = now_local + self._core.offset
-        if msg: self._custom.debug.msg(f"stamp", f"L({now_local:.5f})",f"S({now_stamp:.5f})", frame=self._frame, offset=self._core.offset)
-        # if msg: self._custom.debug.msg(f"offset ({self._core.offset:+.6f})", f"L({now_local:.5f})",f"S({now_stamp:.5f})", frame=self._frame, offset=self._core.offset)
+        if msg: self._custom.debug.msg(f"Server({now_stamp:.5f})",widths=(3),  offset=self._core.offset)
         return now_stamp
     
     def now_naive(self, tz:Literal['KST','UTC']='KST', msg=False)->datetime:
@@ -69,7 +67,7 @@ class Nowst:
         now_timestamp = self.now_stamp()
         now_datetime = datetime.fromtimestamp(now_timestamp,tz=self.timezone[tz]) 
         now_datetime_naive = now_datetime.replace(tzinfo=None)
-        if msg: self._custom.debug.msg(f"naive", f"Server({now_datetime_naive})", offset=self._core.offset,frame=self._frame)
+        if msg: self._custom.debug.msg(f"Server({now_datetime_naive})",widths=(3), offset=self._core.offset)
         # if msg: self._custom.debug.msg(f"offset ({self._core.offset:+.6f})", f"Server({now_datetime_naive})", frame=None,offset=self._core.offset)
         return now_datetime_naive
 
@@ -90,7 +88,7 @@ class Nowst:
                 pass
 
         if min_offset == float('inf') : min_offset,min_server = self._core.offset, 'Na'
-        if msg: self._custom.info.msg('offset',f"{min_offset:.6f}", min_server, offset=self._core.offset, frame=self._frame)
+        if msg: self._custom.info.msg(f"{min_offset:.6f}", min_server,widths=(1,2), offset=self._core.offset)
         return min_offset
 
     def sync_offset(self, msg=True):
@@ -100,12 +98,12 @@ class Nowst:
         self._core.offset = new_offset
         dif_offset = new_offset - pre_offset
         msg_offset = (f"pre({pre_offset:+.4f})",f"new({new_offset:+.4f})",f"dif({dif_offset:+.4f})")
-        if msg : self._custom.info.msg('sync',*msg_offset,offset=self._core.offset, frame=self._frame)
+        if msg : self._custom.info.msg(*msg_offset,offset=self._core.offset)
 
     def _warning_default_core(self, where):
         if hasattr(self._core, 'name'):
             if self._core.name == 'default':
-                print(f"\033[31m [Warning in '{where}'] limiter has not been set! \033[0m")
+                print(f"\033[31m [Warning in '{where}'] core has not been set! \033[0m")
 
     def _default_timer(self):
         return 5, datetime.now() + timedelta(seconds=5)
@@ -115,15 +113,13 @@ class Nowst:
 
     async def xsync_offset(self,msg=False):
         self._warning_default_core('nowst.async_offset()')
-        # loop = asyncio.get_running_loop()
         try:
             pre_offset = self._core.offset
-            # new_offset = await asyncio.wait_for(loop.run_in_executor(None,self.fetch_offset,msg),10)
             new_offset = await asyncio.wait_for(asyncio.to_thread(self.fetch_offset,False, False),10)
             self._core.offset = new_offset
             dif_offset = new_offset - pre_offset
             msg_offset = (f"pre({pre_offset:+.4f})",f"new({new_offset:+.4f})",f"dif({dif_offset:+.4f})")
-            self._custom.info.msg('xsync',*msg_offset,offset=self._core.offset,frame=self._frame)
+            self._custom.info.msg(*msg_offset,offset=self._core.offset)
         except Exception as e:
             print(str(e))
             traceback.print_exc()
@@ -135,15 +131,15 @@ class Nowst:
 
         if dif_sec > self._core.buffer:
             adjust_sec = dif_sec 
-            if msg : self._custom.debug.msg('xadjust', f"offset_change",f"s ({adjust_sec:+.4f})", frame=self._frame, offset=self._core.offset)
+            if msg : self._custom.debug.msg('xadjust', f"offset_change",f"s ({adjust_sec:+.4f})",  offset=self._core.offset)
             await asyncio.sleep(adjust_sec)
 
     # ------------------------------------------------------------------------ #
     #                                   debug                                  #
     # ------------------------------------------------------------------------ #
 
-    def _dev_divider(self,task=None,offset=None):
-        self._custom.info.div(task,offset)
+    def _dev_divider(self,offset=None):
+        self._custom.info.div(offset)
 
     def _dev_check_offset(self):
         for server in self.server_list:
@@ -183,18 +179,18 @@ if __name__=="__main__":
     nowst.now_stamp(True)
     nowst.now_naive(msg=True)
     # --------------------------------- nowst -------------------------------- #
-    nowst._dev_divider()
+    # nowst._dev_divider()
     nowst.fetch_offset(msg=True,debug=True)
     nowst.fetch_offset(False)
 
-    # --------------------------------- async -------------------------------- #
-    nowst._dev_divider()
-    async def main():
-        rslt = await nowst.xsync_offset(msg=False)
-        print(rslt)
+    # # --------------------------------- async -------------------------------- #
+    # nowst._dev_divider()
+    # async def main():
+    #     await nowst.xsync_offset(msg=False)
 
-    asyncio.run(main())
-    # --------------------------------- core --------------------------------- #
+
+    # asyncio.run(main())
+    # # --------------------------------- core --------------------------------- #
     nowst._dev_divider()
     class _core:
         offset = 0.0
@@ -203,7 +199,7 @@ if __name__=="__main__":
 
     async def main():
         nowst.set_core(_core)
-        rslt = await nowst.xsync_offset(msg=False)
-        print(rslt)
+        await nowst.xsync_offset(msg=False)
+
 
     asyncio.run(main())

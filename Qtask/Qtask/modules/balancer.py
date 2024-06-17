@@ -16,14 +16,16 @@ Item = namedtuple('Item', ['future', 'name', 'args', 'kwargs', 'retry'])
 import time
 class Balancer:
 
-    def __init__(self, name:str='balance',msg=True):
+    def __init__(self, name:str='balancer',msg=True):
         """
         + n_worker = 10
         + s_reset = 1
         + n_retry = 3
         + s_restart_remain_empty = 10
         + h_restart_remain_start = 1*60*60
+        + traceback = None
         """
+        # -------------------------------------------------------------------- #
         CLSNAME = 'Balancer'
         try:
             from Qlogger import Logger
@@ -32,10 +34,10 @@ class Balancer:
             logger = None
             print(f"\033[31m No Module Qlogger \033[0m")
 
+        self._custom = CustomLog(logger, CLSNAME, 'async')
+        if msg : self._custom.info.ini(name)
+        # -------------------------------------------------------------------- #
         self._name = name
-        self._custom = CustomLog(logger,CLSNAME,'async')
-        if msg : self._custom.info.msg(name)
-
 
         # ------------------------------ context ----------------------------- #
         self._xcontext = None
@@ -68,8 +70,8 @@ class Balancer:
         + n_retry = 3
         + s_restart_remain_empty = 10
         + h_restart_remain_start = 1*60*60
+        + traceback = None
         """
-
         self.set_config_server(
             n_worker=n_worker,
             s_reset=s_reset,
@@ -80,17 +82,15 @@ class Balancer:
         self.set_config_manager(
             s_restart_remain_empty=s_restart_remain_empty,
             h_restart_remain_start=h_restart_remain_start)        
-        # if s_restart_remain_empty is not None: self._s_restart_remain_empty = s_restart_remain_empty
-        # if h_restart_remain_start is not None: self._h_restart_remain_start = h_restart_remain_start*60*60
 
-    def set_config_server(self,n_worker,s_reset,n_retry,limit_type,traceback):
+    def set_config_server(self,n_worker=None,s_reset=None,n_retry=None,limit_type=None,traceback=None):
         if n_worker is not None: self._n_worker = n_worker
         if s_reset is not None: self._s_reset = s_reset
         if n_retry is not None: self._n_worker = n_retry
         if limit_type is not None: self._limit_type = limit_type
         if traceback is not None: self._traceback = traceback
 
-    def set_config_manager(self, s_restart_remain_empty, h_restart_remain_start):
+    def set_config_manager(self, s_restart_remain_empty=None, h_restart_remain_start=None):
         if s_restart_remain_empty is not None: self._s_restart_remain_empty = s_restart_remain_empty
         if h_restart_remain_start is not None: self._h_restart_remain_start = h_restart_remain_start*60*60
     
@@ -105,7 +105,7 @@ class Balancer:
         -> xdef(xcontext, *args, **kwargs)"""
         self._xcontext = xcontext
         self._xcontext_type = with_type
-
+        self._custom.info.msg(self._xcontext.__name__, with_type,'')
     
     # ------------------------------------------------------------------------ #
     #                                  server                                  #
@@ -123,14 +123,14 @@ class Balancer:
             # ----------------------------- close ---------------------------- #
             if item is None:
                 self._queue.task_done()
-                if msg_none:self._custom.info.msg('close',frame='task')
+                if msg_none:self._custom.info.msg('close',widths=(3,),aligns=("^"),paddings=("."))
                 break
             # ---------------------------- process --------------------------- #
             else:
                 try:
                     tsp_start = time.time()  #! limiter
                     kwargs=dict() if item.kwargs is None else item.kwargs
-                    if msg_run:self._custom.info.msg('xfetch',item.name, self._xcontext_type, frame='task')
+                    if msg_run:self._custom.info.msg(item.name, self._xcontext_type, str(item.args))
                     if xcontext is None:
                         result = await asyncio.wait_for(self._xtask[item.name](*item.args, **kwargs),50)
                     else:
@@ -145,13 +145,13 @@ class Balancer:
                 except Exception as e:
                     if item.retry < 3:
                         await self._xput_queue_retry(item=item)
-                        self._custom.warning.msg('except',item.name, f'retry({item.retry+ 1})',frame='task')
+                        self._custom.warning.msg(item.name, f'retry({item.retry+ 1})',str(item.args))
                     else:
-                        self._custom.error.msg('drop',item.name, str(item.args), frame='task')
-                        item.future.set_result(e)
-                        # if self._traceback: traceback.print_exc()
-                        traceback.print_exc()
+                        self._custom.error.msg(item.name,'drop', str(item.args))
+                        if self._traceback: traceback.print_exc()
+                        # traceback.print_exc()
                         raise e
+                        # item.future.set_result(e)
                 finally:
                     self._queue.task_done()
                     tsp_finish = time.time() #! limiter
@@ -184,8 +184,8 @@ class Balancer:
         
         if msg_limit :
             msg_sec = TimeFormat.seconds(seconds,'hmsf')
-            msg_ref = TimeFormat.timestamp(tsp_ref,'hmsf')
-            self._custom.info.msg('throttle',self._limit_type,msg_ref,msg_sec ,frame='task')
+            # msg_ref = TimeFormat.timestamp(tsp_ref,'hmsf')
+            self._custom.info.msg('limit',self._limit_type, msg_sec,frame='worker')
 
         if seconds > 0.0:
             await asyncio.sleep(seconds)
@@ -194,7 +194,7 @@ class Balancer:
     #                                   fetch                                  #
     # ------------------------------------------------------------------------ #
     def set_xtask(self, xdef):
-        self._custom.info.msg('xdef', f"{xdef.__name__}")
+        # self._custom.info.msg('xdef', f"{xdef.__name__}")
         name = xdef.__name__
         self._xtask[name] = xdef
         return xdef
@@ -207,6 +207,7 @@ class Balancer:
         return result
 
     def wrapper(self, func):
+        self._custom.info.msg(f"{func.__name__}",'','')
         self.set_xtask(func)
         async def wrapp(*args, **kwargs):
             return await self.xfetch(func.__name__, args, kwargs)
@@ -243,7 +244,7 @@ class Balancer:
                     for i in range(self._n_worker):
                         tg.create_task(self.worker(None,msg_run,msg_done,msg_limit),name=f"{self._name}-{i+1}")
 
-            self._custom.debug.msg('restart')
+            self._custom.debug.msg('restart',widths=(3,),aligns=("^"),paddings=("."))
     # -------------------------------- manager ------------------------------- #
     async def manager(self):
         loop = asyncio.get_event_loop()
@@ -289,22 +290,24 @@ if __name__ == "__main__":
     @balance.wrapper
     async def asleep(xcontext:httpx.AsyncClient, sec:int):
         # await asyncio.sleep(1) 
-        r = await xcontext.get('https://www.nave2r.com/')
+        r = await xcontext.get('https://www.naver2.com/')
         return r
 
 
     # async def main():
-    #     asyncio.create_task(balance.run(5,True,True)),
+    #     asyncio.create_task(balance.run(True,True,True)),
     #     await asleep(sec=1)
-    #     await asleep(sec=1)
-    #     await asleep(sec=1)
+        # await asleep(sec=1)
+        # await asleep(sec=1)
 
     async def xclient():
         tasks = [
             asleep(sec=1),
+            asleep(sec=1),
+            asleep(sec=1),
             ]
-        
         await asyncio.gather(*tasks)
+        
  
     async def main():
         tasks=[
