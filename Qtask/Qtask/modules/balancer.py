@@ -38,7 +38,7 @@ class Balancer:
         if msg : self._custom.info.ini(name)
         # -------------------------------------------------------------------- #
         self._name = name
-
+        self._is_server_on = False
         # ------------------------------ context ----------------------------- #
         self._xcontext = None
         self._xcontext_type = 'None'
@@ -50,6 +50,7 @@ class Balancer:
 
         # ------------------------------- debug ------------------------------ #
         self._traceback = False
+        self._msg_wrapper = False
 
         # ------------------------------ config ------------------------------ #
         self._n_worker = 10
@@ -63,15 +64,20 @@ class Balancer:
     def set_config(self, n_worker=None, s_reset = None, n_retry=None,
                    limit_type:Literal['inflow','outflow','midflow'] = 'outflow',
                    s_restart_remain_empty=None,h_restart_remain_start=None,
-                   traceback=None):
+                   traceback=None, msg_wrapper=None):
         """
         + n_worker = 10
         + s_reset = 1
         + n_retry = 3
+        + limit_type['inflow','outflow','midflow'] = 'out_flow'
+        + traceback = None
+
         + s_restart_remain_empty = 10
         + h_restart_remain_start = 1*60*60
-        + traceback = None
+        + msg_wrapper = False
         """
+        if msg_wrapper is not None: self._msg_wrapper = msg_wrapper
+
         self.set_config_server(
             n_worker=n_worker,
             s_reset=s_reset,
@@ -83,7 +89,15 @@ class Balancer:
             s_restart_remain_empty=s_restart_remain_empty,
             h_restart_remain_start=h_restart_remain_start)        
 
+
     def set_config_server(self,n_worker=None,s_reset=None,n_retry=None,limit_type=None,traceback=None):
+        """
+        + n_worker = 10
+        + s_reset = 1
+        + n_retry = 3
+        + limit_type['inflow','outflow','midflow'] = 'out_flow'
+        + traceback = None
+        """
         if n_worker is not None: self._n_worker = n_worker
         if s_reset is not None: self._s_reset = s_reset
         if n_retry is not None: self._n_worker = n_retry
@@ -91,13 +105,15 @@ class Balancer:
         if traceback is not None: self._traceback = traceback
 
     def set_config_manager(self, s_restart_remain_empty=None, h_restart_remain_start=None):
+        """+ s_restart_remain_empty = 10
+            + h_restart_remain_start = 1*60*60"""
         if s_restart_remain_empty is not None: self._s_restart_remain_empty = s_restart_remain_empty
         if h_restart_remain_start is not None: self._h_restart_remain_start = h_restart_remain_start*60*60
     
     # ------------------------------------------------------------------------ #
     #                                  context                                 #
     # ------------------------------------------------------------------------ #
-    def set_xcontext(self, xcontext:Callable, with_type:Literal['async_with','async_with_await']='async_with'):
+    def set_xcontext(self, xcontext:Callable, with_type:Literal['async_with','async_with_await']='async_with',msg=False):
         """ 
         + xcontext = none (default) 
         -> xdef(*arg, **kwargs)
@@ -105,7 +121,7 @@ class Balancer:
         -> xdef(xcontext, *args, **kwargs)"""
         self._xcontext = xcontext
         self._xcontext_type = with_type
-        self._custom.info.msg(self._xcontext.__name__, with_type,'')
+        if msg : self._custom.info.msg(self._xcontext.__name__, with_type)
     
     # ------------------------------------------------------------------------ #
     #                                  server                                  #
@@ -116,14 +132,14 @@ class Balancer:
     #                                  worker                                  #
     # ------------------------------------------------------------------------ #
     # -------------------------------- worker -------------------------------- #
-    async def worker(self,xcontext=None,msg_run=False,msg_none=False,msg_limit=False):
+    async def worker(self,xcontext=None,msg_run=False,msg_close=False,msg_limit=False):
         while True:
             item = await self._queue.get()
 
             # ----------------------------- close ---------------------------- #
             if item is None:
                 self._queue.task_done()
-                if msg_none:self._custom.info.msg('close',widths=(3,),aligns=("^"),paddings=("."))
+                if msg_close:self._custom.info.msg('close',widths=(3,),aligns=("^"),paddings=("."))
                 break
             # ---------------------------- process --------------------------- #
             else:
@@ -149,13 +165,15 @@ class Balancer:
                     else:
                         self._custom.error.msg(item.name,'drop', str(item.args))
                         if self._traceback: traceback.print_exc()
+
+                        #! for break execute
+                        item.future.set_result(e) 
                         # traceback.print_exc()
-                        raise e
-                        # item.future.set_result(e)
                 finally:
                     self._queue.task_done()
                     tsp_finish = time.time() #! limiter
                     await self._wait_reset(tsp_start, tsp_finish, msg_limit=msg_limit)
+
     # ---------------------------------- put --------------------------------- #
     async def _xput_queue(self, name:str, args=(), kwargs:dict=None, retry=0):
         future = asyncio.Future()
@@ -194,7 +212,6 @@ class Balancer:
     #                                   fetch                                  #
     # ------------------------------------------------------------------------ #
     def set_xtask(self, xdef):
-        # self._custom.info.msg('xdef', f"{xdef.__name__}")
         name = xdef.__name__
         self._xtask[name] = xdef
         return xdef
@@ -202,49 +219,54 @@ class Balancer:
     async def xfetch(self, name, args=(), kwargs:dict=None):
         if not isinstance(args,tuple): 
             print(f"\033[31m args is not tuple \033[0m")
+        if self._is_server_on:
+            print(f"\033[31m balancer.server for {name}() is not running \033[0m")
         future = await self._xput_queue(name=name, args=args, kwargs=kwargs)
         result = await future
         return result
 
-    def wrapper(self, func):
-        self._custom.info.msg(f"{func.__name__}",'','')
+    def wrapper(self, func):      
+        if self._msg_wrapper : self._custom.info.msg(f"{func.__name__}")
         self.set_xtask(func)
         async def wrapp(*args, **kwargs):
             return await self.xfetch(func.__name__, args, kwargs)
+
         return wrapp
 
     # ------------------------------------------------------------------------ #
     #                                    Run                                   #
     # ------------------------------------------------------------------------ #
     # ---------------------------------- run --------------------------------- #
-    async def run(self,msg_run=False,msg_done=False,msg_limit=False):
+    #*| candle-1......worker | xget_candle  , async_with   , ()            |*#
+    async def run(self,msg_run=False,msg_restart=False,msg_close=False,msg_limit=False,return_excetion=False):
         tasks = [
-            asyncio.create_task(self.server(msg_run=msg_run,msg_done=msg_done,msg_limit=msg_limit),name=f"{self._name}-S"),
+            asyncio.create_task(self.server(msg_restart=msg_restart,msg_run=msg_run,msg_close=msg_close,msg_limit=msg_limit),name=f"{self._name}-S"),
             asyncio.create_task(self.manager(),name=f"{self._name}-M"),
         ]
-        await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks,return_exceptions=return_excetion)
     
     # -------------------------------- server -------------------------------- #
-    async def server(self,msg_run=False,msg_done=False,msg_limit=False):
+    async def server(self,msg_run=False,msg_restart=False,msg_close=False,msg_limit=False):
+        self._is_server_on = True
         while True:
             if self._xcontext_type == "async_with":
                  async with self._xcontext() as xcontext:
                     async with asyncio.TaskGroup() as tg:
                         for i in range(self._n_worker):
-                            tg.create_task(self.worker(xcontext,msg_run,msg_done,msg_limit),name=f"{self._name}-{i+1}")
+                            tg.create_task(self.worker(xcontext,msg_run,msg_close,msg_limit),name=f"{self._name}-{i+1}")
             
             elif self._xcontext_type == "async_with_await":
                 async with await self._xcontext() as xcontext:
                     async with asyncio.TaskGroup() as tg:
                         for i in range(self._n_worker):
-                            tg.create_task(self.worker(xcontext,msg_run,msg_done,msg_limit),name=f"{self._name}-{i+1}")
+                            tg.create_task(self.worker(xcontext,msg_run,msg_close,msg_limit),name=f"{self._name}-{i+1}")
 
             else:
                 async with asyncio.TaskGroup() as tg:
                     for i in range(self._n_worker):
-                        tg.create_task(self.worker(None,msg_run,msg_done,msg_limit),name=f"{self._name}-{i+1}")
-
-            self._custom.debug.msg('restart',widths=(3,),aligns=("^"),paddings=("."))
+                        tg.create_task(self.worker(None,msg_run,msg_close,msg_limit),name=f"{self._name}-{i+1}")
+            
+            if msg_restart : self._custom.debug.msg('restart',aligns=("^"),paddings=("."))
     # -------------------------------- manager ------------------------------- #
     async def manager(self):
         loop = asyncio.get_event_loop()
@@ -256,8 +278,8 @@ class Balancer:
             time_tasks_started = loop.time()
             # ---------------------------------------------------------------- #
             while True:
-                if self._queue._unfinished_tasks > 0:
-                    tasks_started = True
+                # if self._queue._unfinished_tasks > 0:
+                tasks_started = True
 
                 if tasks_started and self._queue._unfinished_tasks == 0:
                     time_tasks_done = loop.time()
