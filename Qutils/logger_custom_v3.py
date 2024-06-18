@@ -106,10 +106,15 @@ class CustomLog:
 
     def _get_args(self, *args, widths:tuple=None,aligns:tuple=None,paddings:tuple=None):
         result=[]
-        widths = len(args)*[1] if widths is None else widths
+        # widths = len(args)*[1] if widths is None else widths
 
         if widths is None:
-            widths = len(args)*[1]
+            if len(args) == 1:
+                widths = (3,)
+            elif len(args) == 2:
+                widths = (1,2)
+            else:
+                widths = len(args)*[1]
         elif isinstance(widths,int):
             widths = len(args)*[widths]
 
@@ -288,6 +293,9 @@ if __name__ == "__main__":
     logger.addHandler(handler)
     customlog = CustomLog(logger, 'CLASS')
     def myfun():
+        customlog.info.msg('a','b','c',offset=0.1)
+        customlog.info.msg('a',offset=0.1)
+        customlog.info.msg('a','b',offset=0.1)
         customlog.info.msg('a','b','c',offset=0.1)
         customlog.info.msg('a','b',widths=(2,1),offset=0.1)
         customlog.info.msg('a',widths=(3,),offset=0.1)
