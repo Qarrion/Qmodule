@@ -7,6 +7,11 @@ from Qupbit.utils.logger_color import ColorLog
 
 if __name__ == "__main__":
 
+
+
+
+
+
     logger = ColorLog('upbit', 'green')
 
     # ------------------------------------------------------------------------ #
@@ -44,12 +49,6 @@ if __name__ == "__main__":
             chek = candle.chk_time(rslt['time'],chk=True)
             rows = candle.to_rows(rslt['payload'],key='namedtuple')
 
-            print(chek)
-            print(pd.DataFrame(rslt['payload']))
-
-            if rows[0].time == last.trade:
-                print('case 1 : upload rows[1] : 정상')
-
             # elif 
 
 
@@ -60,6 +59,6 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------ #
     #                                   upbit                                  #
     # ------------------------------------------------------------------------ #
-    upbit = Upbit(logger)
+    # upbit = Upbit(logger)
 
-    print(upbit.get_candle())
+    # print(upbit.get_candle())

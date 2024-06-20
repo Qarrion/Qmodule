@@ -4,6 +4,7 @@
 
 # https://docs.upbit.com/reference/%EB%A7%88%EC%BC%93-%EC%BD%94%EB%93%9C-%EC%A1%B0%ED%9A%8C
 import asyncio
+from re import T
 from Qupbit.utils.logger_custom import CustomLog
 from Qupbit.tools.valider import Valider
 from Qupbit.tools.parser import Parser
@@ -52,12 +53,11 @@ class Market:
             logger = None
             print(f"\033[31m No Module Qlogger \033[0m")
 
-        self._custom = CustomLog(logger,CLSNAME,'async')
-        if msg : self._custom.info.msg(name)
+        self._custom = CustomLog(logger, CLSNAME, 'async')
+        if msg : self._custom.info.ini(name)
 
         self.valider = Valider(logger)
         self.parser = Parser()
-        self._custom = CustomLog(logger,'async')
         
 
     def get(self, session:requests.Session=None, key:Literal['status','header','payload','remain','text']=None, msg=False):
@@ -71,9 +71,14 @@ class Market:
             resp = requests.get(url=self.url_market, headers=self.headers, params=self.params)
         else:
             resp = session.get(url=self.url_market, headers=self.headers, params=self.params)
-
         rslt = self.parser.response(resp)
-        if msg : self._msg_result(status='market',result=rslt,frame="api") 
+        # -------------------------------------------------------------------- #
+        if rslt['status'] == 200:
+            remain = rslt['remain']
+            if msg : self._custom.info.msg("ALL", remain['group']+"/g",f"{remain['sec']}/s")
+        else:
+            self._custom.error.msg('ALL', f"code({rslt['status']})", "x/s")  
+        # -------------------------------------------------------------------- #
         if key is not None: rslt = rslt[key]
         return rslt
     
@@ -90,22 +95,18 @@ class Market:
 
         resp = await xclient.get(url=self.url_market, headers=self.headers, params=self.params)
         rslt = self.parser.response(resp)
-        if msg : self._msg_result(status='market',result=rslt,frame="xapi") 
+        # -------------------------------------------------------------------- #
+        if rslt['status'] == 200:
+            remain = rslt['remain']
+            if msg : self._custom.info.msg("ALL", remain['group']+"/g",f"{remain['sec']}/s")
+        else:
+            self._custom.error.msg('ALL', f"code({rslt['status']})", "x/s")  
+        # -------------------------------------------------------------------- #
+            
         if key is not None: rslt = rslt[key]
-
         if is_context : await xclient.aclose()
+        resp.raise_for_status()
         return rslt
-    # async def xget(self, xclient:httpx.AsyncClient, key:Literal['status','header','payload','remain','text']=None, msg=False):
-    #     """
-    #     >>> # 
-    #     async with market.xclient() as xclient:
-    #         rslt = await market.xget(xclient)        
-    #     """
-    #     resp = await xclient.get(url=self.url_market, headers=self.headers, params=self.params)
-    #     rslt = self.parser.response(resp)
-    #     if msg : self._msg_result(status='market',result=rslt,frame="xapi") 
-    #     if key is not None: rslt = rslt[key]
-    #     return rslt
 
     def xclient(self):
         """>>> return httpx.AsyncClient() """
@@ -138,7 +139,7 @@ class Market:
         if result['status'] == 200:
             self._custom.info.msg(status, remain['group']+"/g",f"{remain['sec']}/s", frame=frame)
         else:
-            self._custom.error.msg(status, result['text'], frame=frame)    
+            self._custom.error.msg(status, f"code({result['status']})", "e/s", frame=frame)    
 
     def to_dict(self, row:Row):
         if isinstance(row, self.Row):
@@ -153,24 +154,36 @@ if __name__=='__main__':
     market = Market()
 
     # ---------------------------------- get --------------------------------- #
-    eprint('get1')
-    rslt = market.get(msg=True)
-    # print(rslt)
-    # print(rslt.keys())
-    # eprint('payload')
-    # print(rslt['payload'][0:5])
+    # eprint('get1')
+    # rslt = market.get(msg=True)
+    # # print(rslt)
+    # # print(rslt.keys())
+    # # eprint('payload')
+    # # print(rslt['payload'][0:5])
     
-    eprint('get2')
-    rslt = market.get(None, 'payload')
-    eprint('rows')
-    rows = market.to_rows(payload=rslt)
-    print(rows[0:5])
+    # eprint('get2')
+    # rslt = market.get(None, 'payload')
+    # eprint('rows')
+    # rows = market.to_rows(payload=rslt)
+    # print(rows[0:5])
 
     # --------------------------------- async -------------------------------- #
 
-    # async def main():
-    #     async with market.xclient() as xclient:
-    #         rslt = await market.xget(xclient)
-    #         print(rslt['payload'][0])
+    async def main():
+        async with market.xclient() as xclient:
+            rslt = await market.xget(xclient,msg=True)
+            rslt = await market.xget(xclient,msg=True)
+            rslt = await market.xget(xclient,msg=True)
+            rslt = await market.xget(xclient,msg=True)
+            rslt = await market.xget(xclient,msg=True)
+            rslt = await market.xget(xclient,msg=True)
+            rslt = await market.xget(xclient,msg=True)
+            rslt = await market.xget(xclient,msg=True)
+            rslt = await market.xget(xclient,msg=True)
+            rslt = await market.xget(xclient,msg=True)
+            rslt = await market.xget(xclient,msg=True)
+            rslt = await market.xget(xclient,msg=True)
+            rslt = await market.xget(xclient,msg=True)
+            print(rslt['payload'][0])
 
-    # asyncio.run(main())
+    asyncio.run(main())

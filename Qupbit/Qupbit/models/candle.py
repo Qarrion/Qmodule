@@ -15,7 +15,7 @@ import requests
 from datetime import datetime
 
 
-Row = namedtuple('Candle',['market','time','open','high','low','close','amount','volume'])
+Row = namedtuple('Candle',['time','market','open','high','low','close','amount','volume'])
 
 class Candle:
     """ >>> #
@@ -23,7 +23,9 @@ class Candle:
     candle.get(session,'KRW-BTC', to, 5,'KST')
     candle.xget(xclient,'KRW-BTC', to, 5,'KST')
     """
+    
     Last = namedtuple('Last',['input','stable','close','trade'])
+    max_count = 200
     url_candle='https://api.upbit.com/v1/candles/minutes/1'
     headers = {"Accept": "application/json"}
 
@@ -36,8 +38,8 @@ class Candle:
             logger = None
             print(f"\033[31m No Module Qlogger \033[0m")
 
-        self._custom = CustomLog(logger,CLSNAME,'async')
-        if msg : self._custom.info.msg(name)
+        self._custom = CustomLog(logger, CLSNAME, 'async')
+        if msg : self._custom.info.msg(name, widths=(3,),aligns=(">"),paddings=('-'))
 
         self.parser = Parser()
         self.timez = Timez()
@@ -59,15 +61,23 @@ class Candle:
             resp = requests.get(url=self.url_candle, headers=self.headers, params=params)
         else:
             resp = session.get(url=self.url_candle, headers=self.headers, params=params)
-
         rslt = self.parser.response(resp)
-        if msg : self._msg_result(status='candle',result=rslt,market=market,frame="api") 
+
+        # -------------------------------------------------------------------- #
+        if rslt['status'] == 200:
+            remain = rslt['remain']
+            if msg : self._custom.info.msg(market, remain['group']+"/g",f"{remain['sec']}/s")
+        else:
+            self._custom.error.msg(market, f"code({rslt['status']})","x/s")   
+        # -------------------------------------------------------------------- #
         if key is not None: rslt = rslt[key]
+        resp.raise_for_status()
         return rslt		
 
     async def xget(self, xclient:httpx.AsyncClient=None, 
                    market:str='KRW-BTC', to:str=None, count:int=200, tz:Literal['UTC','KST']='KST',
                    key:Literal['status','header','payload','remain','text','time']=None, msg=False):
+        
         is_context = False
         if xclient is None:
             xclient = httpx.AsyncClient()
@@ -77,10 +87,19 @@ class Candle:
         params=dict(market = market, count = count, to = totz)
         resp = await xclient.get(url=self.url_candle, headers=self.headers, params=params)
         rslt = self.parser.response(resp)
-        if msg : self._msg_result(status='candle',result=rslt,market=market,frame="xapi") 
-        if key is not None: rslt = rslt[key]
 
+        # -------------------------------------------------------------------- #
+        if rslt['status'] == 200:
+            remain = rslt['remain']
+            if msg : self._custom.info.msg(market, remain['group']+"/g",f"{remain['sec']}/s")
+        else:
+            self._custom.error.msg(market, f"code({rslt['status']})","x/s")   
+        # -------------------------------------------------------------------- #
+
+
+        if key is not None: rslt = rslt[key]
         if is_context : await xclient.aclose()
+        resp.raise_for_status()
         return rslt			
 
     def chk_time(self, date_time:datetime, chk=False, msg=False):
@@ -115,8 +134,8 @@ class Candle:
         + (timestamp), candle_acc_trade_price, candle_acc_trade_volume, (unit)"""
         selected_rows =[
             (
-                d['market'], 
                 self._stime_to_kst(d['candle_date_time_kst']),
+                d['market'], 
                 d['opening_price'],d['high_price'],d['low_price'],d['low_price'],
                 d['candle_acc_trade_price'], d['candle_acc_trade_volume']
             ) 
@@ -188,27 +207,29 @@ class Candle:
         t = prev_row.time + timedelta(minutes=1) if time is None else time
         return Row(market=m,time=t,open=c,high=c,low=c,close=c,amount=0,volume=0)
 
-    def _msg_result(self,status, result:dict, market, frame:str):
-        remain = result['remain']
-        if result['status'] == 200:
-            self._custom.info.msg(status, remain['group']+"/g",f"{remain['sec']}/s", market, frame=frame)
-        else:
-            self._custom.error.msg(status, f"code({result['status']})", result['text'], market, frame=frame)   
-
 if __name__=='__main__':
     import pandas as pd
     from Qupbit.tools.timez import Timez
     from Qupbit.utils.print_divider import eprint
-
 
     candle = Candle()
 
     async def main():
         async with httpx.AsyncClient() as xclient:
             resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
-            print(resp['payload'][0])
-            print(resp['time'])
-            print(candle.to_rows(resp['payload'],key='namedtuple')[0].time)
+            resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+            # print(resp['payload'][0])
+            # print(resp['time'])
+            # print(candle.to_rows(resp['payload'],key='namedtuple')[0].time)
     asyncio.run(main())
 
     # print(candle._to_api_to('2023-01-01T00:00:00+09:00','KST'))

@@ -13,6 +13,7 @@ from datetime import datetime
 """ only arg:session/client in get(sync) can be None """
 class Upbit:
     def __init__(self, name:str='upbit',msg=True):
+        # -------------------------------------------------------------------- #
         CLSNAME = 'Upbit'
         try:
             from Qlogger import Logger
@@ -21,8 +22,10 @@ class Upbit:
             logger = None
             print(f"\033[31m No Module Qlogger \033[0m")
 
-        self._custom = CustomLog(logger, CLSNAME,'async')
-        if msg : self._custom.info.msg(name)
+        self._custom = CustomLog(logger, CLSNAME, 'async')
+        if msg : self._custom.info.ini(name)
+        # -------------------------------------------------------------------- #
+
 
         self.market = Market(name,msg=False)
         self.candle = Candle(name,msg=False)
@@ -107,7 +110,7 @@ class Upbit:
 if __name__ == "__main__":
     import asyncio
     upbit = Upbit()
-    print(upbit.get_candle())
+    # print(upbit.get_candle())
 
 
 
@@ -127,44 +130,44 @@ if __name__ == "__main__":
     # print(rslt)
 
     # ------------------------------------------------------------------------ #
-    import pandas as pd
-    async def main():
-        async with upbit.xclient() as xclient:
-            # rslt = await upbit.xget_candle_last(xclient,count=5,msg=True)
-            rslt = await upbit.candle.xget(
-                xclient=xclient,to=None,count=5,msg=True,)
+    # import pandas as pd
+    # async def main():
+    #     async with upbit.xclient() as xclient:
+    #         # rslt = await upbit.xget_candle_last(xclient,count=5,msg=True)
+    #         rslt = await upbit.candle.xget(
+    #             xclient=xclient,to=None,count=5,msg=True,)
             
-        rows = upbit.candle.to_rows(rslt['payload'],key='namedtuple')
-        last = upbit.candle.last_time(rslt['time'])
-        rows = rows[1:]
-        print(pd.DataFrame(rows))
-        # print(ksts.close)
-        # print(rows[1].time)
+    #     rows = upbit.candle.to_rows(rslt['payload'],key='namedtuple')
+    #     last = upbit.candle.last_time(rslt['time'])
+    #     rows = rows[1:]
+    #     print(pd.DataFrame(rows))
+    #     # print(ksts.close)
+    #     # print(rows[1].time)
 
-        print(last)
+    #     print(last)
 
-        # rows[0] : trade, 
-        # rows[1] : last,
-        if rows[1].time == 0:
-        # if rows[1].time == last.close:
-            print('case 1 : upload rows[1] : 정상')
-        elif rows[0].time == last.close:
-                if last.last.second >=3:
-                    print('case 2 : upload rows[0] : 3초 이상 동안 새로운 거래가 없어')
-                else:
-                    print('case 3 : retry : 3초 미만 동안 새로운 거래가 없음 혹시 모르니 다시 시도')
-        else:
-            all_times = [row.time for row in rows]
-            if last.close not in all_times:
-                print('case 4 : upload zero candle : 1분 이상 새로운 거래가 없었음')
-                prev_price = rows[0].close
-                zero_candle = rows[0]._replace(
-                    time=last.close, open=prev_price, high=prev_price, low=prev_price, 
-                    close=prev_price, amount=0, volume=0)
-            else:
-                print('case 5 : unknown case Raise Error')
-                print(pd.DataFrame(rows))
-                print(last)
+    #     # rows[0] : trade, 
+    #     # rows[1] : last,
+    #     if rows[1].time == 0:
+    #     # if rows[1].time == last.close:
+    #         print('case 1 : upload rows[1] : 정상')
+    #     elif rows[0].time == last.close:
+    #             if last.last.second >=3:
+    #                 print('case 2 : upload rows[0] : 3초 이상 동안 새로운 거래가 없어')
+    #             else:
+    #                 print('case 3 : retry : 3초 미만 동안 새로운 거래가 없음 혹시 모르니 다시 시도')
+    #     else:
+    #         all_times = [row.time for row in rows]
+    #         if last.close not in all_times:
+    #             print('case 4 : upload zero candle : 1분 이상 새로운 거래가 없었음')
+    #             prev_price = rows[0].close
+    #             zero_candle = rows[0]._replace(
+    #                 time=last.close, open=prev_price, high=prev_price, low=prev_price, 
+    #                 close=prev_price, amount=0, volume=0)
+    #         else:
+    #             print('case 5 : unknown case Raise Error')
+    #             print(pd.DataFrame(rows))
+    #             print(last)
 
 
         
