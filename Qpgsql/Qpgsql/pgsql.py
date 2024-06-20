@@ -67,7 +67,9 @@ class Pgsql:
         return psycopg.connect(self.conn_str)
 
     def xconnect(self):
-        """>>> return psycopg.AsyncConnection.connect()"""
+        """>>> return psycopg.AsyncConnection.connect()
+        + insert auto commit after close xconn context
+        + await xconn.commit() should be placed in xcurs context"""
         return psycopg.AsyncConnection.connect(self.conn_str)
 
     # ------------------------------------------------------------------------ #
@@ -99,25 +101,68 @@ if __name__ == "__main__":
     conn = pgsql.connect()
     # conn_async = pgsql.xconnect()
     # print(conn_async)
-    from Qpgsql.utils.print_divider import eprint
-    eprint('dir_conn')
-    print(dir(conn))
-    eprint('dir_conn.autocommit')
-    print(conn.autocommit)
-    eprint('dir_conn.pipeline')
-    print(conn.pipeline)
-    eprint('dir_conn.info')
-    print(dir(conn.info))
-    eprint('dir_conn.pipeline_status')
-    print(conn.info.pipeline_status)
-    eprint('dir_conn.timezone')
-    print(conn.info.timezone)
-    eprint('dir_conn.pipeline_status')
-    print(conn.info.pipeline_status)
-    eprint('dir_conn.dsn')
-    print(conn.info.dsn)
-    print(pgsql.conn_str)
+    # from Qpgsql.utils.print_divider import eprint
+    # eprint('dir_conn')
+    # print(dir(conn))
+    # eprint('dir_conn.autocommit')
+    # print(conn.autocommit)
+    # eprint('dir_conn.pipeline')
+    # print(conn.pipeline)
+    # eprint('dir_conn.info')
+    # print(dir(conn.info))
+    # eprint('dir_conn.pipeline_status')
+    # print(conn.info.pipeline_status)
+    # eprint('dir_conn.timezone')
+    # print(conn.info.timezone)
+    # eprint('dir_conn.pipeline_status')
+    # print(conn.info.pipeline_status)
+    # eprint('dir_conn.dsn')
+    # print(conn.info.dsn)
+    # print(pgsql.conn_str)
 
+    # ------------------------------------------------------------------------ #
+    async def create():
+        q = """
+        CREATE TABLE tbl_test (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            age INTEGER NOT NULL
+        )"""
+        async with await pgsql.xconnect() as aconn:
+            async with aconn.cursor() as acur:
+                await acur.execute(q)
+    # ------------------------------------------------------------------------ #
+    async def insert():
+        async with await pgsql.xconnect() as aconn:
+            async with aconn.cursor() as acurs:
+                # tbl_test 테이블에 데이터를 삽입하는 SQL 쿼리
+                insert_query = """
+                INSERT INTO tbl_test (name, age) VALUES (%s, %s)
+                """
+                
+                # 삽입할 데이터
+                data_to_insert = [
+                    ("Alice", 30),
+                    ("Bob", 25),
+                    # ("Charlie", 35)
+                ]
+                
+                # 여러 행 삽입
+                for data in data_to_insert:
+                    await acurs.execute(insert_query, data)
+                
+                await aconn.commit()
+            print('acurs out not commit? no ! if then ::aconn.commit()::' )
+        print('aconn out commit? yes!')
+                # 변경 사항을 커밋합니다.
+                # conn.commit()
+                # print("Data inserted successfully")
+    # ------------------------------------------------------------------------ #
+    async def main():
+        # await create()     
+        await insert()     
+        
+    asyncio.run(main())
 """
 async with await psycopg.AsyncConnection.connect(
         "dbname=test user=postgres") as aconn:
