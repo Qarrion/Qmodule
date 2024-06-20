@@ -169,8 +169,8 @@ class Balancer:
             time_tasks_started = loop.time()
             # -------------------------------------------------------------------- #
             while True:
-                if self._queue._unfinished_tasks > 0:
-                    tasks_started = True
+                # if self._queue._unfinished_tasks > 0:
+                tasks_started = True
 
                 if tasks_started and self._queue._unfinished_tasks == 0:
                     time_tasks_done = loop.time()

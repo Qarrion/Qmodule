@@ -133,9 +133,10 @@ class Balancer:
     # ------------------------------------------------------------------------ #
     # -------------------------------- worker -------------------------------- #
     async def worker(self,xcontext=None,msg_run=False,msg_close=False,msg_limit=False):
+        # self._custom.info.msg('on')
         while True:
             item = await self._queue.get()
-
+            # print(item)
             # ----------------------------- close ---------------------------- #
             if item is None:
                 self._queue.task_done()
@@ -219,8 +220,8 @@ class Balancer:
     async def xfetch(self, name, args=(), kwargs:dict=None):
         if not isinstance(args,tuple): 
             print(f"\033[31m args is not tuple \033[0m")
-        if self._is_server_on:
-            print(f"\033[31m balancer.server for {name}() is not running \033[0m")
+        if not self._is_server_on:
+            print(f"\033[31m balancer.server for {name}() is not running [{self._name}] \033[0m")
         future = await self._xput_queue(name=name, args=args, kwargs=kwargs)
         result = await future
         return result
@@ -248,6 +249,7 @@ class Balancer:
     # -------------------------------- server -------------------------------- #
     async def server(self,msg_run=False,msg_restart=False,msg_close=False,msg_limit=False):
         self._is_server_on = True
+        print(f"\033[31m [{self._name}] start \033[0m")
         while True:
             if self._xcontext_type == "async_with":
                  async with self._xcontext() as xcontext:
@@ -267,6 +269,7 @@ class Balancer:
                         tg.create_task(self.worker(None,msg_run,msg_close,msg_limit),name=f"{self._name}-{i+1}")
             
             if msg_restart : self._custom.debug.msg('restart',aligns=("^"),paddings=("."))
+            print(f"\033[31m [{self._name}] end \033[0m")
     # -------------------------------- manager ------------------------------- #
     async def manager(self):
         loop = asyncio.get_event_loop()
@@ -280,7 +283,6 @@ class Balancer:
             while True:
                 # if self._queue._unfinished_tasks > 0:
                 tasks_started = True
-
                 if tasks_started and self._queue._unfinished_tasks == 0:
                     time_tasks_done = loop.time()
                     # -------------------------------------------------------- #
@@ -288,6 +290,7 @@ class Balancer:
                         await asyncio.sleep(0.5)
                         is_restart_done = loop.time() - time_tasks_done >= self._s_restart_remain_empty
                         is_restart_started = loop.time() - time_tasks_started >= self._h_restart_remain_start
+                        # self._custom.debug.msg(f"{is_restart_done}{loop.time() - time_tasks_done}", f"{is_restart_started}{loop.time() - time_tasks_started}")
                         if is_restart_done and is_restart_started:
                             async with self._lock:
                                 for _ in range(self._n_worker): await self._queue.put(None)
