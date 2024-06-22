@@ -24,7 +24,7 @@ class xdebug:
 
     @classmethod
     async def xready(self, sec=1):
-        await asyncio.sleep(sed)
+        await asyncio.sleep(sec)
 
     @classmethod
     def set_main_task(self):
