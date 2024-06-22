@@ -1,3 +1,6 @@
+# -------------------------------- ver 260622 -------------------------------- #
+# split, xready
+# ---------------------------------------------------------------------------- #
 import asyncio, traceback, re
 from collections import defaultdict
 from datetime import datetime
@@ -18,7 +21,11 @@ def split_long_string(s, chunk_size=100):
         start += chunk_size
 
 class xdebug:
-    
+
+    @classmethod
+    async def xready(self, sec=1):
+        await asyncio.sleep(sed)
+
     @classmethod
     def set_main_task(self):
         asyncio.current_task().set_name('MAIN')
