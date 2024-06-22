@@ -10,7 +10,6 @@ import asyncio
 
 from Qtask.modules.channel import Channel
 from Qtask.utils.logger_custom import CustomLog
-from Qtask.utils.print_all_task import all_tasks
 class Core:
     offset:float = 0.0
     buffer:float = 0.005
@@ -83,9 +82,7 @@ class Producer:
     async def work_msg_divider(self):
         """+ print divider"""
         self._timer._dev_divider(offset=Core.offset)
-        task, group = all_tasks()
-        self._custom.max(str(task))
-        self._custom.max(str(group))
+
 
     # ------------------------------- synctime ------------------------------- #
     async def work_xsync_time(self):

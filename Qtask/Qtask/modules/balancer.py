@@ -4,12 +4,17 @@
 # xdef hint remove
 
 from functools import wraps
+import re
 import traceback
 import asyncio, uuid
 from typing import Callable, Literal
 
+import time
+
 from Qtask.utils.logger_custom import CustomLog
 from Qtask.utils.format_time import TimeFormat
+from Qtask.utils.print_color import cprint
+
 from collections import namedtuple
 
 Item = namedtuple('Item', ['future', 'name', 'args', 'kwargs', 'retry'])
@@ -21,7 +26,7 @@ class Balancer:
         + n_worker = 10
         + s_reset = 1
         + n_retry = 3
-        + s_restart_remain_empty = 10
+        + s_remain_empty = 10
         + h_restart_remain_start = 1*60*60
         + traceback = None
         """
@@ -51,19 +56,25 @@ class Balancer:
         # ------------------------------- debug ------------------------------ #
         self._traceback = False
         self._msg_wrapper = False
-
+    
         # ------------------------------ config ------------------------------ #
         self._n_worker = 10
         self._s_reset = 1
         self._limit_type = 'outflow'
-
         self._n_retry = 3
-        self._s_restart_remain_empty = 10
-        self._h_restart_remain_start = 1*60*60
+
+        self._s_remain_empty = 10
+        self._s_remain_start = 1*60*60
+        self._is_restart = True
+        self._is_empty = True
+
+    #! ------------------------------------------------------------------------ #
+    #!                                  setter                                  #
+    #! ------------------------------------------------------------------------ #
 
     def set_config(self, n_worker=None, s_reset = None, n_retry=None,
                    limit_type:Literal['inflow','outflow','midflow'] = 'outflow',
-                   s_restart_remain_empty=None,h_restart_remain_start=None,
+                   s_remain_empty=None,s_restart_remain_start=None,
                    traceback=None, msg_wrapper=None):
         """
         + n_worker = 10
@@ -72,7 +83,7 @@ class Balancer:
         + limit_type['inflow','outflow','midflow'] = 'out_flow'
         + traceback = None
 
-        + s_restart_remain_empty = 10
+        + s_remain_empty = 10
         + h_restart_remain_start = 1*60*60
         + msg_wrapper = False
         """
@@ -86,8 +97,8 @@ class Balancer:
             traceback=traceback
         )
         self.set_config_manager(
-            s_restart_remain_empty=s_restart_remain_empty,
-            h_restart_remain_start=h_restart_remain_start)        
+            s_remain_empty=s_remain_empty,
+            s_restart_remain_start=s_restart_remain_start)        
 
 
     def set_config_server(self,n_worker=None,s_reset=None,n_retry=None,limit_type=None,traceback=None):
@@ -100,19 +111,24 @@ class Balancer:
         """
         if n_worker is not None: self._n_worker = n_worker
         if s_reset is not None: self._s_reset = s_reset
-        if n_retry is not None: self._n_worker = n_retry
+        if n_retry is not None: self._n_retry = n_retry
         if limit_type is not None: self._limit_type = limit_type
         if traceback is not None: self._traceback = traceback
 
-    def set_config_manager(self, s_restart_remain_empty=None, h_restart_remain_start=None):
-        """+ s_restart_remain_empty = 10
-            + h_restart_remain_start = 1*60*60"""
-        if s_restart_remain_empty is not None: self._s_restart_remain_empty = s_restart_remain_empty
-        if h_restart_remain_start is not None: self._h_restart_remain_start = h_restart_remain_start*60*60
+    def set_config_manager(self, s_remain_empty=None, s_restart_remain_start=None):
+        """+ s_remain_empty = 10
+            + s_restart_remain_start = 1*60*60"""
+        if s_remain_empty is not None: self._s_remain_empty = s_remain_empty
+        if s_restart_remain_start is not None: self._s_remain_start = s_restart_remain_start
     
-    # ------------------------------------------------------------------------ #
-    #                                  context                                 #
-    # ------------------------------------------------------------------------ #
+    def set_mode_once(self, after_remain_n_second_empty:int = 5):
+        self._is_restart = False
+        self._s_remain_start = 0
+        self._s_remain_empty = after_remain_n_second_empty
+
+    #! ------------------------------------------------------------------------ #
+    #!                                  context                                 #
+    #! ------------------------------------------------------------------------ #
     def set_xcontext(self, xcontext:Callable, with_type:Literal['async_with','async_with_await']='async_with',msg=False):
         """ 
         + xcontext = none (default) 
@@ -122,20 +138,17 @@ class Balancer:
         self._xcontext = xcontext
         self._xcontext_type = with_type
         if msg : self._custom.info.msg(self._xcontext.__name__, with_type)
-    
-    # ------------------------------------------------------------------------ #
-    #                                  server                                  #
-    # ------------------------------------------------------------------------ #
 
-
-    # ------------------------------------------------------------------------ #
-    #                                  worker                                  #
-    # ------------------------------------------------------------------------ #
+    #! ------------------------------------------------------------------------ #
+    #!                                  worker                                  #
+    #! ------------------------------------------------------------------------ #
     # -------------------------------- worker -------------------------------- #
     async def worker(self,xcontext=None,msg_run=False,msg_close=False,msg_limit=False):
         # self._custom.info.msg('on')
         while True:
             item = await self._queue.get()
+            self._is_empty = False # for manager
+
             # print(item)
             # ----------------------------- close ---------------------------- #
             if item is None:
@@ -157,10 +170,15 @@ class Balancer:
 
                 except asyncio.exceptions.CancelledError as e:
                     task_name = asyncio.current_task().get_name()
-                    print(f"\033[33m Interrupted ! in balance ({task_name}) \033[0m")
+                    cprint(f" - worker ({task_name}) closed",'yellow')
+                    # print(f"\033[33m Interrupted ! in balance ({task_name}) \033[0m")
 
                 except Exception as e:
-                    if item.retry < 3:
+                    if item.retry < self._n_retry:
+                        # ---------------------------------------------------- #
+                        # print(self._s_reset*(item.retry+1)/(self._n_retry*5))
+                        # ---------------------------------------------------- #
+                        await asyncio.sleep(self._s_reset*(item.retry/self._n_retry))
                         await self._xput_queue_retry(item=item)
                         self._custom.warning.msg(item.name, f'retry({item.retry+ 1})',str(item.args))
                     else:
@@ -169,6 +187,7 @@ class Balancer:
 
                         #! for break execute
                         item.future.set_result(e) 
+                        raise e
                         # traceback.print_exc()
                 finally:
                     self._queue.task_done()
@@ -209,9 +228,9 @@ class Balancer:
         if seconds > 0.0:
             await asyncio.sleep(seconds)
 
-    # ------------------------------------------------------------------------ #
-    #                                   fetch                                  #
-    # ------------------------------------------------------------------------ #
+    #! ------------------------------------------------------------------------ #
+    #!                                   fetch                                  #
+    #! ------------------------------------------------------------------------ #
     def set_xtask(self, xdef):
         name = xdef.__name__
         self._xtask[name] = xdef
@@ -231,76 +250,140 @@ class Balancer:
         self.set_xtask(func)
         async def wrapp(*args, **kwargs):
             return await self.xfetch(func.__name__, args, kwargs)
-
         return wrapp
 
-    # ------------------------------------------------------------------------ #
-    #                                    Run                                   #
-    # ------------------------------------------------------------------------ #
+    #! ------------------------------------------------------------------------ #
+    #!                                    Run                                   #
+    #! ------------------------------------------------------------------------ #
     # ---------------------------------- run --------------------------------- #
     #*| candle-1......worker | xget_candle  , async_with   , ()            |*#
-    async def run(self,msg_run=False,msg_restart=False,msg_close=False,msg_limit=False,return_excetion=False):
-        tasks = [
-            asyncio.create_task(self.server(msg_restart=msg_restart,msg_run=msg_run,msg_close=msg_close,msg_limit=msg_limit),name=f"{self._name}-S"),
-            asyncio.create_task(self.manager(),name=f"{self._name}-M"),
-        ]
-        await asyncio.gather(*tasks,return_exceptions=return_excetion)
-    
+    async def run(self,msg_run=False,msg_restart=False,msg_close=False,msg_limit=False,return_excetion=False,msg_time=False):
+        try:
+            tasks = [
+                asyncio.create_task(self.server(
+                                        msg_restart=msg_restart,
+                                        msg_run=msg_run,
+                                        msg_close=msg_close,
+                                        msg_limit=msg_limit,
+                                        ),
+                                        name=f"{self._name}-S"),
+                asyncio.create_task(self.manager(msg_time=msg_time),name=f"{self._name}-M"),
+            ]
+            await asyncio.gather(*tasks,return_exceptions=return_excetion)
+        except asyncio.exceptions.CancelledError:
+            task_name = asyncio.current_task().get_name()
+            cprint(f" - balancer ({task_name}) closed",'yellow')
     # -------------------------------- server -------------------------------- #
     async def server(self,msg_run=False,msg_restart=False,msg_close=False,msg_limit=False):
+        # print(self._n_worker)
         self._is_server_on = True
-        print(f"\033[31m [{self._name}] start \033[0m")
+        # print(f"\033[31m [{self._name}] start \033[0m")
+        # try:
         while True:
             if self._xcontext_type == "async_with":
-                 async with self._xcontext() as xcontext:
+                async with self._xcontext() as xcontext:
                     async with asyncio.TaskGroup() as tg:
                         for i in range(self._n_worker):
-                            tg.create_task(self.worker(xcontext,msg_run,msg_close,msg_limit),name=f"{self._name}-{i+1}")
+                            tg.create_task(self.worker(xcontext,msg_run,msg_close,msg_limit),
+                                            name=f"{self._name}-{i+1}")
             
             elif self._xcontext_type == "async_with_await":
                 async with await self._xcontext() as xcontext:
                     async with asyncio.TaskGroup() as tg:
                         for i in range(self._n_worker):
-                            tg.create_task(self.worker(xcontext,msg_run,msg_close,msg_limit),name=f"{self._name}-{i+1}")
+                            tg.create_task(self.worker(xcontext,msg_run,msg_close,msg_limit),
+                                            name=f"{self._name}-{i+1}")
 
             else:
                 async with asyncio.TaskGroup() as tg:
                     for i in range(self._n_worker):
-                        tg.create_task(self.worker(None,msg_run,msg_close,msg_limit),name=f"{self._name}-{i+1}")
+                        tg.create_task(self.worker(None,msg_run,msg_close,msg_limit),
+                                        name=f"{self._name}-{i+1}")
             
-            if msg_restart : self._custom.debug.msg('restart',aligns=("^"),paddings=("."))
-            print(f"\033[31m [{self._name}] end \033[0m")
+            if self._is_restart:
+                if msg_restart : self._custom.debug.msg('restart',aligns=("^"),paddings=("."))
+            else:
+                print(f"\033[31m [{self._name}] terminate server \033[0m")
+                break
+        # except asyncio.exceptions.CancelledError:
+            # task_name = asyncio.current_task().get_name()
+            # cprint(f" - server ({task_name}) closed",'yellow')
+            # print(f"\033[43m !! {self._name} closed \033[0m")
+    
     # -------------------------------- manager ------------------------------- #
-    async def manager(self):
-        loop = asyncio.get_event_loop()
-        # -------------------------------------------------------------------- #
-        while True:
-            tasks_started = False
-            tasks_done = False
+    async def manager(self,msg_time=False):
 
-            time_tasks_started = loop.time()
+        is_restart = True
+        while is_restart:
+        # -------------------------------------------------------------------- #
+            time_start = time.time()
+
+            is_timeover = False
+            while not is_timeover:
             # ---------------------------------------------------------------- #
-            while True:
-                # if self._queue._unfinished_tasks > 0:
-                tasks_started = True
-                if tasks_started and self._queue._unfinished_tasks == 0:
-                    time_tasks_done = loop.time()
-                    # -------------------------------------------------------- #
-                    while self._queue._unfinished_tasks == 0:
-                        await asyncio.sleep(0.5)
-                        is_restart_done = loop.time() - time_tasks_done >= self._s_restart_remain_empty
-                        is_restart_started = loop.time() - time_tasks_started >= self._h_restart_remain_start
-                        # self._custom.debug.msg(f"{is_restart_done}{loop.time() - time_tasks_done}", f"{is_restart_started}{loop.time() - time_tasks_started}")
-                        if is_restart_done and is_restart_started:
-                            async with self._lock:
-                                for _ in range(self._n_worker): await self._queue.put(None)
-                            tasks_done = True
-                    # -------------------------------------------------------- #
-                            
-                if tasks_done:
-                    break
-                else:
+                time_empty = time.time()
+
+                # is_empty = self._queue._unfinished_tasks == 0
+                is_empty = True
+                while is_empty:
+                # ------------------------------------------------------------ #
                     await asyncio.sleep(0.5)
+
+                    sec_empty = time.time() - time_empty; sec_start = time.time() - time_start 
+                    #! -------------------------------------------------------- #
+                    if msg_time: self._custom.debug.msg(
+                        f"{sec_empty >= self._s_remain_empty} {round(sec_empty,2)}",
+                        f"{sec_start >= self._s_remain_start:} {round(sec_start,2)}")
+                    #! -------------------------------------------------------- #
+                    if sec_empty >= self._s_remain_empty and sec_start >= self._s_remain_start:
+        
+                        async with self._lock:
+                            for _ in range(self._n_worker): await self._queue.put(None)
+
+                        is_empty = False
+                        is_timeover = True
+                        is_restart = self._is_restart
+                    else:
+                        is_empty = self._is_empty; self._is_empty=True
+                        is_timeover= False
+
+                # ------------------------------------------------------------ #
+            # ---------------------------------------------------------------- #
+            
+            await asyncio.sleep(0.5)
+        # -------------------------------------------------------------------- #
+                    
+            
+
+            # # ---------------------------------------------------------------- #
+            # while True:
+            #     # if self._queue._unfinished_tasks > 0:
+            #     # tasks_started = True
+            #     if self._queue._unfinished_tasks == 0:
+            #     # if tasks_started and self._queue._unfinished_tasks == 0:
+            #         time_done = loop.time()
+            #         # -------------------------------------------------------- #
+            #         while self._queue._unfinished_tasks == 0:
+            #             await asyncio.sleep(0.5)
+            #             is_done = loop.time() - time_done >= self._s_remain_empty
+            #             is_init = loop.time() - time_init >= self._h_restart_remain_start
+            #             #! ---------------------------------------------------- #
+            #             self._custom.debug.msg(
+            #                 f"{is_done}{round(loop.time()-time_done,2)}",f"{is_init}{round(loop.time()-time_init,2)}")
+            #             #! ---------------------------------------------------- #
+            #             if is_done and is_init:
+            #                 async with self._lock:
+            #                     for _ in range(self._n_worker): await self._queue.put(None)
+            #                 done_work = True
+            #         # -------------------------------------------------------- #
+                            
+            #     if done_work:
+            #         break
+            #     else:
+            #         await asyncio.sleep(0.5)
+            
+            # if self._terminate:
+            #     break
         # -------------------------------------------------------------------- #
     # ------------------------------------------------------------------------ #
 
@@ -310,12 +393,13 @@ if __name__ == "__main__":
     import httpx
     balance = Balancer()
     balance.set_xcontext(httpx.AsyncClient)
-    balance.set_config(h_restart_remain_start=0,n_worker=5)
+    balance.set_config(s_restart_remain_start=0,n_worker=5)
 
     @balance.wrapper
     async def asleep(xcontext:httpx.AsyncClient, sec:int):
-        # await asyncio.sleep(1) 
-        r = await xcontext.get('https://www.naver2.com/')
+        await asyncio.sleep(sec) 
+        r = await xcontext.get('https://www.naver.com/')
+        print('do')
         return r
 
 
@@ -326,12 +410,9 @@ if __name__ == "__main__":
         # await asleep(sec=1)
 
     async def xclient():
-        tasks = [
-            asleep(sec=1),
-            asleep(sec=1),
-            asleep(sec=1),
-            ]
-        await asyncio.gather(*tasks)
+        await asyncio.sleep(1)
+        await asleep(sec=3)
+        await asleep(sec=10)
         
  
     async def main():
@@ -339,6 +420,7 @@ if __name__ == "__main__":
             asyncio.create_task(balance.run(True,True,True)),
             asyncio.create_task(xclient()),
         ]
+
         await asyncio.gather(*tasks)
 
 

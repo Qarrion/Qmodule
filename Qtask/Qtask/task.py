@@ -10,29 +10,6 @@ from Qtask.modules.limiter import Limiter
 from Qtask.modules.balancer import Balancer
 from Qtask.utils.logger_custom import CustomLog
 import asyncio
-class xdebug:
-
-    @classmethod
-    async def monitor(self, sec:int=1):
-        try:
-            while True:
-                await asyncio.sleep(sec)
-            # print('1')
-        except asyncio.exceptions.CancelledError:
-            print(f"\033[43m !! Interrupted !! \033[0m")
-
-    @classmethod
-    async def gather(self, *args):
-        try:
-            await asyncio.gather(*args)
-            # print('1')
-        except asyncio.exceptions.CancelledError:
-            print(f"\033[43m !! all task closed !! \033[0m")
-
-        except Exception as e:
-            print(e.__class__.__name__)
-            traceback.print_exc()
-
 
 class Task:
 
