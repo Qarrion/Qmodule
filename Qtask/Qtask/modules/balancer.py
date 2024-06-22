@@ -264,7 +264,7 @@ class Balancer:
                                         msg_restart=msg_restart,
                                         msg_run=msg_run,
                                         msg_close=msg_close,
-                                        msg_limit=msg_limit,
+                                        msg_limit=msg_limit
                                         ),
                                         name=f"{self._name}-S"),
                 asyncio.create_task(self.manager(msg_time=msg_time),name=f"{self._name}-M"),
@@ -273,42 +273,37 @@ class Balancer:
         except asyncio.exceptions.CancelledError:
             task_name = asyncio.current_task().get_name()
             cprint(f" - balancer ({task_name}) closed",'yellow')
+    
     # -------------------------------- server -------------------------------- #
     async def server(self,msg_run=False,msg_restart=False,msg_close=False,msg_limit=False):
-        # print(self._n_worker)
         self._is_server_on = True
         # print(f"\033[31m [{self._name}] start \033[0m")
-        # try:
         while True:
             if self._xcontext_type == "async_with":
                 async with self._xcontext() as xcontext:
                     async with asyncio.TaskGroup() as tg:
                         for i in range(self._n_worker):
                             tg.create_task(self.worker(xcontext,msg_run,msg_close,msg_limit),
-                                            name=f"{self._name}-{i+1}")
+                                            name=f"{self._name}-{i}")
             
             elif self._xcontext_type == "async_with_await":
                 async with await self._xcontext() as xcontext:
                     async with asyncio.TaskGroup() as tg:
                         for i in range(self._n_worker):
                             tg.create_task(self.worker(xcontext,msg_run,msg_close,msg_limit),
-                                            name=f"{self._name}-{i+1}")
+                                            name=f"{self._name}-{i}")
 
             else:
                 async with asyncio.TaskGroup() as tg:
                     for i in range(self._n_worker):
                         tg.create_task(self.worker(None,msg_run,msg_close,msg_limit),
-                                        name=f"{self._name}-{i+1}")
+                                        name=f"{self._name}-{i}")
             
             if self._is_restart:
                 if msg_restart : self._custom.debug.msg('restart',aligns=("^"),paddings=("."))
             else:
                 print(f"\033[31m [{self._name}] terminate server \033[0m")
                 break
-        # except asyncio.exceptions.CancelledError:
-            # task_name = asyncio.current_task().get_name()
-            # cprint(f" - server ({task_name}) closed",'yellow')
-            # print(f"\033[43m !! {self._name} closed \033[0m")
     
     # -------------------------------- manager ------------------------------- #
     async def manager(self,msg_time=False):
@@ -349,43 +344,8 @@ class Balancer:
 
                 # ------------------------------------------------------------ #
             # ---------------------------------------------------------------- #
-            
             await asyncio.sleep(0.5)
         # -------------------------------------------------------------------- #
-                    
-            
-
-            # # ---------------------------------------------------------------- #
-            # while True:
-            #     # if self._queue._unfinished_tasks > 0:
-            #     # tasks_started = True
-            #     if self._queue._unfinished_tasks == 0:
-            #     # if tasks_started and self._queue._unfinished_tasks == 0:
-            #         time_done = loop.time()
-            #         # -------------------------------------------------------- #
-            #         while self._queue._unfinished_tasks == 0:
-            #             await asyncio.sleep(0.5)
-            #             is_done = loop.time() - time_done >= self._s_remain_empty
-            #             is_init = loop.time() - time_init >= self._h_restart_remain_start
-            #             #! ---------------------------------------------------- #
-            #             self._custom.debug.msg(
-            #                 f"{is_done}{round(loop.time()-time_done,2)}",f"{is_init}{round(loop.time()-time_init,2)}")
-            #             #! ---------------------------------------------------- #
-            #             if is_done and is_init:
-            #                 async with self._lock:
-            #                     for _ in range(self._n_worker): await self._queue.put(None)
-            #                 done_work = True
-            #         # -------------------------------------------------------- #
-                            
-            #     if done_work:
-            #         break
-            #     else:
-            #         await asyncio.sleep(0.5)
-            
-            # if self._terminate:
-            #     break
-        # -------------------------------------------------------------------- #
-    # ------------------------------------------------------------------------ #
 
 
 
