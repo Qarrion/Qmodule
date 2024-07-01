@@ -1,7 +1,10 @@
-# -------------------------------- ver 240606 -------------------------------- #
+ # -------------------------------- ver 240606 -------------------------------- #
 # return xdef in set_worker
 # -------------------------------- ver 240607 -------------------------------- #
 # xdef hint remove
+# -------------------------------- ver 240623 -------------------------------- #
+# mode_unlimit
+# ---------------------------------------------------------------------------- #
 
 from functools import wraps
 import re
@@ -52,11 +55,13 @@ class Balancer:
         self._xtask = dict()
         self._queue = asyncio.Queue()
         self._lock = asyncio.Lock()
-
+        self._semaphore = asyncio.Semaphore()
+        
         # ------------------------------- debug ------------------------------ #
         self._traceback = False
         self._msg_wrapper = False
-    
+        self._limit = True
+
         # ------------------------------ config ------------------------------ #
         self._n_worker = 10
         self._s_reset = 1
@@ -67,6 +72,9 @@ class Balancer:
         self._s_remain_start = 1*60*60
         self._is_restart = True
         self._is_empty = True
+
+        # ------------------------------ refresh ----------------------------- #
+        self._semaphore = asyncio.Semaphore(self._n_worker)
 
     #! ------------------------------------------------------------------------ #
     #!                                  setter                                  #
@@ -114,6 +122,7 @@ class Balancer:
         if n_retry is not None: self._n_retry = n_retry
         if limit_type is not None: self._limit_type = limit_type
         if traceback is not None: self._traceback = traceback
+        self._semaphore = asyncio.Semaphore(self._n_worker)
 
     def set_config_manager(self, s_remain_empty=None, s_restart_remain_start=None):
         """+ s_remain_empty = 10
@@ -125,6 +134,12 @@ class Balancer:
         self._is_restart = False
         self._s_remain_start = 0
         self._s_remain_empty = after_remain_n_second_empty
+
+    def set_mode_unlimit(self):
+        self._limit = False
+
+    def get_load(self):
+        return self._n_worker - self._semaphore._value
 
     #! ------------------------------------------------------------------------ #
     #!                                  context                                 #
@@ -144,55 +159,59 @@ class Balancer:
     #! ------------------------------------------------------------------------ #
     # -------------------------------- worker -------------------------------- #
     async def worker(self,xcontext=None,msg_run=False,msg_close=False,msg_limit=False):
-        # self._custom.info.msg('on')
+        task_name = asyncio.current_task().get_name()
         while True:
             item = await self._queue.get()
-            self._is_empty = False # for manager
-
-            # print(item)
-            # ----------------------------- close ---------------------------- #
-            if item is None:
-                self._queue.task_done()
-                if msg_close:self._custom.info.msg('close',widths=(3,),aligns=("^"),paddings=("."))
-                break
-            # ---------------------------- process --------------------------- #
-            else:
-                try:
-                    tsp_start = time.time()  #! limiter
-                    kwargs=dict() if item.kwargs is None else item.kwargs
-                    if msg_run:self._custom.info.msg(item.name, self._xcontext_type, str(item.args))
-                    if xcontext is None:
-                        result = await asyncio.wait_for(self._xtask[item.name](*item.args, **kwargs),50)
-                    else:
-                        result = await asyncio.wait_for(self._xtask[item.name](xcontext, *item.args, **kwargs),50)
-                    item.future.set_result(result)  
-                    
-
-                except asyncio.exceptions.CancelledError as e:
-                    task_name = asyncio.current_task().get_name()
-                    cprint(f" - worker ({task_name}) closed",'yellow')
-                    # print(f"\033[33m Interrupted ! in balance ({task_name}) \033[0m")
-
-                except Exception as e:
-                    if item.retry < self._n_retry:
-                        # ---------------------------------------------------- #
-                        # print(self._s_reset*(item.retry+1)/(self._n_retry*5))
-                        # ---------------------------------------------------- #
-                        await asyncio.sleep(self._s_reset*(item.retry/self._n_retry))
-                        await self._xput_queue_retry(item=item)
-                        self._custom.warning.msg(item.name, f'retry({item.retry+ 1})',str(item.args))
-                    else:
-                        self._custom.error.msg(item.name,'drop', str(item.args))
-                        if self._traceback: traceback.print_exc()
-
-                        #! for break execute
-                        item.future.set_result(e) 
-                        raise e
-                        # traceback.print_exc()
-                finally:
+            async with self._semaphore:
+                #! ------------------------------------------------------------ #
+                # print(f"[i n] balancer({self._name}), remain({self._semaphore._value}/{self._n_worker})")
+                #! ------------------------------------------------------------ #
+                self._is_empty = False # for manager
+                # ----------------------------- close ---------------------------- #
+                if item is None:
                     self._queue.task_done()
-                    tsp_finish = time.time() #! limiter
-                    await self._wait_reset(tsp_start, tsp_finish, msg_limit=msg_limit)
+                    if msg_close:self._custom.info.msg('close',widths=(3,),aligns=("^"),paddings=("."))
+                    break
+                # ---------------------------- process --------------------------- #
+                else:
+                    try:
+                        tsp_start = time.time()  #! limiter
+                        kwargs=dict() if item.kwargs is None else item.kwargs
+                        if msg_run:self._custom.info.msg(item.name, self._xcontext_type, str(item.args))
+                        if xcontext is None:
+                            result = await asyncio.wait_for(self._xtask[item.name](*item.args, **kwargs),50)
+                        else:
+                            result = await asyncio.wait_for(self._xtask[item.name](xcontext, *item.args, **kwargs),50)
+                        item.future.set_result(result)  
+                        
+
+                    except asyncio.exceptions.CancelledError as e:
+                        
+                        cprint(f" - worker ({task_name}) closed",'yellow')
+                        # print(f"\033[33m Interrupted ! in balance ({task_name}) \033[0m")
+
+                    except Exception as e:
+                        if item.retry < self._n_retry:
+                            # ---------------------------------------------------- #
+                            # print(self._s_reset*(item.retry+1)/(self._n_retry*5))
+                            # ---------------------------------------------------- #
+                            buffer = round(self._s_reset*(item.retry/self._n_retry),3)
+                            await asyncio.sleep(buffer)
+                            await self._xput_queue_retry(item=item)
+                            self._custom.warning.msg(item.name, f'retry({item.retry+ 1})',f"buff({buffer})")
+                        else:
+                            self._custom.error.msg(item.name,'drop', str(item.args))
+                            if self._traceback: traceback.print_exc()
+
+                            #! for break execute
+                            item.future.set_result(e) 
+                            raise e
+                            # traceback.print_exc()
+                    finally:
+                        tsp_finish = time.time() #! limiter
+                        if self._limit : await self._wait_reset(tsp_start, tsp_finish, msg_limit=msg_limit)
+                        self._queue.task_done()
+            # print(f"[out] balancer({self._name}), remain({self._semaphore._value}/{self._n_worker})")
 
     # ---------------------------------- put --------------------------------- #
     async def _xput_queue(self, name:str, args=(), kwargs:dict=None, retry=0):
@@ -350,14 +369,21 @@ class Balancer:
 
 
 if __name__ == "__main__":
+
     import httpx
     balance = Balancer()
     balance.set_xcontext(httpx.AsyncClient)
-    balance.set_config(s_restart_remain_start=0,n_worker=5)
+    balance.set_config(s_restart_remain_start=0,n_worker=10)
 
     @balance.wrapper
     async def asleep(xcontext:httpx.AsyncClient, sec:int):
         await asyncio.sleep(sec) 
+        r = await xcontext.get('https://www.naver.com/')
+        print('do')
+        return r
+    
+    @balance.wrapper
+    async def req(xcontext:httpx.AsyncClient):
         r = await xcontext.get('https://www.naver.com/')
         print('do')
         return r
@@ -370,9 +396,11 @@ if __name__ == "__main__":
         # await asleep(sec=1)
 
     async def xclient():
-        await asyncio.sleep(1)
-        await asleep(sec=3)
-        await asleep(sec=10)
+        # await asyncio.sleep(1)
+        tasks=[
+            asyncio.create_task(req(),name=f"t-{i}") for i in range(11)
+        ]
+        await asyncio.gather(*tasks)
         
  
     async def main():
@@ -380,7 +408,7 @@ if __name__ == "__main__":
             asyncio.create_task(balance.run(True,True,True)),
             asyncio.create_task(xclient()),
         ]
-
+        
         await asyncio.gather(*tasks)
 
 

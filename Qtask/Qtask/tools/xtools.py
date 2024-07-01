@@ -2,7 +2,7 @@
 # split, xready
 # ---------------------------------------------------------------------------- #
 
-import asyncio, traceback, re
+import asyncio, traceback, re, time
 from collections import defaultdict
 from datetime import datetime
 
@@ -12,25 +12,27 @@ async def xready(sec=1):
 def set_main_task(name = 'MAIN'):
     asyncio.current_task().set_name(name)
 
-async def xmonitor(task_all:int=2):
+async def xmonitor(task_all:int=2,msg_count=True):
     dtime_init = datetime.now()
     try:
         while True:
-            await asyncio.sleep(1)
-            await asyncio.sleep(task_all-1)
-            task, group = get_all_tasks()
+            for _ in range(task_all):
+                await asyncio.sleep(1)
+
+            task, group = get_all_tasks(msg_count=msg_count)
+            
             group = " ".join(group)
             stime = _str_timedelta(datetime.now()-dtime_init)
             head = f"\033[44m{stime}\033[0m "
             body = f"{'':>23}"
             text = f"\033[34m{str(task)} {str(group)}\033[0m"
-            # w_text = textwrap.wrap(text, width=160)
-            for i, t in enumerate(_split_long_string(text,105)):
+
+            for i, t in enumerate(_split_long_string(text,110)):
                 if i ==0:
                     print(f"{head}{t}")
                 else:
                     print(f"{body} ...{t}")        
-        # print('1')
+
     except asyncio.exceptions.CancelledError:
         print(f"\033[43m !! Monitor - Interrupted !! \033[0m")
 
@@ -46,16 +48,15 @@ async def xgather(*args):
         traceback.print_exc()
         # print(f"\033[43m !! all task closed !! \033[0m")
 
-async def xcancel_all(sec):
-    await asyncio.sleep(sec)
+def callback_cancel_all(future):
     [task.cancel() for task in asyncio.all_tasks()]
 
-def get_all_tasks():
+def get_all_tasks(msg_count=True):
     """return (TASK, GROUP)"""
+
     tasks = asyncio.all_tasks()
     data = [task.get_name() for task in tasks]
-    # print(data)
-    # 사전을 사용하여 접두사별로 그룹화
+
     grouped_data = defaultdict(list)
     task_list = []
 
@@ -67,16 +68,17 @@ def get_all_tasks():
         else:
             task_list.append(item)
 
-    # 결과 문자열 생성
     GROUP = []
     TASK = []
 
-    # 접두사별로 정렬하고 문자열 생성
     for prefix in sorted(grouped_data.keys()):
         # 문자와 숫자를 분리하여 정렬
         suffixes = grouped_data[prefix]
+
         numeric_suffixes = sorted([s for s in suffixes if s.isdigit()], key=int)
         non_numeric_suffixes = sorted([s for s in suffixes if not s.isdigit()])
+        if msg_count:
+            numeric_suffixes = [f"({len(numeric_suffixes)})"]
         combined_suffixes = non_numeric_suffixes + numeric_suffixes
         combined_string = f"{prefix}-" + ",".join(combined_suffixes)
         combined_string = "["+combined_string+"]"
