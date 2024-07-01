@@ -5,6 +5,11 @@
 # def clsname
 # -------------------------------- ver 240617 -------------------------------- #
 # v3
+# -------------------------------- ver 240624 -------------------------------- #
+# size 15 and cls
+# -------------------------------- ver 240629 -------------------------------- #
+# arg = str(arg)
+# ---------------------------------------------------------------------------- #
 from datetime import datetime, timedelta
 import os
 import threading
@@ -61,16 +66,24 @@ class CustomLog:
         self.info.msg(name, widths=(3,),aligns=(">"),paddings=('-'))
 
     def div(self, offset:float|None=None):
-        BODY = f"{'='*89}"
+        BODY = f"{'='*95}"
         FOOTTER = self._get_FOOTTER(offset)
         DIV_MSG = f"{BODY}{FOOTTER}"
         self._log_chained(DIV_MSG) 
 
     def max(self, text, offset:float|None=None):
-        BODY = f"{text:<89}"
+        BODY = f"{text:<95}"
         FOOTTER = self._get_FOOTTER(offset)
         DIV_MSG = f"{BODY}{FOOTTER}"
         self._log_chained(DIV_MSG) 
+
+    def cls(self, text, offset:float|None=None):
+        CLASS = self.CLASS
+        BODY = f"{text:<72}"
+        FOOTTER = self._get_FOOTTER(offset)
+        DIV_MSG = f"{CLASS}{BODY}{FOOTTER}"
+        self._log_chained(DIV_MSG) 
+
     # ------------------------------------------------------------------------ #
     #                                   main                                   #
     # ------------------------------------------------------------------------ #
@@ -129,7 +142,8 @@ class CustomLog:
             paddings = len(args)*[str(paddings)]
 
         for arg,width,align,pad in zip(args,widths,aligns,paddings):
-            wid = width*13+(width-1)*2
+            arg = str(arg)
+            wid = width*15+(width-1)*2
             txt = arg[:(wid-1)]+"*" if len(arg)>wid else arg
             alg = f"{pad}{align}{wid}"
             # print(alg)
@@ -303,6 +317,7 @@ if __name__ == "__main__":
         customlog.debug.msg('a',widths=(3,))
         customlog.debug.div(offset=0.1)
         customlog.debug.max('a'*20)
+        customlog.debug.cls('cls'*20)
         customlog.info.msg('a','b','c',aligns='>',paddings="-",offset=0.1)
         customlog.info.msg('addddddddddddddd','b',widths=(1,2),aligns=("<",">"),paddings=(" ","-"),offset=0.1)
 
