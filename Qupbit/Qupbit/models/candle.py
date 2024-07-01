@@ -39,10 +39,11 @@ class Candle:
             print(f"\033[31m No Module Qlogger \033[0m")
 
         self._custom = CustomLog(logger, CLSNAME, 'async')
-        if msg : self._custom.info.msg(name, widths=(3,),aligns=(">"),paddings=('-'))
+        if msg: self._custom.info.ini(name)
 
         self.parser = Parser()
         self.timez = Timez()
+        self.row_candle = Row
 
         self.xclient = httpx.AsyncClient
 
@@ -53,8 +54,7 @@ class Candle:
         totz = self._arg_to(date_time_str=to, tz=tz) if to is not None else None
         return result
         """
-        totz = self._stime_to_arg(date_time_str=to, tz=tz) if to is not None else None
-        # print(f"[totz] {totz}")
+        totz = self.stime_to_arg(stime=to, tz=tz) if to is not None else None
         params=dict(market = market, count = count, to = totz)
 
         if session is None:
@@ -77,13 +77,13 @@ class Candle:
     async def xget(self, xclient:httpx.AsyncClient=None, 
                    market:str='KRW-BTC', to:str=None, count:int=200, tz:Literal['UTC','KST']='KST',
                    key:Literal['status','header','payload','remain','text','time']=None, msg=False):
-        
+        """to: naive_str , tz: as_localize"""
         is_context = False
         if xclient is None:
             xclient = httpx.AsyncClient()
             is_context = True
 
-        totz = self._stime_to_arg(date_time_str=to, tz=tz) if to is not None else None
+        totz = self.stime_to_arg(stime=to, tz=tz) if to is not None else None
         params=dict(market = market, count = count, to = totz)
         resp = await xclient.get(url=self.url_candle, headers=self.headers, params=params)
         rslt = self.parser.response(resp)
@@ -102,110 +102,152 @@ class Candle:
         resp.raise_for_status()
         return rslt			
 
-    def chk_time(self, date_time:datetime, chk=False, msg=False):
+    def to_last(self, dtime:datetime, stime=False, msg=False):
         """>>> # Last namedtuple
         return Last(input, stable, close, trade) '%Y-%m-%dT%H:%M:%S' 
         stable = input + min 1 if sec = 0 else input"""
 
-        input = date_time
+        input = dtime
 
-        if date_time.second==0:
-            stable = date_time.replace(second=1,microsecond=0)           
+        if dtime.second==0:
+            stable = dtime.replace(second=1,microsecond=0)           
         else:
-            stable = date_time
+            stable = dtime
 
-        trade = date_time.replace(second=0,microsecond=0)
+        trade = dtime.replace(second=0,microsecond=0)
         close = trade + timedelta(minutes=-1)
 
         if msg: print(f" + input({input}) stable({stable}) close({close}), trade({trade})")
-        if chk:
+        if stime:
             return self.Last(
-                self.timez.to_str(input , fmt=2 ), 
-                self.timez.to_str(stable , fmt=2 ), 
-                self.timez.to_str(close , fmt=2 ), 
-                self.timez.to_str(trade , fmt=2 ))
+                self.timez.to_str(input     , fmt=2 ), 
+                self.timez.to_str(stable    , fmt=2 ), 
+                self.timez.to_str(close     , fmt=2 ), 
+                self.timez.to_str(trade     , fmt=2 ))
         else:
             return self.Last(input, stable, close, trade)
 
-    def to_rows(self, payload:List[dict],key:Literal['tuple','namedtuple']='tuple'):
+    # + market, (candle_date_time_utc), candle_date_time_kst[str->localize], 
+    # + opening_price, high_price, low_price, trade_price,
+    # + (timestamp), candle_acc_trade_price, candle_acc_trade_volume, (unit) 
+    def to_rows(self, payload:List[dict],key:Literal['tuple','namedtuple']='tuple', fmt=1):
         """
-        + market, (candle_date_time_utc), candle_date_time_kst[str->localize], 
-        + opening_price, high_price, low_price, trade_price,
-        + (timestamp), candle_acc_trade_price, candle_acc_trade_volume, (unit)"""
-        selected_rows =[
-            (
-                self._stime_to_kst(d['candle_date_time_kst']),
-                d['market'], 
-                d['opening_price'],d['high_price'],d['low_price'],d['low_price'],
-                d['candle_acc_trade_price'], d['candle_acc_trade_volume']
-            ) 
-                for d in payload
-        ]
+        >>> namedtuple('Candle',['time','market','open','high','low','close','amount','volume'])
+        %Y-%m-%dT%H:%M:%S
+        + fmt = 0 : datetime naive
+        + fmt = 1 : datetime aware kst
+        + fmt = 2 : str/ %Y-%m-%dT%H:%M:%S 
+        """
         if key=='namedtuple':
-            
-            selected_rows = [Row(*item) for item in selected_rows]
+            selected_rows =[
+                Row(
+                    self.stime_to_fmt(d['candle_date_time_kst'],fmt=fmt),
+                    d['market'], 
+                    d['opening_price'],d['high_price'],d['low_price'],d['low_price'],
+                    d['candle_acc_trade_price'], d['candle_acc_trade_volume']
+                ) 
+                    for d in payload ]
+        else:
+            selected_rows =[
+                (
+                    self.stime_to_fmt(d['candle_date_time_kst'],fmt=fmt),
+                    d['market'], 
+                    d['opening_price'],d['high_price'],d['low_price'],d['low_price'],
+                    d['candle_acc_trade_price'], d['candle_acc_trade_volume']
+                ) 
+                    for d in payload ]
+        # if key=='namedtuple':
+        #     selected_rows = [Row(*item) for item in selected_rows]
 
         return selected_rows        
+    
+    def to_dict(self, row:Row):
+        if isinstance(row, Row):
+            return row._asdict()
+        else:
+            print(f"\033[31m row is not instance Row({Row.index} \033[0m")
 
-    def complete_rows(self, rows:List[Row], stime_trade:str, cut_trade:bool):
+    def to_complete_zero_volumne(self, rows:List[Row], stime_trade:str, cut_trade:bool):
         """ 
         + stime_trade : date_time_naive 
         + cut_trade : trade (incomplete) close (complete)
         """
 
-        if rows:
-            dtime_now_trade_naive = self.timez.from_str(stime_trade,fmt=0,only_naive=True)
-            dtime_now_trade_kst = self.timez.as_localize(dtime_now_trade_naive, tz='KST')
+        dtime_now_trade_naive = self.timez.from_str(stime_trade,fmt=0,only_naive=True)
+        dtime_now_trade_kst = self.timez.as_localize(dtime_now_trade_naive, tz='KST')
 
-            if rows[0].time < dtime_now_trade_kst:
-                row_zero = self._zero_volume_row(prev_row=rows[0],time=dtime_now_trade_kst)
-                rows.insert(0,row_zero)
-            
-            rows_add = []
-            for i, row_big in enumerate(rows[:-1]):
-                row_small = rows[i+1]
-                while row_big.time != row_small.time + timedelta(minutes=1):
-                    row_zero = self._zero_volume_row(prev_row=row_small)
-                    rows_add.append(row_zero)
-                    row_small = row_zero
+        if rows[0].time < dtime_now_trade_kst:
+            row_zero = self._zero_volume_row(prev_row=rows[0],time=dtime_now_trade_kst)
+            rows.insert(0,row_zero)
+        
+        rows_add = []
+        for i, row_big in enumerate(rows[:-1]):
+            row_small = rows[i+1]
+            while row_big.time != row_small.time + timedelta(minutes=1):
+                row_zero = self._zero_volume_row(prev_row=row_small)
+                rows_add.append(row_zero)
+                row_small = row_zero
 
-            rows.extend(rows_add)
-            rows.sort(key=lambda x:x.time, reverse=True)
+        rows.extend(rows_add)
+        rows.sort(key=lambda x:x.time, reverse=True)
 
-            if cut_trade: del rows[0]
+        if cut_trade: del rows[0]
 
         return rows
         # [Candle(market='KRW-BTC', time=datetime.datetime(2024, 6, 7, 21, 31, ...),
         # Candle(market='KRW-BTC', time=datetime.datetime(2024, 6, 7, 21, 29, ...),
         # Candle(market='KRW-BTC', time=datetime.datetime(2024, 6, 7, 21, 28, ...)]
 
+    # def to_dict(self, rows):
 
-    # ------------------------------------------------------------------------ #
-    #                                   utils                                  #
-    # ------------------------------------------------------------------------ #
 
-    def _stime_to_arg(self, date_time_str:str, tz:Literal['UTC','KST']='KST') -> str:
-        date_time_naive = self.timez.from_str(date_time_str, fmt=0, only_naive=True)
-        date_time_aware = self.timez.as_localize(date_time_naive, tz)
-
-        if tz=='UTC': 
-            to = datetime.strftime(date_time_aware,'%Y-%m-%dT%H:%M:%SZ')
-        elif tz == 'KST':
-            to = date_time_aware.isoformat(sep='T',timespec='seconds')
-
-        return to
-
-    def _stime_to_kst(self, date_time_str:str):
-        # date_time_navie = datetime.strptime(date_time_str, '%Y-%m-%dT%H:%M:%S') 
-        date_time_naive = self.timez.from_str(date_time_str, fmt=0, only_naive=True)
-        date_time_aware = self.timez.as_localize(date_time_naive=date_time_naive,tz='KST')
-        return date_time_aware
-    
     def _zero_volume_row(self,prev_row:Row, time:datetime=None):
         m = prev_row.market
         c = prev_row.close
         t = prev_row.time + timedelta(minutes=1) if time is None else time
         return Row(market=m,time=t,open=c,high=c,low=c,close=c,amount=0,volume=0)
+
+    # ------------------------------------------------------------------------ #
+    #                                   utils                                  #
+    # ------------------------------------------------------------------------ #
+
+    def stime_to_arg(self, stime:str, tz:Literal['UTC','KST']='KST') -> str:
+        """str naive -> tz (as localize) -> upbit arg"""
+        date_time_naive = self.timez.from_str(stime, fmt=0, only_naive=True)
+        date_time_aware = self.timez.as_localize(date_time_naive, tz)
+
+        if tz=='UTC': 
+            # (yyyy-MM-dd'T'HH:mm:ss'Z' or yyyy-MM-dd HH:mm:ss)
+            to = datetime.strftime(date_time_aware,'%Y-%m-%dT%H:%M:%SZ')
+        elif tz == 'KST':
+            # 2023-01-01T00:00:00+09:00
+            to = date_time_aware.isoformat(sep='T',timespec='seconds')
+
+        return to
+
+    def stime_to_kst(self, stime:str):
+        """2024-06-26T12:15:00 str naive -> kst (as localize) """
+        # date_time_navie = datetime.strptime(date_time_str, '%Y-%m-%dT%H:%M:%S') 
+        dtime_naive = self.timez.from_str(stime, fmt=0, only_naive=True)
+        dtime_aware = self.timez.as_localize(date_time_naive=dtime_naive,tz='KST')
+        return dtime_aware
+    
+    def stime_to_fmt(self, stime:str, fmt=0):
+        """
+        %Y-%m-%dT%H:%M:%S
+        + fmt = 0 : datetime naive
+        + fmt = 1 : datetime aware kst
+        + fmt = 2 : str/ %Y-%m-%dT%H:%M:%S 
+        """
+        dtime_naive = self.timez.from_str(stime, fmt=0, only_naive=True)
+        if fmt == 0:
+            rslt = dtime_naive
+        elif fmt == 1:
+            rslt = self.timez.as_localize(date_time_naive=dtime_naive,tz='KST')
+        elif fmt == 2:
+            rslt = self.timez.to_str(dtime_naive,2)
+        return rslt
+
 
 if __name__=='__main__':
     import pandas as pd
@@ -213,11 +255,16 @@ if __name__=='__main__':
     from Qupbit.utils.print_divider import eprint
 
     candle = Candle()
+    print(candle.stime_to_fmt('2024-06-26T12:15:00',0))
+    print(candle.stime_to_fmt('2024-06-26T12:15:00',1))
+    print(candle.stime_to_fmt('2024-06-26T12:15:00',2))
 
     async def main():
         async with httpx.AsyncClient() as xclient:
-            resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
-            resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+            resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=1,msg=True)
+            print(resp['payload'])
+
+            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
             # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
             # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
             # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
@@ -230,6 +277,7 @@ if __name__=='__main__':
             # print(resp['payload'][0])
             # print(resp['time'])
             # print(candle.to_rows(resp['payload'],key='namedtuple')[0].time)
+
     asyncio.run(main())
 
     # print(candle._to_api_to('2023-01-01T00:00:00+09:00','KST'))

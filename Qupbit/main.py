@@ -41,12 +41,12 @@ if __name__ == "__main__":
         async with candle.xclient() as xclient:
 
             MKT = 'KRW-BTC'
-            TGT = candle.chk_time(get_now(),chk=True)
+            TGT = candle.to_last(get_now(),stime=True)
             print(TGT)
 
             rslt = await candle.xget(xclient=xclient,market=MKT,to=None, count=5,tz='KST',key=None)
-            last = candle.chk_time(rslt['time'])
-            chek = candle.chk_time(rslt['time'],chk=True)
+            last = candle.to_last(rslt['time'])
+            chek = candle.to_last(rslt['time'],stime=True)
             rows = candle.to_rows(rslt['payload'],key='namedtuple')
 
             # elif 

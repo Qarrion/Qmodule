@@ -133,10 +133,8 @@ class Market:
         return selected_rows
     
     def to_dict(self, row:Row):
-        if isinstance(row, Row):
+        if isinstance(row,Row):
             return row._asdict()
-        else:
-            print(f"\033[31m row is not instance Row({Row.index} \033[0m")
         
     def _msg_result(self, status, result:dict, frame:str):
         remain = result['remain']

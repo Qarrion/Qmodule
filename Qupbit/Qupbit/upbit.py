@@ -48,7 +48,7 @@ class Upbit:
             if naive.second==0:
                 naive_stable = naive.replace(second=1,microsecond=0)           
         """
-        return self.candle.chk_time(now_naive,rtype,msg=msg)
+        return self.candle.to_last(now_naive,rtype,msg=msg)
 
     def uti_kst(self, date_time_str:str):
         return self.candle._stime_to_kst(date_time_str=date_time_str)
