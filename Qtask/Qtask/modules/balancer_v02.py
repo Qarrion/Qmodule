@@ -22,8 +22,11 @@ from collections import namedtuple
 
 Item = namedtuple('Item', ['future', 'name', 'args', 'kwargs', 'retry'])
 import time
-class Balancer:
 
+
+
+class Balancer:
+    
     def __init__(self, name:str='balancer',msg=True):
         """
         + n_worker = 10
@@ -108,7 +111,6 @@ class Balancer:
             s_remain_empty=s_remain_empty,
             s_remain_start=s_remain_start)        
 
-
     def set_config_server(self,n_worker=None,s_reset=None,n_retry=None,limit_type=None,traceback=None):
         """
         + n_worker = 10
@@ -130,10 +132,10 @@ class Balancer:
         if s_remain_empty is not None: self._s_remain_empty = s_remain_empty
         if s_remain_start is not None: self._s_remain_start = s_remain_start
     
-    def set_mode_once(self, after_remain_n_second_empty:int = 5):
+    def set_mode_once(self, s_remain_empty:int = 5):
         self._is_restart = False
         self._s_remain_start = 0
-        self._s_remain_empty = after_remain_n_second_empty
+        self._s_remain_empty = s_remain_empty
 
     def set_mode_unlimit(self):
         self._limit = False
@@ -178,17 +180,15 @@ class Balancer:
                         tsp_start = time.time()  #! limiter
                         kwargs=dict() if item.kwargs is None else item.kwargs
                         if msg_run:self._custom.info.msg(item.name, self._xcontext_type, str(item.args))
+                        
                         if xcontext is None:
                             result = await asyncio.wait_for(self._xtask[item.name](*item.args, **kwargs),50)
                         else:
                             result = await asyncio.wait_for(self._xtask[item.name](xcontext, *item.args, **kwargs),50)
                         item.future.set_result(result)  
                         
-
                     except asyncio.exceptions.CancelledError as e:
-                        
                         cprint(f" - worker ({task_name}) closed",'yellow')
-                        # print(f"\033[33m Interrupted ! in balance ({task_name}) \033[0m")
 
                     except Exception as e:
                         if item.retry < self._n_retry:
@@ -208,10 +208,10 @@ class Balancer:
                             raise e
                             # traceback.print_exc()
                     finally:
-                        tsp_finish = time.time() #! limiter
-                        if self._limit : await self._wait_reset(tsp_start, tsp_finish, msg_limit=msg_limit)
+                        if self._limit : 
+                            tsp_finish = time.time() #! limiter
+                            await self._wait_reset(tsp_start, tsp_finish, msg_limit=msg_limit)
                         self._queue.task_done()
-            # print(f"[out] balancer({self._name}), remain({self._semaphore._value}/{self._n_worker})")
 
     # ---------------------------------- put --------------------------------- #
     async def _xput_queue(self, name:str, args=(), kwargs:dict=None, retry=0):
