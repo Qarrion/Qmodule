@@ -9,6 +9,8 @@
 # size 15 and cls
 # -------------------------------- ver 240629 -------------------------------- #
 # arg = str(arg)
+# -------------------------------- ver 240702 -------------------------------- #
+# getlogger
 # ---------------------------------------------------------------------------- #
 from datetime import datetime, timedelta
 import os
@@ -30,7 +32,7 @@ class CustomLog:
                  clsname:str,
                  context:Literal['thread', 'async','module'] = 'module'):
 
-        self.logger = logger
+        self.logger = logger 
 
         self.CLASS = self._get_CLASS(cla=clsname, log=self.logger.name)
         self.mode = context
@@ -49,7 +51,7 @@ class CustomLog:
             frame:int|str|None=1, mode:Literal['thread','async','module']=None, 
             offset:float|None=None,module:int=2):
         """>>> # 
-        align : Literal["^",">",">"]
+        align : Literal["^","<",">"]
         padding : default (" ") 
         frame : int (1) n_back
         module : mode ('module') n_back"""
@@ -72,14 +74,14 @@ class CustomLog:
         self._log_chained(DIV_MSG) 
 
     def max(self, text, offset:float|None=None):
-        BODY = f"{text:<95}"
+        BODY = f"{str(text):<95}"
         FOOTTER = self._get_FOOTTER(offset)
         DIV_MSG = f"{BODY}{FOOTTER}"
         self._log_chained(DIV_MSG) 
 
     def cls(self, text, offset:float|None=None):
         CLASS = self.CLASS
-        BODY = f"{text:<72}"
+        BODY = f"{str(text):<72}"
         FOOTTER = self._get_FOOTTER(offset)
         DIV_MSG = f"{CLASS}{BODY}{FOOTTER}"
         self._log_chained(DIV_MSG) 
@@ -107,7 +109,7 @@ class CustomLog:
         return " | "+ str_offset if footter != "" else ""
     
     def _get_BODY(self, *args, widths:tuple=None,aligns:tuple=None,paddings:tuple=None):
-        """>>> align : Literal["^",">",">"]
+        """>>> align : Literal["^","<",">"]
         padding : default (" ")"""
 
         str_args = self._get_args(*args, widths=widths,aligns=aligns,paddings=paddings)
@@ -217,6 +219,19 @@ class CustomLog:
     def _log_chained(self, msg):
         if self.logger is not None:
             self.logger.log(level=self.method.level, msg=msg)
+
+    @staticmethod
+    def getlogger(name:str):
+        logger = logging.getLogger(name)
+        logger.setLevel(logging.DEBUG) 
+        handler = logging.StreamHandler() 
+        handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s | %(levelname)-7s | %(message)-40s |')
+        handler.setFormatter(formatter)
+        if logger.hasHandlers(): logger.handlers.clear()
+        logger.addHandler(handler)
+        return logger
+
 
     @property
     def debug(self):
