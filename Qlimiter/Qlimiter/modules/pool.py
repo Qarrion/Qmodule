@@ -34,8 +34,8 @@ class Pool:
 
         # -------------------------------------------------------------------- #
         # self.xsession = None
-        self.session = None
-        self.xdefs:dict = dict()
+        self._session = None
+        self._xdefs:dict = dict()
 
         self._queue = asyncio.Queue()
         self._lock = asyncio.Lock()
@@ -70,7 +70,7 @@ class Pool:
         
     def set_session(self, session:Session):
         """self.xconn = connect()"""
-        self.session = session()
+        self._session = session()
         self._custom.info.msg("")
     # ------------------------------------------------------------------------ #
     #                                  wrapper                                 #
@@ -92,7 +92,7 @@ class Pool:
     
     # -------------------------------- private ------------------------------- #
     def _set_xdef(self,xdef):
-        self.xdefs[xdef.__name__] = xdef
+        self._xdefs[xdef.__name__] = xdef
         return xdef
     
     async def _xfetch(self, xdef, args=(), kwargs:dict=None):
@@ -139,23 +139,25 @@ class Pool:
                             self._custom.info.msg('start',TimeFormat.timestamp(tsp_start,'hmsf'),frame='',aligns=("<","<"), paddings=("","-")) 
 
                         # if self.xsession is not None:
-                        if self.session is not None:
+                        if self._session is not None:
                             # result = await asyncio.wait_for(self.xdefs[item.name](self.xsession.xconn, *item.args, **kwargs),50)
-                            result = await asyncio.wait_for(self.xdefs[item.name](self.session.xconn, *item.args, **kwargs),50)
+                            result = await asyncio.wait_for(self._xdefs[item.name](self._session.session, *item.args, **kwargs),50)
                         else:
-                            result = await asyncio.wait_for(self.xdefs[item.name](*item.args, **kwargs),50)
+                            result = await asyncio.wait_for(self._xdefs[item.name](*item.args, **kwargs),50)
 
                         if item.__class__.__name__ == "item_xfetch":
                             item.future.set_result(result)  
                         
                     except asyncio.exceptions.CancelledError as e:
                         cprint(f" - worker ({task_name}) closed",'yellow')
-
+                        await asyncio.sleep(2)  # Graceful cleanup (example)
+                        raise 
                     except Exception as e:
                         if item.retry < self._n_retry:
-                            buffer = round((item.retry/self._n_retry),3)
-                            await asyncio.sleep(buffer)
                             item = item._replace(retry=item.retry+1)
+                            buffer = round((item.retry/self._n_retry),3)
+                            # buffer = 0.1 * //(item.retry+1)
+                            await asyncio.sleep(buffer)
                             async with self._lock:  
                                 await self._queue.put(item)
                             self._custom.warning.msg(item.name, f'retry({item.retry})',f"buff({buffer})")
@@ -175,28 +177,30 @@ class Pool:
     async def server(self):
         # await self.xsession.start()
         self._is_server_on = True
-        await self.session.restart() 
-        while True:
-            async with asyncio.TaskGroup() as tg:
-                for i in range(self._n_worker):
-                    tg.create_task(self._worker(),name=f"{self._name}-{i}")
+        await self._session.restart() 
+        try:
+            while True:
+                    async with asyncio.TaskGroup() as tg:
+                        for i in range(self._n_worker):
+                            tg.create_task(self._worker(),name=f"{self._name}-{i}")
+        except asyncio.CancelledError:
+            task_name = asyncio.current_task().get_name()
+            cprint(f" - worker ({task_name}) closed",'yellow')
 
     async def safe_restart(self):
-        active = 0
-        for _ in range(self._n_worker):
-            await self._semaphore.acquire()
-            active += 1
-            print(active)
-        
         async with self._lock:
+            for _ in range(self._n_worker):
+                await self._semaphore.acquire()
+            
+            # async with self._lock:
             for _ in range(self._n_worker): await self._queue.put(None)
-        # self.xsession.restart()
-        self.session.restart()
+            # self.xsession.restart()
+            await self._session.restart()
+            self._custom.info.msg("restart",widths=3,aligns="^",paddings='-')
 
-        for _ in range(self._n_worker):
-            self._semaphore.release()
-            active -= 1
-            print(active)
+            for _ in range(self._n_worker):
+                self._semaphore.release()
+
 
     # ------------------------------------------------------------------------ #
     #                                   other                                  #
@@ -207,7 +211,7 @@ class Pool:
             print(f"\033[31m args is not tuple \033[0m")
 
         if not self._is_server_on:
-            print(f"\033[31m balancer.server for {name}() is not running [{self._name}] \033[0m")
+            print(f"\033[31m pool.server for {name}() is not running [{self._name}] \033[0m")
 
     async def _wait_reset(self, tsp_start:float, tsp_finish):
         if self._limit_type == 'inflow':
@@ -244,11 +248,11 @@ if __name__ =="__main__":
             super().__init__()
 
         async def restart(self):
-            if self.xconn is None:
-                self.xconn = httpx.AsyncClient()
+            if self.session is None:
+                self.session = httpx.AsyncClient()
             else: 
-                await self.xconn.aclose()
-                self.xconn = httpx.AsyncClient()
+                await self.session.aclose()
+                self.session = httpx.AsyncClient()
 
 
     balancer.set_session(session=ApiSess)

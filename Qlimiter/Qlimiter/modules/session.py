@@ -8,11 +8,31 @@ import httpx
 
 class Session(ABC):
     """ >>> # 
-    self.xconn = None
+    self.session = None
     self.restart()
+    ...
+    >>> # api example
+    class ApiSess(Session):
+        async def restart(self):
+            if self.session is None:
+                self.session = AsyncClient()
+            else: 
+                await self.session.aclose()
+                self.session = AsyncClient()
+    ...
+    >>> # sql example
+    class SqlSess(Session):
+    async def restart(self):
+        if self.session is None:
+            self.session = pgsql.xconnect_pool()
+            await self.session.open()
+        else: 
+            await self.session.close()
+            self.session = pgsql.xconnect_pool()
+            await self.session.open()
     """
     def __init__(self):
-        self.xconn = None
+        self.session = None
 
     @abstractmethod
     async def restart(self):
