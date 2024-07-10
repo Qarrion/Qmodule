@@ -167,9 +167,9 @@ class Candle:
         else:
             print(f"\033[31m row is not instance Row({Row.index} \033[0m")
 
-    def to_complete_zero_volumne(self, rows:List[Row], stime_trade:str, cut_trade:bool):
+    def to_complete_zero_volume(self, rows:List[Row], stime_trade:str, cut_trade:bool):
         """ 
-        + stime_trade : date_time_naive 
+        + stime_trade : str
         + cut_trade : trade (incomplete) close (complete)
         """
 
@@ -261,8 +261,8 @@ if __name__=='__main__':
 
     async def main():
         async with httpx.AsyncClient() as xclient:
-            resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=1,msg=True)
-            print(resp['payload'])
+            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=1,msg=True)
+            # print(resp['payload'])
 
             # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
             # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
@@ -273,8 +273,8 @@ if __name__=='__main__':
             # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
             # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
             # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
-            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
-            # print(resp['payload'][0])
+            resp = await candle.xget(xclient=xclient,market='KRW-BTC',to='2020-10-10 10:10:01', count=5,msg=True)
+            print(resp['payload'][0])
             # print(resp['time'])
             # print(candle.to_rows(resp['payload'],key='namedtuple')[0].time)
 
