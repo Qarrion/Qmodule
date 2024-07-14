@@ -5,7 +5,7 @@ import time
 import traceback
 from typing import Callable, Literal
 from Qlimiter.utils.logger_custom import CustomLog
-from Qlimiter.modules.session import Xsession, Session
+from Qlimiter.modules.session import Session
 from Qlimiter.utils.print_color import cprint
 from Qlimiter.utils.format_time import TimeFormat
 
@@ -60,18 +60,10 @@ class Pool:
         self._n_retry = n_retry
         self._custom.info.msg(limit,f"max({n_worker})",f"sec({seconds})" )
 
-    # def set_xsession(self, xconnector:Callable, close_method:str, close_status:str):
-    #     """>>> # used case 
-    #     set_xsession(xconnector = httpx.AsyncClient, close_method='aclose', close_status='is_closed')
-    #     set_xsession(xconnector = pgsql.xconnect_pool, close_method='close', close_status='closed')"""
-    #     self.xsession = Xsession(xconnector, close_method, close_status) 
-    #     # self.xsession.start()
-    #     self._custom.info.msg(self.xsession.xconn.__class__.__name__,close_method, close_status)
-        
     def set_session(self, session:Session):
         """self.xconn = connect()"""
         self._session = session()
-        self._custom.info.msg("")
+        self._custom.info.msg(self._session.pclass.__name__)
     # ------------------------------------------------------------------------ #
     #                                  wrapper                                 #
     # ------------------------------------------------------------------------ #

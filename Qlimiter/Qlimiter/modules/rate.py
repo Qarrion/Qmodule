@@ -14,7 +14,7 @@ from typing import Callable, Literal
 from functools import wraps
 import asyncio, time, traceback
 
-from Qlimiter.modules.session import Xsession
+# from Qlimiter.modules.session import Xsession
 
 
 class Rate:
