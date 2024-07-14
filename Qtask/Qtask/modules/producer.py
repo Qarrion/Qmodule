@@ -36,7 +36,7 @@ class Producer:
         await asyncio.gather(task1)
     asyncio.run(main())
     """    
-    def __init__(self, name:str='prod', offset=False, msg=True):
+    def __init__(self, name:str='prod', offset=False, custom=None, msg=True):
         CLSNAME = 'Producer'
         try:
             from Qlogger import Logger
@@ -45,16 +45,24 @@ class Producer:
             logger = None
             print(f"\033[31m No Module Qlogger \033[0m")
 
-        self._custom = CustomLog(logger, CLSNAME, 'async')
+        if custom is None:
+            self._custom = CustomLog(logger, CLSNAME, 'async')
+        else:
+            self._custom = custom
+
         if msg : self._custom.info.ini(name)
 
-        self._timer = Timer(logger,CLSNAME,Core)
-        self._nowst = Nowst(logger,CLSNAME,Core,offset=offset)
+        self._timer = Timer(logger,self._custom._clsnmae,Core)
+        self._nowst = Nowst(logger,self._custom._clsnmae,Core,offset=offset)
         
         self._channel:Channel = None
         self._xworker = None
 
         self.timer=None
+
+    @property
+    def core(self):
+        return Core
 
     # ------------------------------------------------------------------------ #
     #                                synchronize                               #
@@ -93,18 +101,17 @@ class Producer:
     # ------------------------------------------------------------------------ #
     #                                 Produce                                  #
     # ------------------------------------------------------------------------ #
-    def set_channel(self, channel:Channel):
+    def set_channel(self, channel:Channel, msg=False):
         self._channel = channel
-        self._custom.info.msg(channel._name,"","")
+        if msg: self._custom.info.msg(channel._name,"","")
 
-    def set_xworker(self, xdef:Callable, channel:Channel=None, msg_put=False):
+    def set_xworker(self, xdef:Callable, channel:Channel=None, msg=False):
         """
         + arg 'channel' object should be assigned in the 'set_xworker' or 'set_channel'
         + msg for | xput_queue....item | 
         """
         self._xworker = xdef
-        self._msg_channel_put = msg_put
-        self._custom.info.msg(xdef.__name__,"",widths=(2,1))
+        if msg : self._custom.info.msg(xdef.__name__,"",widths=(2,1))
         if channel is not None:
             self.set_channel(channel)
 
@@ -113,11 +120,11 @@ class Producer:
         punc.__name__ = func.__name__
         return punc
     
-    async def xput_channel(self,args:tuple=(), kwargs:dict=None, retry=0):
+    async def xput_channel(self,args:tuple=(), kwargs:dict=None, retry=0, msg=False):
         """
         + args = () for no arg consumer
         + msg in set_xworker"""
-        await self._channel.xput_queue(args,kwargs,retry,msg=self._msg_channel_put)
+        await self._channel.xput_queue(args,kwargs,retry,msg=msg)
 
     async def xproduce(self, timeout=10, msg_div=True, msg_adjust=False):
         """
@@ -143,14 +150,13 @@ class Producer:
                     await asyncio.sleep(tot_sec)
                     await self._nowst.xadjust_offset_change(tgt_dtm, msg = msg_adjust)
 
-                    # if msg_div: self._custom.info.msg('exec', self._custom.arg(self._xworker.__name__,3,'l',"-"), offset=Core.offset)
                     if msg_div : self._custom.info.msg(self._xworker.__name__,widths=(3,),aligns=("<"),paddings=("-"),offset=Core.offset)
 
                     await asyncio.wait_for(self._xworker(), timeout)
                     if msg_div : self._custom.info.msg(self._xworker.__name__,widths=(3,),aligns=(">"),paddings=("-"),offset=Core.offset)
-                    # if msg_div: self._custom.info.msg('exec', self._custom.arg(self._xworker.__name__,3,'r',"-"), offset=Core.offset)
 
                     await self._nowst.xadjust_offset_change(tgt_dtm, msg = msg_adjust)
+
                 except asyncio.exceptions.CancelledError:
                     print(f"\033[33m Interrupted ! loop_xproduce ({self._xworker.__name__}) \033[0m")
                     break

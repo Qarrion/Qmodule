@@ -9,6 +9,10 @@
 # size 15 and cls
 # -------------------------------- ver 240629 -------------------------------- #
 # arg = str(arg)
+# -------------------------------- ver 240702 -------------------------------- #
+# getlogger
+# -------------------------------- ver 240711 -------------------------------- #
+# mode=None
 # ---------------------------------------------------------------------------- #
 from datetime import datetime, timedelta
 import os
@@ -30,32 +34,32 @@ class CustomLog:
                  clsname:str,
                  context:Literal['thread', 'async','module'] = 'module'):
 
-        self.logger = logger
-
-        self.CLASS = self._get_CLASS(cla=clsname, log=self.logger.name)
-        self.mode = context
+        self._logger = logger 
+        self._clsnmae = clsname
+        self._CLASS = self._get_CLASS(cla=clsname, log=self._logger.name)
+        self._mode = context
 
         if context == 'module':
-            self.method = _Module()
+            self._method = _Module()
         elif context =='thread':
-            self.method = _Thread()
+            self._method = _Thread()
         elif context == 'async':
-            self.method = _Async()
+            self._method = _Async()
             
     # ------------------------------------------------------------------------ #
     #                                  public                                  #
     # ------------------------------------------------------------------------ #
-    def msg(self, *args, widths:tuple=None,aligns:tuple=None,paddings:tuple=None,
+    def msg(self, *args, widths:tuple=None, aligns:tuple=None, paddings:tuple=None,
             frame:int|str|None=1, mode:Literal['thread','async','module']=None, 
-            offset:float|None=None,module:int=2):
+            offset:float|None=None, module:int=2):
         """>>> # 
-        align : Literal["^",">",">"]
+        align : Literal["^","<",">"]
         padding : default (" ") 
         frame : int (1) n_back
         module : mode ('module') n_back"""
         # 2024-06-17 07:53:02,515 | INFO    | Mycladdd....(mylodg) | dddd..........test | val1        , val2        , val3         | [MainThread]
         # 40 | 7 | 20 | 20 |
-        CLASS = self.CLASS
+        CLASS = self._CLASS
         HEADER = self._get_HEADER(mode,frame,module)
         BODY = self._get_BODY(*args, widths=widths,aligns=aligns,paddings=paddings)
         FOOTTER = self._get_FOOTTER(offset)
@@ -78,7 +82,7 @@ class CustomLog:
         self._log_chained(DIV_MSG) 
 
     def cls(self, text, offset:float|None=None):
-        CLASS = self.CLASS
+        CLASS = self._CLASS
         BODY = f"{str(text):<72}"
         FOOTTER = self._get_FOOTTER(offset)
         DIV_MSG = f"{CLASS}{BODY}{FOOTTER}"
@@ -91,10 +95,15 @@ class CustomLog:
         return self._get_lr(20,'.',cla,f"({log})") + " | "
     
     def _get_HEADER(self, mode:Literal['thread','async','module'], frame:int|str|None=1, module:int=2):
-        mode = self.mode if mode is None else mode
-        left = self._get_mode(mode, module=module)
-        righ = self._get_call(frame)
-        return self._get_lr(20,'.',left,righ) + " | "
+        # mode = self.mode if mode is None else mode
+        if mode is not None:
+            left = self._get_mode(mode, module=module)
+            righ = self._get_call(frame)
+            rslt = self._get_lr(20,'.',left,righ) + " | "
+        else:
+            righ = self._get_call(frame)
+            rslt = self._get_lr(20,'.',righ) + " | "
+        return rslt
 
     def _get_FOOTTER(self, offset:float=None):
         if offset is None :
@@ -107,7 +116,7 @@ class CustomLog:
         return " | "+ str_offset if footter != "" else ""
     
     def _get_BODY(self, *args, widths:tuple=None,aligns:tuple=None,paddings:tuple=None):
-        """>>> align : Literal["^",">",">"]
+        """>>> align : Literal["^","<",">"]
         padding : default (" ")"""
 
         str_args = self._get_args(*args, widths=widths,aligns=aligns,paddings=paddings)
@@ -150,11 +159,18 @@ class CustomLog:
             result.append(f"{txt:{alg}}")
         return ', '.join(result) 
     
-    def _get_lr(self, total,sep,left,right):
-        left_cut = left if len(left)<=10 else left[:9]+"*"
-        right_cut = right if len(right)<=10 else right[:9]+"*"
-        mid = sep * (total - len(left_cut) - len(right_cut))
-        return f"{left_cut}{mid}{right_cut}"
+    def _get_lr(self, total,sep,left,right=None):
+        if right is not None:
+            left_cut = left if len(left)<=10 else left[:9]+"*"
+            right_cut = right if len(right)<=10 else right[:9]+"*"
+            mid = sep * (total - len(left_cut) - len(right_cut))
+            rslt = f"{left_cut}{mid}{right_cut}"
+        else:
+            left_cut = left if len(left)<=total else left[:(total-1)]+"*"
+            mid = sep * (total - len(left_cut))
+            rslt = f"{left_cut}{mid}"
+
+        return rslt
 
     def _get_offset(self, offset:float):
         server_now = datetime.now() + timedelta(seconds=offset)
@@ -192,9 +208,6 @@ class CustomLog:
             for _ in range(n_back):
                 cframe = cframe.f_back
             rslt = inspect.getmodule(cframe).__name__.split(".")[-1]
-            # caller_frame = inspect.stack()[3]
-            # caller_module = inspect.getmodule(caller_frame[0])
-            # rslt = os.path.basename(caller_module.__file__).split(".")[0]
         return rslt
 
 
@@ -202,7 +215,7 @@ class CustomLog:
     # --------------------------------- stub --------------------------------- #
     def ith(self, prefix:str=None):
         if prefix is None:
-            prefix = self.logger.name
+            prefix = self._logger.name
 
         tasks = [t.get_name() for t in asyncio.all_tasks() if t.get_name().startswith(prefix)]
         # print(tasks)
@@ -215,27 +228,40 @@ class CustomLog:
 
     
     def _log_chained(self, msg):
-        if self.logger is not None:
-            self.logger.log(level=self.method.level, msg=msg)
+        if self._logger is not None:
+            self._logger.log(level=self._method.level, msg=msg)
+
+    @staticmethod
+    def getlogger(name:str):
+        logger = logging.getLogger(name)
+        logger.setLevel(logging.DEBUG) 
+        handler = logging.StreamHandler() 
+        handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s | %(levelname)-7s | %(message)-40s |')
+        handler.setFormatter(formatter)
+        if logger.hasHandlers(): logger.handlers.clear()
+        logger.addHandler(handler)
+        return logger
+
 
     @property
     def debug(self):
-        self.method.level = logging.DEBUG
+        self._method.level = logging.DEBUG
         return self
 
     @property
     def info(self):
-        self.method.level = logging.INFO
+        self._method.level = logging.INFO
         return self
     
     @property
     def warning(self):
-        self.method.level = logging.WARNING
+        self._method.level = logging.WARNING
         return self
 
     @property
     def error(self):
-        self.method.level = logging.ERROR
+        self._method.level = logging.ERROR
         return self
 
 # ---------------------------------------------------------------------------- #
@@ -308,23 +334,23 @@ if __name__ == "__main__":
     customlog = CustomLog(logger, 'CLASS')
     def myfun():
         customlog.info.msg('a','b','c',offset=0.1)
-        customlog.info.msg('a',offset=0.1)
-        customlog.info.msg('a','b',offset=0.1)
-        customlog.info.msg('a','b','c',offset=0.1)
-        customlog.info.msg('a','b',widths=(2,1),offset=0.1)
-        customlog.info.msg('a',widths=(3,),offset=0.1)
-        customlog.debug.msg('a',widths=(3,),offset=0.1)
-        customlog.debug.msg('a',widths=(3,))
-        customlog.debug.div(offset=0.1)
-        customlog.debug.max('a'*20)
-        customlog.debug.cls('cls'*20)
-        customlog.info.msg('a','b','c',aligns='>',paddings="-",offset=0.1)
-        customlog.info.msg('addddddddddddddd','b',widths=(1,2),aligns=("<",">"),paddings=(" ","-"),offset=0.1)
+        # customlog.info.msg('a',offset=0.1)
+        # customlog.info.msg('a','b',offset=0.1)
+        # customlog.info.msg('a','b','c',offset=0.1)
+        # customlog.info.msg('a','b',widths=(2,1),offset=0.1)
+        # customlog.info.msg('a',widths=(3,),offset=0.1)
+        # customlog.debug.msg('a',widths=(3,),offset=0.1)
+        # customlog.debug.msg('a',widths=(3,))
+        # customlog.debug.div(offset=0.1)
+        # customlog.debug.max('a'*20)
+        # customlog.debug.cls('cls'*20)
+        # customlog.info.msg('a','b','c',aligns='>',paddings="-",offset=0.1)
+        # customlog.info.msg('addddddddddddddd','b',widths=(1,2),aligns=("<",">"),paddings=(" ","-"),offset=0.1)
 
     myfun()
 
-    print(len("2024-06-17 11:00:30,723 | ERROR   | CLASS.......(mylodg) | __main__.......myfun | a                                           | 11:00:30,823(+0.100) |"))
-    print(len("2024-06-17 11:00:30,723 | ERROR   | CLASS.......(mylodg) | __main__.......myfun | a                                           |"))
+    # print(len("2024-06-17 11:00:30,723 | ERROR   | CLASS.......(mylodg) | __main__.......myfun | a                                           | 11:00:30,823(+0.100) |"))
+    # print(len("2024-06-17 11:00:30,723 | ERROR   | CLASS.......(mylodg) | __main__.......myfun | a                                           |"))
 
     # print('# ------------------------------- functions ------------------------------- #')
     # customlog = CustomLog(logger, 'Mycladdd')

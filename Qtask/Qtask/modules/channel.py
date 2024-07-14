@@ -1,3 +1,6 @@
+# -------------------------------- ver 240714 -------------------------------- #
+# args is None / xrun_queue
+
 from typing import Callable
 from Qtask.utils.logger_custom import CustomLog
 import asyncio
@@ -40,13 +43,6 @@ class Channel:
         self._lock = asyncio.Lock()
         self._queue = asyncio.Queue()
         self._status = 'stop'
-
-    # def _msg_args(self, status, args, kwargs, retry):
-    #     if kwargs is None:
-    #         text= f"retry({retry}), {args}"    
-    #     else:
-    #         text= f"retry({retry}), {args + tuple(kwargs.values())}"
-    #     self._custom.info.msg(status, text, frame=2)
         
     async def xput_queue(self, 
         args:tuple=(),kwargs:dict=None, retry:int=0, msg=False):
@@ -71,6 +67,7 @@ class Channel:
 
         try:
             if msg: self._custom.info.msg(str(args),f'retry({retry})','')
+            if args is None : args = ()
             if kwargs is None : 
                 await asyncio.wait_for(xdef(*args), timeout=timeout)
             else:

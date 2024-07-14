@@ -1,18 +1,19 @@
 # -------------------------------- ver 240521 -------------------------------- #
 # set_channel
+# -------------------------------- ver 240714 -------------------------------- #
+# set_offset in consumer
+# ---------------------------------------------------------------------------- #
+
 import traceback
 from typing import Callable, Literal
 
 from Qtask.modules.producer import Producer
 from Qtask.modules.consumer import Consumer
 from Qtask.modules.channel import Channel
-from Qtask.modules.limiter import Limiter
-from Qtask.modules.balancer import Balancer
 from Qtask.utils.logger_custom import CustomLog
 import asyncio
 
 class Task:
-
     def __init__(self,name:str='task',msg=True):
         CLSNAME = 'Task'
         try:
@@ -26,9 +27,10 @@ class Task:
         if msg : self._custom.info.ini(name)
         
         self.channel = Channel(name,msg=False)
-        self.consume = Consumer(name,msg=False)
-        self.produce = Producer(name,msg=False)
+        self.consume = Consumer(name,custom=self._custom, msg=False)
+        self.produce = Producer(name,custom=self._custom, msg=False)
 
+        self.consume.set_offset(self.produce.core)
         self.consume.set_channel(self.channel)
         self.produce.set_channel(self.channel)
 
@@ -64,26 +66,22 @@ class Task:
         """
 
         if xdef is None:
-
             async def xproducer():
                 await self.xput_channel(args=args, kwargs=kwargs)
 
-            self.produce.set_xworker(xdef=xproducer, channel=None, msg_put=msg)
+            self.produce.set_xworker(xdef=xproducer, channel=None, msg=msg)
         else:
-            self.produce.set_xworker(xdef=xdef, channel=None, msg_put=msg)
+            self.produce.set_xworker(xdef=xdef, channel=None, msg=msg)
 
-    async def xput_channel(self,args:tuple=(), kwargs:dict=None, retry= 0):
+    async def xput_channel(self,args:tuple=(), kwargs:dict=None, retry= 0,msg=False):
         """ 
         + in xproduce custom xdef -> set_producer(xdef)
         + args = () for no arg consumer"""
-        await self.produce.xput_channel(args,kwargs,retry)
+        await self.produce.xput_channel(args,kwargs,retry,msg=msg)
 
-    async def xrun_xproduce(self,timeout=None,msg=True):
+    async def xrun_xproduce(self,timeout=50,msg=True):
         await self.produce.xproduce(timeout=timeout,msg_div=msg)
 
-    # async def xproducer(self):
-    #     """default without arguments producer"""
-    #     await self.xput_channel()
     # ------------------------------------------------------------------------ #
     #                                   cons                                   #
     # ------------------------------------------------------------------------ #
@@ -94,9 +92,14 @@ class Task:
     async def xrun_xconsume(self,timeout:int=None, maxtry:int=3, msg=False):
         await self.consume.xconsume(timeout=timeout, maxtry=maxtry, msg_div=msg)
 
+    async def xrun(self,timeout:int=None, maxtry:int=3, msg=True):
+        task_prod = asyncio.create_task(self.produce.xproduce(timeout=timeout,msg_div=msg))
+        task_cons = asyncio.create_task(self.consume.xconsume(timeout=timeout, maxtry=maxtry, msg_div=msg))
+        await asyncio.gather(task_prod,task_cons)
 
     def task_done(self):
         self.channel._queue.task_done()
+
     def get_unfinished_task(self):
         return self.channel._queue._unfinished_tasks
 
@@ -108,16 +111,22 @@ if __name__ == "__main__":
     import asyncio
 
     t_task = Task('worker')
-    t_task.set_timer('minute_at_seconds',10,'KST')
+    t_task.set_timer('every_seconds',10,'KST')
     
-    async def pub():
-        for i in range(10):
-            await t_task.xput_channel(args=(i/10,))
+    # async def pub():
+    #     for i in range(10):
+    #         # await t_task.xput_channel(args=(i/10,))
+    #         await t_task.xput_channel(kwargs=dict(sec=i/10))
 
-    t_task.set_xproducer(pub)
+    # t_task.set_xproducer(pub)
+
+    t_task.set_xproducer(kwargs={'sec':1})
+    # t_task.set_xproducer(args=(1,))
 
     async def sub(sec):
+        print(f"sub {sec} start")
         await asyncio.sleep(sec)
+        print(f"sub {sec} finish")
 
     t_task.set_xconsumer(sub)
 
@@ -129,33 +138,4 @@ if __name__ == "__main__":
 
     asyncio.run(main())
 
-    # ------------------------------------------------------------------------ #
-    #                                  limiter                                 #
-    # ------------------------------------------------------------------------ #
-    # import asyncio
-
-    # limit = Limiter('g_mkt')._set(5,1,'outflow')
-
-    # t_task = Task('worker')
-    # t_task.set_timer('every_seconds',10,'KST')
-    
-    # async def pub():
-    #     for i in range(10):
-    #         await t_task.xput_channel(args=(i/10,),msg=False)
-
-    # t_task.set_producer(pub)
-
-    # async def sub(sec):
-    #     await asyncio.sleep(sec)
-
-    # sub_lim = limit.wrapper(sub)
-
-    # t_task.set_consumer(sub_lim)
-
-    # async def main():
-    #     p_task = asyncio.create_task(t_task.xrun_xproduce())
-    #     c_task = asyncio.create_task(t_task.xrun_xconsume())
-
-    #     await asyncio.gather(p_task, c_task)
-
-    # asyncio.run(main())
+ 

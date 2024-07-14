@@ -4,6 +4,7 @@
 import asyncio
 from functools import partial
 from re import M
+import time
 import traceback
 from typing import Callable
 
@@ -36,7 +37,7 @@ class Consumer:
         await asyncio.gather(task_produce,task_consume)
     asyncio.run(main())
     """    
-    def __init__(self, name:str='cons',msg=True):
+    def __init__(self, name:str='cons',custom=None, msg=True):
         CLSNAME = 'Consumer'
         try:
             from Qlogger import Logger
@@ -45,18 +46,22 @@ class Consumer:
             logger = None
             print(f"\033[31m No Module Qlogger \033[0m")
 
-        self._custom = CustomLog(logger, CLSNAME, 'async')
+        if custom is None:
+            self._custom = CustomLog(logger, CLSNAME, 'async')
+        else:
+            self._custom = custom
+
         if msg : self._custom.info.ini(name)
 
         self._channel:Channel = None
         self._xworker = None
-
+        self._core = None
     # ------------------------------------------------------------------------ #
     #                                  Consume                                 #
     # ------------------------------------------------------------------------ #
-    def set_channel(self, channel:Channel):
+    def set_channel(self, channel:Channel, msg=False):
         self._channel:Channel = channel
-        self._custom.info.msg(channel._name,"","")
+        if msg : self._custom.info.msg(channel._name,"","")
         
     def set_xworker(self, xdef: Callable, channel:Channel=None, 
                                             msg_get=False, msg_put=False, msg_run=False):
@@ -77,6 +82,9 @@ class Consumer:
         punc.__name__ = func.__name__
         return punc
 
+    def set_offset(self, core):
+        self._core = core
+
     async def xput_channel(self, args: tuple=(), kwargs: dict = None, retry: int = 0):
         """
         + args = () for no arg consumer
@@ -88,14 +96,17 @@ class Consumer:
         """+ msg in set_xworker"""
         return await self._channel.xget_queue(msg=self._msg_channel_get)
     
-    async def xrun_channel(self, xdef:Callable, item:tuple, timeout:int=None, maxtry=3, msg_div=False):
+    async def xrun_channel(self, xdef:Callable, item:tuple, timeout:int=None, maxtry=3, msg_div=False, msg_frame=1):
+        core = 0 if self._core is None else self._core.offset
         if self._channel.is_starting():
-            if msg_div : self._custom.info.msg(xdef.__name__,widths=(3,),aligns=("<"),paddings=("-"))
+            init_tsp = time.time()
+            if msg_div : self._custom.info.msg(xdef.__name__,widths=(3,),aligns=("<"),paddings=("-"),frame=msg_frame,offset=core)
 
-        await self._channel.xrun_queue(xdef, item, timeout, maxtry,msg=self._msg_channel_run)
+        await self._channel.xrun_queue(xdef, item, timeout, maxtry, msg=self._msg_channel_run)
 
         if self._channel.is_stopping():
-            if msg_div : self._custom.info.msg(xdef.__name__,widths=(3,),aligns=(">"),paddings=("-"))
+            sec = round(time.time() - init_tsp,3)
+            if msg_div : self._custom.info.msg(f"{xdef.__name__}[{sec}]",widths=(3,),aligns=(">"),paddings=("-"),frame=msg_frame,offset=core)
 
     async def xconsume(self, timeout:int=None, maxtry:int=3, msg_div=False):
         if not self._xworker:  
@@ -105,7 +116,7 @@ class Consumer:
         while True:
             try:
                 item = await self.xget_channel()
-                task = asyncio.create_task(self.xrun_channel(self._xworker,item,timeout,maxtry,msg_div=msg_div))
+                task = asyncio.create_task(self.xrun_channel(self._xworker,item,timeout,maxtry,msg_div=msg_div,msg_frame='xconsume'))
             except asyncio.exceptions.CancelledError:
                 print(f"\033[33m Interrupted ! loop_xconsume ({self._xworker.__name__}) \033[0m")
                 break      
