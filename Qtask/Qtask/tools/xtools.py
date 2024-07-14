@@ -118,9 +118,9 @@ class Xtools:
 
         for i, t in enumerate(self._split_long_string(msg_tasks,95)):
             if i ==0:
-                print(f"\033[44m{msg_header}\033[0m \033[34m{t:<95}*|\033[0m")
+                print(f"\033[44m{msg_header}\033[0m \033[34m{t:<95} |\033[0m")
             else:
-                print(f"\033[34m{" ":>33} | ...{t:<93}|\033[0m")  
+                print(f"\033[34m{" ":>33} | {t:<95} |\033[0m")  
 
     async def xlog_all_tasks(self):
         self.log_all_tasks()
@@ -199,7 +199,25 @@ if __name__ == "__main__":
             asyncio.create_task(work1(),name='run-S'),
             asyncio.create_task(work1(),name='run-A'),
             asyncio.create_task(work1(),name='run-1'),
-            asyncio.create_task(work1(),name='run-4')
+            asyncio.create_task(work1(),name='run-4'),
+            asyncio.create_task(work1(),name='run-5'),
+            asyncio.create_task(work1(),name='run-6'),
+            asyncio.create_task(work1(),name='run-7'),
+            asyncio.create_task(work1(),name='run-aaaaaa'),
+            asyncio.create_task(work1(),name='run-vvvvv'),
+            asyncio.create_task(work1(),name='run-bbbbbbbbbbbbbbbbbbbbb'),
+            asyncio.create_task(work1(),name='run-bbbbbbbbbbbbbbbbbbbbb'),
+            asyncio.create_task(work1(),name='run-bbbbbbbbbbbbbbbbbbbbb'),
+            asyncio.create_task(work1(),name='run-bbbbbbbbbbbbbbbbbbbbb'),
+            asyncio.create_task(work1(),name='run-cc'),
+            asyncio.create_task(work1(),name='run-ddddd'),
+            asyncio.create_task(work1(),name='run-ddddd'),
+            asyncio.create_task(work1(),name='run-ddddd'),
+            asyncio.create_task(work1(),name='run-ddddd'),
+            asyncio.create_task(work1(),name='run-ddddd'),
+            asyncio.create_task(work1(),name='run-ddddd'),
+            asyncio.create_task(work1(),name='run-ddddd'),
+            asyncio.create_task(work1(),name='run-ffffff')
         ]
         await asyncio.gather(*tasks)
 

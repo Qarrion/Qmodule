@@ -22,7 +22,7 @@ class Task:
         except ModuleNotFoundError as e:
             logger = None
             print(f"\033[31m No Module Qlogger \033[0m")
-
+        self._name = name
         self._custom = CustomLog(logger,CLSNAME,'async')
         if msg : self._custom.info.ini(name)
         
@@ -93,8 +93,8 @@ class Task:
         await self.consume.xconsume(timeout=timeout, maxtry=maxtry, msg_div=msg)
 
     async def xrun(self,timeout:int=None, maxtry:int=3, msg=True):
-        task_prod = asyncio.create_task(self.produce.xproduce(timeout=timeout,msg_div=msg))
-        task_cons = asyncio.create_task(self.consume.xconsume(timeout=timeout, maxtry=maxtry, msg_div=msg))
+        task_prod = asyncio.create_task(self.produce.xproduce(timeout=timeout,msg_div=msg),name=f"{self._name}-prod")
+        task_cons = asyncio.create_task(self.consume.xconsume(timeout=timeout, maxtry=maxtry, msg_div=msg),name=f"{self._name}-cons")
         await asyncio.gather(task_prod,task_cons)
 
     def task_done(self):
