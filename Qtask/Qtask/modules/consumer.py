@@ -101,13 +101,13 @@ class Consumer:
     async def xrun_channel(self, xdef:Callable, item:tuple, timeout:int=None, maxtry=3, msg_div=False, msg_frame=1):
         core = 0 if self._core is None else self._core.offset
         if self._channel.is_starting():
-            init_tsp = time.time()
+            self.init_tsp = time.time()
             if msg_div : self._custom.info.msg(xdef.__name__,widths=(3,),aligns=("<"),paddings=("-"),frame=msg_frame,offset=core)
 
         await self._channel.xrun_queue(xdef, item, timeout, maxtry, msg=self._msg_channel_run)
 
         if self._channel.is_stopping():
-            sec = round(time.time() - init_tsp,3)
+            sec = round(time.time() - self.init_tsp,3)
             if msg_div : self._custom.info.msg(f"{xdef.__name__}[{sec}]",widths=(3,),aligns=(">"),paddings=("-"),frame=msg_frame,offset=core)
 
     async def xconsume(self, timeout:int=None, maxtry:int=3, msg_div=False):
