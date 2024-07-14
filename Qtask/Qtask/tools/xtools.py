@@ -33,14 +33,6 @@ class Xtools:
             self._balancer[b._name] = b
 
     def _taskname_to_taskdict(self):
-        """
-        >>> # tasks
-        match = re.match(r'([\w]+)-([\w-]+)', name)
-        prefix, suffix = match.groups()
-
-        + dict[prefix] = suffix
-        + dict['prefix'] = name
-        """
 
         tasks = asyncio.all_tasks()
         data = [task.get_name() for task in tasks]

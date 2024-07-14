@@ -77,7 +77,7 @@ class Channel:
             if retry < maxtry:
                 self._custom.warning.msg('except',e.__class__.__name__)
                 await self.xput_queue(args, kwargs,retry+1,msg=True)
-                traceback.print_exc()
+                # traceback.print_exc()
             else:
                 self._custom.error.msg('failed',e.__class__.__name__)
                 traceback.print_exc()

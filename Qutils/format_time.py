@@ -16,24 +16,26 @@ class TimeFormat:
         seconds_seconds, microsecond = divmod(seconds, 1)
         if fmt == 'hmsf':
             microsecond = round(microsecond * 1000,0)
-            seconds_formatted = (
+            secondsTimeFormatted = (
                 # f"{seconds_sign}{int(seconds_hours):02}:{int(seconds_minutes):02}:"
                 f"{int(seconds_hours):02}:{int(seconds_minutes):02}:"
                 f"{int(seconds_seconds):02}.{int(microsecond):03}"
             )
         elif fmt =='ms7f':
             microsecond = round(microsecond * 1000000,0)
-            seconds_formatted = (
+            secondsTimeFormatted = (
                 # f"{seconds_sign}{int(seconds_hours):02}:{int(seconds_minutes):02}:"
                 f":{int(seconds_seconds):02}.{int(microsecond):06}"
             )
-        return seconds_formatted
+        return secondsTimeFormatted
     
     @classmethod
-    def datetime(cls, datetime_naive:datetime, fmt:Literal['full','hmsf','ms7f']):
+    def datetime(cls, datetime_naive:datetime, fmt:Literal['full','hmsf','ms7f','short']):
         assert datetime_naive.tzinfo is None, "aware invalid"
         if fmt == 'full':
             formatted_time = datetime_naive.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        elif fmt=='short':
+            formatted_time = datetime_naive.strftime("%y.%m.%d %H:%M") 
         elif fmt=='hmsf':
             formatted_time = datetime_naive.strftime('%H:%M:%S.%f')[:-3] 
         elif fmt=='ms7f':
@@ -41,8 +43,8 @@ class TimeFormat:
         return formatted_time
     
     @classmethod    
-    def timestamp(cls, timestamp:datetime, fmt:Literal['full','hmsf','ms7f']):
-        datetime_naive = cls._from_stamp(timestamp,'KST').replace(tzinfo=None)
+    def timestamp(cls, timestamp:datetime, fmt:Literal['full','hmsf','ms7f','short']):
+        datetime_naive = cls._from_stamp(timestamp).replace(tzinfo=None)
         return cls.datetime(datetime_naive, fmt)
     
     @classmethod
@@ -66,22 +68,24 @@ if __name__ =='__main__':
     print("="*50)
     sec = 2.4342
     print(sec)
-    print(_format.seconds(sec,'hmsf'))
-    print(_format.seconds(sec,'ms7f'))
+    print(TimeFormat.seconds(sec,'hmsf'))
+    print(TimeFormat.seconds(sec,'ms7f'))
 
     print("="*50)
     now = datetime.now()
     print(now)
-    print(_format.datetime(now,'full'))
-    print(_format.datetime(now,'hmsf'))
-    print(_format.datetime(now,'ms7f'))
+    print(TimeFormat.datetime(now,'full'))
+    print(TimeFormat.datetime(now,'short'))
+    print(TimeFormat.datetime(now,'hmsf'))
+    print(TimeFormat.datetime(now,'ms7f'))
 
     print("="*50)
     tsp = time.time()
     print(tsp)
-    print(_format.timestamp(tsp,'full'))
-    print(_format.timestamp(tsp,'hmsf'))
-    print(_format.timestamp(tsp,'ms7f'))
+    print(TimeFormat.timestamp(tsp,'full'))
+    print(TimeFormat.timestamp(tsp,'short'))
+    print(TimeFormat.timestamp(tsp,'hmsf'))
+    print(TimeFormat.timestamp(tsp,'ms7f'))
 
 
 
@@ -91,6 +95,6 @@ if __name__ =='__main__':
 
 
 
-    # print(_format._from_stamp(tsp,'KST'))
-    # print(_format._from_stamp(tsp,'UTC'))
-    # print(_format._from_stamp(tsp))
+    # print(TimeFormat._from_stamp(tsp,'KST'))
+    # print(TimeFormat._from_stamp(tsp,'UTC'))
+    # print(TimeFormat._from_stamp(tsp))
