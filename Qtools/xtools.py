@@ -1,12 +1,12 @@
 # -------------------------------- ver 260622 -------------------------------- #
 # split, xready
 # -------------------------------- ver 260713 -------------------------------- #
-# task_log
+# task_log,xinterrupt
 # ---------------------------------------------------------------------------- #
 import asyncio, traceback, re, time
 from collections import defaultdict
 from datetime import datetime
-from Qutils.logger_custom import CustomLog
+from Qtask.utils.logger_custom import CustomLog
 
 
 class Xtools:
@@ -108,7 +108,7 @@ class Xtools:
             yield text[start:start + chunk_size]
             start += chunk_size
 
-    def task_log(self):
+    def log_all_tasks(self):
         taskdict = self._taskname_to_taskdict()
         TASK,GROUP = self._taskdict_to_text(taskdict)
 
@@ -118,16 +118,28 @@ class Xtools:
 
         for i, t in enumerate(self._split_long_string(msg_tasks,95)):
             if i ==0:
-                print(f"\033[44m{msg_header}\033[0m \033[34m{t}*|\033[0m")
+                print(f"\033[44m{msg_header}\033[0m \033[34m{t:<95}*|\033[0m")
             else:
                 print(f"\033[34m{" ":>33} | ...{t:<93}|\033[0m")  
+
+    async def xlog_all_tasks(self):
+        self.log_all_tasks()
+        
+    async def xinterrupt(self, sec:int=3):
+        try:
+            while True:
+                await asyncio.sleep(sec)
+
+        except asyncio.exceptions.CancelledError:
+            print(f"\033[43m !! Monitor - Interrupted !! \033[0m")
+            [task.cancel() for task in asyncio.all_tasks()]
 
     async def xmonitor(self, reapet:int=2):
         try:
             while True:
                 for _ in range(reapet):
                     await asyncio.sleep(1)
-                self.task_log()
+                self.log_all_tasks()
                 # taskdict = self._taskname_to_taskdict()
                 # TASK,GROUP = self._taskdict_to_text(taskdict)
 
