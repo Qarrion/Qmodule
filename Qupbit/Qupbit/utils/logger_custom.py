@@ -187,11 +187,14 @@ class CustomLog:
                     cframe = cframe.f_back
                 rslt = inspect.getmodule(cframe).__name__.split(".")[-1]
         except Exception as e:
-            n_back = module + 2
-            cframe = inspect.currentframe()
-            for _ in range(n_back):
-                cframe = cframe.f_back
-            rslt = inspect.getmodule(cframe).__name__.split(".")[-1]
+            # n_back = module + 2
+            # cframe = inspect.currentframe()
+            # for _ in range(n_back):
+            #     cframe = cframe.f_back
+            # rslt = inspect.getmodule(cframe).__name__.split(".")[-1]
+
+            rslt = "CLI"
+
             # caller_frame = inspect.stack()[3]
             # caller_module = inspect.getmodule(caller_frame[0])
             # rslt = os.path.basename(caller_module.__file__).split(".")[0]

@@ -1,3 +1,6 @@
+# -------------------------------- ver 240721 -------------------------------- #
+# low_price -> trade_price
+
 # ---------------------------------------------------------------------------- #
 #     https://docs.upbit.com/reference/%EB%B6%84minute-%EC%BA%94%EB%93%A4-1    #
 # ---------------------------------------------------------------------------- #
@@ -143,7 +146,7 @@ class Candle:
                 Row(
                     self.stime_to_fmt(d['candle_date_time_kst'],fmt=fmt),
                     d['market'], 
-                    d['opening_price'],d['high_price'],d['low_price'],d['low_price'],
+                    d['opening_price'],d['high_price'],d['low_price'],d['trade_price'],
                     d['candle_acc_trade_price'], d['candle_acc_trade_volume']
                 ) 
                     for d in payload ]
@@ -152,7 +155,7 @@ class Candle:
                 (
                     self.stime_to_fmt(d['candle_date_time_kst'],fmt=fmt),
                     d['market'], 
-                    d['opening_price'],d['high_price'],d['low_price'],d['low_price'],
+                    d['opening_price'],d['high_price'],d['low_price'],d['trade_price'],
                     d['candle_acc_trade_price'], d['candle_acc_trade_volume']
                 ) 
                     for d in payload ]
@@ -259,26 +262,33 @@ if __name__=='__main__':
     print(candle.stime_to_fmt('2024-06-26T12:15:00',1))
     print(candle.stime_to_fmt('2024-06-26T12:15:00',2))
 
-    async def main():
-        async with httpx.AsyncClient() as xclient:
-            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=1,msg=True)
-            # print(resp['payload'])
+    dd = candle.get()
 
-            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
-            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
-            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
-            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
-            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
-            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
-            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
-            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
-            # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
-            resp = await candle.xget(xclient=xclient,market='KRW-BTC',to='2020-10-10 10:10:01', count=5,msg=True)
-            print(resp['payload'][0])
-            # print(resp['time'])
-            # print(candle.to_rows(resp['payload'],key='namedtuple')[0].time)
+    df = pd.DataFrame(data=dd['payload'])
+    df.iloc[10:15]
+    # ------------------------------------------------------------------------ #
+    # async def main():
+    #     async with httpx.AsyncClient() as xclient:
+    #         # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=1,msg=True)
+    #         # print(resp['payload'])
 
-    asyncio.run(main())
+    #         # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+    #         # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+    #         # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+    #         # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+    #         # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+    #         # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+    #         # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+    #         # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+    #         # resp = await candle.xget(xclient=xclient,market='KRW-BTC',to=None, count=5,msg=True)
+    #         resp = await candle.xget(xclient=xclient,market='KRW-BTC',to='2020-10-10 10:10:01', count=5,msg=True)
+    #         print(resp['payload'][0])
+    #         # print(resp['time'])
+    #         # print(candle.to_rows(resp['payload'],key='namedtuple')[0].time)
+
+    # asyncio.run(main())
+
+    # ------------------------------------------------------------------------ #
 
     # print(candle._to_api_to('2023-01-01T00:00:00+09:00','KST'))
     # print(candle._to_api_to('2023-01-01T00:00:00','UTC'))
