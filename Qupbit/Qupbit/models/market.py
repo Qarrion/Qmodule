@@ -116,7 +116,7 @@ class Market:
         selected_payload = self.parser.market(payload,'market', quote, base, market)
         selected_rows =[
             (
-                d['market'], d['korean_name'],d['english_name'],
+                d['market'], d['korean_name'], d['english_name'],
                 d['market_event']['warning'],
                 # d['market_event']['caution']['PRICE_FLUCTUATIONS'],
                 # d['market_event']['caution']['TRADING_VOLUME_SOARING'],
