@@ -83,7 +83,7 @@ class Pgsql:
     def colnames(self, curs:psycopg.Cursor)->list:
         return [d[0] for d in curs.description]
     
-    def fetchall(self,conn:psycopg.Connection, query:str, key:Literal['tuple','namedtuple']='tuple'): 
+    def _fetchall(self,conn:psycopg.Connection, query:str, key:Literal['tuple','namedtuple']='tuple'): 
         with conn.cursor() as curs:
             if key =='namedtuple':
                 curs.row_factory = namedtuple_row
@@ -91,6 +91,10 @@ class Pgsql:
             rows = curs.fetchall()
         return rows
     
+    def fetchall(self,query:str, key:Literal['tuple','namedtuple']='tuple'): 
+        with self.connect() as conn:
+            return self._fetchall(conn=conn, query=query, key=key)
+
     async def xfetchall(self,xconn:psycopg.AsyncConnection, query:str, key:Literal['tuple','namedtuple']='tuple'): 
         async with xconn.cursor() as xcurs:
             if key =='namedtuple':
