@@ -112,7 +112,9 @@ if __name__ == "__main__":
     upbit = Upbit()
     # print(upbit.get_candle())
 
-
+    timez= Timez()
+    timez.tz_dict['KST']
+    datetime(2020,10,10,0,0,0)
 
     # ------------------------------------------------------------------------ #
     # rslt = upbit.get_market(quote='KRW')

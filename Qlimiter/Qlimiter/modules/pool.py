@@ -73,6 +73,7 @@ class Pool:
 
         async def wrapper(*args, **kwargs):
             return await self._xfetch(xdef, args, kwargs)
+            
         return wrapper
 
     def fire_and_forget(self, xdef):      
@@ -236,9 +237,7 @@ if __name__ =="__main__":
 
 
     class ApiSess(Session):
-        def __init__(self):
-            super().__init__()
-
+        pclass = httpx.AsyncClient
         async def restart(self):
             if self.session is None:
                 self.session = httpx.AsyncClient()
@@ -253,26 +252,45 @@ if __name__ =="__main__":
     # @balancer.fire_and_forget
     @balancer.wait_for_result
     async def xget(xconn:httpx.AsyncClient):
-        await asyncio.sleep(1)
+        # await asyncio.sleep(1)
         resp = await xconn.get('https://www.naver.com/')
+        cprint('done',color='green')
         return resp
     
-    async def test1():
+    # @balancer.fire_and_forget
+    @balancer.wait_for_result
+    async def xget_er(xconn:httpx.AsyncClient):
+        # await asyncio.sleep(1)
+        resp = await xconn.get('https://www.naver.com2/')
+        return resp
+    
+    async def task0():
+        await xget()#1
+        await xget()#2
+        await xget_er()#3
+        await xget()#4
+        await xget()#5
+        await xget()#6
+        await xget()#7
+        await xget()#8
+
+    async def task1():
         tasks = [
-            asyncio.create_task(xget()),
-            asyncio.create_task(xget()),
-            asyncio.create_task(xget()),
-            # asyncio.create_task(xget()),
-            # asyncio.create_task(xget()),
-            # asyncio.create_task(xget()),
-            # asyncio.create_task(xget()),
-            # asyncio.create_task(xget()),
-            # asyncio.create_task(xget()),
-            # asyncio.create_task(xget()),
+            asyncio.create_task(xget()),#1
+            asyncio.create_task(xget()),#2
+            asyncio.create_task(xget_er()),#3
+            asyncio.create_task(xget()),#4
+            asyncio.create_task(xget()),#5
+            asyncio.create_task(xget()),#6
+            asyncio.create_task(xget()),#7
+            asyncio.create_task(xget()),#8
         ]
         await asyncio.gather(*tasks)    
 
-    async def test2():
+    async def task2():
+        await asyncio.create_task(xget())
+        await asyncio.create_task(xget())
+        await asyncio.create_task(xget())
         await asyncio.create_task(xget())
         # await asyncio.create_task(xget())
         # await asyncio.create_task(xget())
@@ -280,16 +298,12 @@ if __name__ =="__main__":
         # await asyncio.create_task(xget())
         # await asyncio.create_task(xget())
         # await asyncio.create_task(xget())
-        # await asyncio.create_task(xget())
-        # await asyncio.create_task(xget())
-        # await asyncio.create_task(xget())
 
-    async def test3():
+    async def task3():
         await xget()
-        print('return')
-        # await xget()
-        # await xget()
-        # await xget()
+        await xget()
+        await xget()
+        await xget()
         # await xget()
         # await xget()
         # await xget()
@@ -303,7 +317,8 @@ if __name__ =="__main__":
     async def main():
 
         server = asyncio.create_task(balancer.server())
-        task = asyncio.create_task(test1())
+        task = await task1()
+        # task = asyncio.create_task(test1())
         # task = asyncio.create_task(test2())
         # task = asyncio.create_task(test3())
 

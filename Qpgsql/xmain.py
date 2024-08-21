@@ -19,11 +19,28 @@ q = "select * from market_list where market = 'KRW-BTC'"
 
 
 # # ------------------------------------- x ------------------------------------ #
+# q = "select * from market_list where market = 'KRW-BTC'"
+# async def xfetch():
+#     async with await pgsql.xconnect() as xconn:
+#         pass
+#         async with xconn.cursor() as xcurs:
+#             await xcurs.execute(q)
+
+#             rows = await xcurs.fetchall()
+
+#     print(rows)
+
+# # # # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+# asyncio.run(xfetch())
+
+
+# # ------------------------------------- x ------------------------------------ #
+q = "select * from market_list where market = %s"
 async def xfetch():
     async with await pgsql.xconnect() as xconn:
         pass
         async with xconn.cursor() as xcurs:
-            await xcurs.execute(q)
+            await xcurs.execute(q,('KRW-BTC',))
 
             rows = await xcurs.fetchall()
 

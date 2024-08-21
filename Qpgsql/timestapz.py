@@ -138,7 +138,7 @@ print(datetime.fromtimestamp(float(rslt[0].time)))
 print(rslt[0].time)
 
 
-
+#! EXTRACT(EPOCH FROM time) 성능 너무 구짐.,,.
 with pgsql.connect() as conn:
     with conn.cursor(row_factory=namedtuple_row) as curs:
         query = """

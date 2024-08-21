@@ -144,7 +144,7 @@ if __name__ =="__main__":
 
     import httpx
     rate = Rate()
-    rate.set_config(10, 1, 'outflow', msg_debug=True)
+    rate.set_config(3, 1, 'outflow', msg_debug=True)
     # limiter.set_xsession(xconnector = httpx.AsyncClient, close_method='aclose', close_status='is_closed')
     # limiter.set_xconn(xconn=Xclient)
 
@@ -160,12 +160,12 @@ if __name__ =="__main__":
                 asyncio.create_task(xget(xconn)),#2
                 asyncio.create_task(xget(xconn)),#3
                 asyncio.create_task(xget(xconn)),#4
-                asyncio.create_task(xget(xconn)),#5
-                asyncio.create_task(xget(xconn)),#6
-                asyncio.create_task(xget(xconn)),#7
-                asyncio.create_task(xget(xconn)),#8
-                asyncio.create_task(xget(xconn)),#9
-                asyncio.create_task(xget(xconn)),#0
+                # asyncio.create_task(xget(xconn)),#5
+                # asyncio.create_task(xget(xconn)),#6
+                # asyncio.create_task(xget(xconn)),#7
+                # asyncio.create_task(xget(xconn)),#8
+                # asyncio.create_task(xget(xconn)),#9
+                # asyncio.create_task(xget(xconn)),#0
             ]
             await asyncio.gather(*tasks)
 
@@ -175,12 +175,12 @@ if __name__ =="__main__":
             await asyncio.create_task(xget(xconn))#2
             await asyncio.create_task(xget(xconn))#3
             await asyncio.create_task(xget(xconn))#4
-            await asyncio.create_task(xget(xconn))#5
-            await asyncio.create_task(xget(xconn))#6
-            await asyncio.create_task(xget(xconn))#7
-            await asyncio.create_task(xget(xconn))#8
-            await asyncio.create_task(xget(xconn))#9
-            await asyncio.create_task(xget(xconn))#0
+            # await asyncio.create_task(xget(xconn))#5
+            # await asyncio.create_task(xget(xconn))#6
+            # await asyncio.create_task(xget(xconn))#7
+            # await asyncio.create_task(xget(xconn))#8
+            # await asyncio.create_task(xget(xconn))#9
+            # await asyncio.create_task(xget(xconn))#0
 
     async def test3():
         async with httpx.AsyncClient() as xconn:
@@ -198,8 +198,8 @@ if __name__ =="__main__":
     async def main():
         # task1 = asyncio.create_task(test1())
         # await task1
-        await test1()
-        # await test2()
+        # await test1()
+        await test2()
         # await test3()
 
     asyncio.run(main())

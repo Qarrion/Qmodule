@@ -29,9 +29,6 @@ hint = Literal['red','green','yellow','blue','purple','cyan','white','_']
 def cprint(msg, color:hint):
     print(f"{cmap[color]}{msg}{cmap['reset']}")
 
-
-
-
 if __name__ == "__main__":
     cprint('hi','green')
     cprint('hi','red')

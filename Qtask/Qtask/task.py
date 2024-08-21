@@ -93,7 +93,7 @@ class Task:
         await self.consume.xconsume(timeout=timeout, maxtry=maxtry, msg_div=msg)
 
     async def xrun(self,timeout:int=None, maxtry:int=3, msg=True):
-        task_prod = asyncio.create_task(self.produce.xproduce(timeout=timeout,msg_div=msg),name=f"{self._name}-prod")
+        task_prod = asyncio.create_task(self.produce.xproduce(timeout=timeout, msg_div=msg),name=f"{self._name}-prod")
         task_cons = asyncio.create_task(self.consume.xconsume(timeout=timeout, maxtry=maxtry, msg_div=msg),name=f"{self._name}-cons")
         await asyncio.gather(task_prod,task_cons)
 

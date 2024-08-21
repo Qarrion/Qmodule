@@ -225,6 +225,7 @@ class Candle:
         elif tz == 'KST':
             # 2023-01-01T00:00:00+09:00
             to = date_time_aware.isoformat(sep='T',timespec='seconds')
+            
 
         return to
 
@@ -258,14 +259,17 @@ if __name__=='__main__':
     from Qupbit.utils.print_divider import eprint
 
     candle = Candle()
-    print(candle.stime_to_fmt('2024-06-26T12:15:00',0))
-    print(candle.stime_to_fmt('2024-06-26T12:15:00',1))
-    print(candle.stime_to_fmt('2024-06-26T12:15:00',2))
+    # print(candle.stime_to_fmt('2024-06-26T12:15:00',0))
+    # print(candle.stime_to_fmt('2024-06-26T12:15:00',1))
+    # print(candle.stime_to_fmt('2024-06-26T12:15:00',2))
 
-    dd = candle.get()
-
+    dd = candle.get(to='2020-10-10 00:00:00')
     df = pd.DataFrame(data=dd['payload'])
-    df.iloc[10:15]
+    print(df)
+    # ee = candle.to_rows(dd['payload'])
+    # df = pd.DataFrame(data=ee)
+
+    # print(df.iloc[10:15])
     # ------------------------------------------------------------------------ #
     # async def main():
     #     async with httpx.AsyncClient() as xclient:
