@@ -39,7 +39,6 @@ class Config:
         else:
             dprint(f"section ({'defualt'})",0,self._msg)
             
-
 if __name__ == "__main__":
     config = Config('log.ini', msg=True)
     print(config.get(section='logger', option='level'))

@@ -2,7 +2,6 @@ from Qlogger import Logger, _Logger
 
 
 
-
 if __name__ == "__main__":
     # ------------------------------ base logger ----------------------------- #
     logger = _Logger('test', 'head', 'log.ini', msg=True)

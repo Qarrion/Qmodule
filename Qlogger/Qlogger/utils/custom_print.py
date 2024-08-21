@@ -1,6 +1,5 @@
 from typing import Literal
 
-
 cmap = dict(
 	reset = "\033[0m",
 	red = "\033[31m",

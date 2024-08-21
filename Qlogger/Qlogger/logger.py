@@ -77,7 +77,6 @@ class HeadFormatter(logging.Formatter):
 # ---------------------------------------------------------------------------- #
 #                                 CustomLogger                                 #
 # ---------------------------------------------------------------------------- #
-
 class Logger(_Logger):
 
     def __init__(self, logname:str, clsname:str='Logger', color:hint='head', context:Literal['sync','async','thread']='sync', 
