@@ -1,100 +1,49 @@
 import os
-from typing import Literal
 from configparser import ConfigParser
+from Qlogger.utils.custom_print import dprint
+from typing import overload
 
-# -------------------------------- colorprint -------------------------------- #
-def dprint(m, c=Literal[0,1], d=True):
-	"m:msg, c:color, d:debug"
-	name = ['green', 'red', 'reset']
-	shell = "\033[32m", "\033[31m", "\033[0m"
-	cmap = dict(zip(name, shell))
-	# print(f"{cmap[color]}{msg}{cmap['reset']}")
-	if d:
-		if c == 1:
-			print(f"{cmap['green']}[1]->> {m}{cmap['reset']}")
-		elif c == 0:
-			print(f"{cmap['red']}[0]->> {m}{cmap['reset']}")
-		else:
-			print(f"   ->> {m}")
-
-# os.path.relpath(inipath1, os.getcwd())
-# filepath = os.path.abspath(__file__)
-# filedir = os.path.dirname(filepath)
-# ---------------------------------------------------------------------------- #
 class Config:
-	"""
-	>>> # example
-	#----------------------------------[config.ini]
-		[DEFAULT] # DEFAULT is common vars
-		opt1 = 1
-		opt2 = /home/%username%
-		[logger]
-		opt3 = text
-	#----------------------------------------------
-	>>> # read
-	config = Config('log.ini',debug=True)
-	print(config.parser.get('logger', 'level'))
-	print(config.parser.get('logger','fmt',raw=True))
-	print(config.parser.get('logger','NoVar',fallback='fallback'))
+    """
+    + os.path.join(os.path.dirname(__file__),fallback)
+    + os.path.join(os.getcwd(),'config',filename)
 
-	>>> # section
-	config.set_section('log')
-	print(config.section.get('level'))
-	print(config.section.get('fmt',raw=True))
-	print(config.section.get('NoVar',fallback='fallback'))
-	#----------------------------------------------
-	[DEFAULT] define 
-	"""	
-	def __init__(self, inifile, fallback='default.ini', debug=False) -> None:
-		self._fallback = fallback
-		self._filename = inifile
-		self._debug = debug
-		
-		self.set_parser()
+    [default] : section fallback
+    """
+    def __init__(self,filename,fallback='default.ini',msg=False):
+        self._msg = msg
+        self._fallback = os.path.join(os.path.dirname(__file__),fallback)
+        self._filename = os.path.join(os.getcwd(),'config',filename)
 
-	def set_parser(self):
-		self.parser = ConfigParser()
-		inipaths = []
-		inipaths.append(os.path.join(os.getcwd(),self._filename))
-		inipaths.append(os.path.join(os.getcwd(),'config',self._filename))
-		inipaths.append(os.path.join(os.path.dirname(__file__),self._fallback))
+        self.parser = ConfigParser()
 
-		for inipath in inipaths:
-			dprint(f'config ({inipath})',rint:=os.path.isfile(inipath), self._debug)
-			if rint :
-				self.parser.read(inipath)
-				self.is_default = 1 if self.parser.defaults() else 0
-				if self.is_default:
-					sections = ['DEFAULT']+self.parser.sections()
-				else:
-					sections = self.parser.sections()
-				dprint(f"sections ('{"', '".join(sections)}')",2,self._debug)
-				return
-		dprint(f"No config ({self._filename}).",2,self._debug)
+        if self.parser.read(self._filename):
+            dprint(msg=f"inifile ('{self._filename}')", status=1, debug=self._msg)
 
-	def set_section(self, section=None):
-		if section in self.parser.sections():
-			self.section = self.parser[section]
-			dprint(f"section ({section})",1,self._debug)
-		elif self.is_default:
-			dprint(f"section ({section}->DEFAULT)",1,self._debug)
-			self.section = self.parser['DEFAULT']
-		else:
-			dprint(f"section ({section}->DEFAULT)",0,self._debug)
-			dprint(f"No section ({section} or DEFAULT)",2,self._debug)
-			return
-		dprint(f"options ('{"', '".join(self.section.keys())}')",2,self._debug)
+        elif self.parser.read(self._fallback):
+            dprint(msg=f"inifile ('{self._filename}')", status=0, debug=self._msg)
+            dprint(msg=f"inifile ('{self._fallback}')", status=1, debug=self._msg)
+        else:
+            dprint(msg=f"inifile ('{self._filename}')", status=0, debug=self._msg)
+            dprint(msg=f"inifile ('{self._fallback}')", status=0, debug=self._msg)
 
+    def get(self, section, option, *, raw: bool = False, vars=None, fallback=None):
+        if self.parser.has_section(section):
+            dprint(f"section ('{section}')",1,self._msg)
+            return self.parser.get(section, option, raw=raw, vars=vars, fallback=fallback)
+        
+        elif self.parser.has_section('default'):
+            dprint(f"section ('{section}')",0,self._msg)
+            dprint(f"section ('{'defualt'}')",1,self._msg)
+            return self.parser.get('default', option, raw=raw, vars=vars, fallback=fallback)
+        else:
+            dprint(f"section ({'defualt'})",0,self._msg)
+            
 
-	
-if __name__ =="__main__":
-	config = Config('log.ini',debug=True)
-	print(config.parser.get('logger', 'level'))
-	print(config.parser.get('logger','fmt',raw=True))
-	print(config.parser.get('logger','NoVar',fallback='fallback'))
-
-	config = Config('log.ini',debug=True)
-	config.set_section('log')
-	print(config.section.get('level'))
-	print(config.section.get('fmt',raw=True))
-	print(config.section.get('NoVar',fallback='fallback'))
+if __name__ == "__main__":
+    config = Config('log.ini', msg=True)
+    print(config.get(section='logger', option='level'))
+    config.par
+    config = Config('log2.ini', msg=True)
+    print(config.get(section='logger', option='level'))
+    print(config.get(section='logger', option='novar', fallback='no'))

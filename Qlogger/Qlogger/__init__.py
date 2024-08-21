@@ -1,1 +1,1 @@
-from Qlogger.logger import Logger
+from Qlogger.logger import Logger,  _Logger
