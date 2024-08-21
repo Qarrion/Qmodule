@@ -1,0 +1,11 @@
+[project]
+name = "Qutils"
+version = "0.0.1"
+dependencies = []
+
+[tool.setuptools]
+packages = ["Qutils"]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"

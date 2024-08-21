@@ -1,7 +1,0 @@
-[project]
-name = "Qpgsql"
-version = "0.0.1"
-dependencies = ["psycopg","psycopg-binary"]
-
-[tool.setuptools]
-packages = ["Qpgsql"]
