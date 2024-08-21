@@ -1,7 +1,11 @@
 [project]
 name = "Qpgsql"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = ["psycopg","psycopg-binary","psycopg-pool"]
 
 [tool.setuptools]
 packages = ["Qpgsql"]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"

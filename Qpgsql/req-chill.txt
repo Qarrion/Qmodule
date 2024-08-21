@@ -1,5 +1,0 @@
-pip-chill
-psycopg
-psycopg-binary
-# typing-extensions # Installed as dependency for psycopg
-# tzdata # Installed as dependency for psycopg
