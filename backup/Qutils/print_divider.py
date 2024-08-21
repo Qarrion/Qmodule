@@ -1,0 +1,1 @@
+eprint = lambda x,n=80: print(f"{"="*n} [{x}]")
