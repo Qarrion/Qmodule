@@ -21,13 +21,19 @@ class Parser():
         remaining_req_dict['min'] = int(res_re.group(2))
         remaining_req_dict['sec'] = int(res_re.group(3))
         return remaining_req_dict
+    
+    def remaining_msg(self, remaining_req):
+        res_re = self._re_remaining_req.search(remaining_req)
+        return f"{res_re.group(1)}({res_re.group(3)}/s)"
 
     def response(self, resp:requests.Response)->dict:
         """status, header, payload, remain[group, min, sec], text"""
+        
         response_dict = {}
         response_dict['status'] = resp.status_code
         response_dict['header'] = resp.headers
-        response_dict['remain'] = self.remaining(resp.headers['Remaining-Req'])
+        response_dict['remain'] = self.remaining_msg(resp.headers['Remaining-Req'])
+        # response_dict['remain'] = self.remaining(resp.headers['Remaining-Req'])
         response_dict['url'] = resp.url
         response_dict['time'] = self.header_date(resp.headers,None)
         
@@ -76,22 +82,24 @@ class Parser():
         return keys_list
     
 if __name__ =="__main__":
-    from Qupbit.utils.logger_color import ColorLog 
-    from Qupbit.models import Market
-    from Qupbit.utils.print_divider import eprint
-    logger = ColorLog('test', 'blue')
-    market = Market(logger, debug=True)
+    from Zupbit.utils.custom_print import eprint
+    from Zupbit.modules.market import Market
+    market = Market()
     parser = Parser()
     rslt = market.get()
     
     # ------------------------------------------------------------------------ # 
-    eprint('market')
-    print(parser.market(rslt['payload'], key='market', market='KRW-BTC'))
-    eprint('base')
-    print(parser.market(rslt['payload'], key='market', base='BTC'))
-    eprint('quote')
-    print(parser.market(rslt['payload'], key='market', quote='USDT'))
+    eprint('time')
+    print(rslt['time'])
+    print(datetime.now())
+
+    # eprint('market')
+    # print(parser.market(rslt['payload'], key='market', market='KRW-BTC'))
+    # eprint('base')
+    # print(parser.market(rslt['payload'], key='market', base='ETH')[0])
+    # eprint('quote')
+    # print(parser.market(rslt['payload'], key='market', quote='USDT')[0])
     
     # ------------------------------------------------------------------------ #
-    eprint('allkeys')
-    print(parser.allkeys(rslt['payload'][0]))
+    # eprint('allkeys')
+    # print(parser.allkeys(rslt['payload'][0]))

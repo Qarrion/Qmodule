@@ -1,12 +1,19 @@
 [project]
 name = "Qupbit"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
         'python-dateutil',
         'pytz',
         'requests',
         'websockets',
-        'httpx'
+        'httpx',
+        'pandas'
     ]
 [tool.setuptools]
 packages = ["Qupbit"]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+#  pip install -e C:\Users\qarrion\Code\Zmodule\Zupbit --config-settings editable_mode=compat 

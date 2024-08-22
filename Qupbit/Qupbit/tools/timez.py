@@ -15,10 +15,15 @@ class Timez():
         4:'%Y-%m-%dT%H:%M:%S%z',
         5:'%Y-%m-%d %H:%M:%S.%f%z',
         6:'%Y-%m-%dT%H:%M:%S.%f%z',
-        7:'%Y-%m-%dT%H:%M:%SZ'}
+        7:'%Y-%m-%dT%H:%M:%SZ',
+        8:'%y.%m.%d %H:%M',
+        9:'%H:%M'}
     
+
+    # <DstTzInfo 'Asia/Seoul' LMT+8:28:00 STD> 
+    now_kst = datetime.now(tz=pytz.timezone('Asia/Seoul'))
     tz_dict = {
-        "KST":pytz.timezone('Asia/Seoul'),
+        "KST":now_kst.tzinfo,           #<DstTzInfo 'Asia/Seoul' KST+9:00:00 STD>
         "UTC":pytz.timezone('UTC')
     }
     # ------------------------------------------------------------------------ #
@@ -62,6 +67,8 @@ class Timez():
         5:'%Y-%m-%d %H:%M:%S.%f%z'
         6:'%Y-%m-%dT%H:%M:%S.%f%z'
         7:'%Y-%m-%dT%H:%M:%SZ'
+        8:'%y.%m.%d %H:%M'
+        9:'%H:%M'
         """
         date_time_str = datetime.strftime(date_time, cls.fmt_dict[fmt])
         return date_time_str
@@ -89,6 +96,7 @@ class Timez():
     @classmethod
     def from_str(cls, date_time_str, fmt:int=0, only_naive=False):
         """
+        >>> #
         0: parser.parse
         1:'%Y-%m-%d %H:%M:%S'
         2:'%Y-%m-%dT%H:%M:%S'
@@ -127,8 +135,27 @@ class Timez():
             divisor = 10 ** (num_digits - 10)
             stamp = stamp_like / divisor
         return stamp  
+    
+    def _stime_aware_to_naive(self,stime_aware:str, fmt:int=1):
+        dtime_aware = self.from_str(stime_aware,fmt=0)
+        dtime_naive = self.as_naive(dtime_aware)
+        return self.to_str(dtime_naive, fmt)
+
+    def _msg_from_to(self, dtime_stt, dtime_end, stype:Literal['full','short']):
+        stt = datetime.strftime(dtime_stt,"%y.%m.%d %H:%M")
+        if stype == 'full':
+            end = datetime.strftime(dtime_end,"%y.%m.%d %H:%M")    
+        else:
+            end = datetime.strftime(dtime_end,"%H:%M")    
+        return f"{stt} ~{end}"
 
 if __name__ =="__main__":
+
+    # ------------------------------------------------------------------------ #
+    pytz.timezone('Asia/Seoul').localize(datetime(2020,10,10,0,0,0))
+    datetime(2020,10,10,0,0,0,tzinfo=pytz.timezone('Asia/Seoul'))
+    # ------------------------------------------------------------------------ #
+
     # ------------------------------------------------------------------------ #
     #                                   init                                   #
     # ------------------------------------------------------------------------ #

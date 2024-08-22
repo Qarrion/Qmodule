@@ -7,11 +7,6 @@ from Qupbit.utils.logger_color import ColorLog
 
 if __name__ == "__main__":
 
-
-
-
-
-
     logger = ColorLog('upbit', 'green')
 
     # ------------------------------------------------------------------------ #
@@ -62,3 +57,20 @@ if __name__ == "__main__":
     # upbit = Upbit(logger)
 
     # print(upbit.get_candle())
+    # ------------------------------------------------------------------------ #
+    # time
+    from Qupbit.tools.timez import Timez
+
+    timez = Timez()
+
+    now_kst = timez.now('KST')
+    now_utc = timez.now('UTC')
+
+
+    now_kst.replace(tzinfo=None)
+    now_kst
+
+    timez.as_localize(now_kst, 'UTC')
+
+    now_utc.replace(tzinfo=None)
+    now_utc
