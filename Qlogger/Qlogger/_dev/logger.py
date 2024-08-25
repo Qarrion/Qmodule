@@ -1,7 +1,3 @@
-# -------------------------------- ver 240825 -------------------------------- #
-# _dev_formatter_task_color
-# ---------------------------------------------------------------------------- #
-
 import asyncio
 from typing import Literal
 from Qlogger.config import Config
@@ -9,7 +5,7 @@ from Qlogger.utils.custom_print import cmap
 from Qlogger import function
 import logging
 
-hint = Literal['level','head','task','red','green','yellow','blue','reset']
+hint = Literal['level','head','red','green','yellow','blue','reset']
 
 level = {
     'WARNING':  cmap['yellow'],
@@ -20,27 +16,24 @@ level = {
     'RESET':    cmap['reset'],
 }
 
-TASK_DICT = dict()
-
 class _Logger(logging.Logger):
-
-    def __init__(self, name:str, color:hint='reset', inifile='log.ini', msg=False):
+    def __init__(self, name:str, color:hint='reset', inifile='log.ini',msg=False):
         super().__init__(name, level=logging.NOTSET)
         config = Config(filename=inifile,msg=msg)
 
         log_lev = config.get(section=name, option='level')
-        self._log_fmt = config.get(section=name, option='fmt', raw=True)
-        self._log_ymd = config.get(section=name, option='datefmt', raw=True, fallback=None)
+        log_fmt = config.get(section=name, option='fmt', raw=True)
+        log_ymd = config.get(section=name, option='datefmt', raw=True, fallback=None)
 
         # ----------------------------- formatter ---------------------------- #
         if color == 'level':
-            formatter = LevelFormatter(fmt=self._log_fmt, datefmt=self._log_ymd)
+            formatter = LevelFormatter(fmt=log_fmt, datefmt=log_ymd)
         elif color == 'head':
-            formatter = HeadFormatter(fmt=self._log_fmt, datefmt=self._log_ymd)
+            formatter = HeadFormatter(fmt=log_fmt, datefmt=log_ymd)
         else:
             # if color is None : color = 'reset'
-            log_fmt_col = f"{cmap[color]}{self._log_fmt}{cmap['reset']}"
-            formatter = logging.Formatter(fmt=log_fmt_col, datefmt=self._log_ymd)
+            log_fmt_col = f"{cmap[color]}{log_fmt}{cmap['reset']}"
+            formatter = logging.Formatter(fmt=log_fmt_col, datefmt=log_ymd)
     
         # -------------------------- stream_handler -------------------------- #
         stream_handler = logging.StreamHandler()
@@ -50,7 +43,11 @@ class _Logger(logging.Logger):
         if self.hasHandlers(): self.handlers.clear()        
         self.addHandler(stream_handler)  
 
-
+    def _dev_stream_handler_level(self, log_lev:Literal['DEBUG','INFO','WARNING','ERROR']):
+        """change stream_handler log level"""
+        for handler in self.handlers:
+            if isinstance(handler, logging.StreamHandler):
+                handler.setLevel(log_lev)
 
 class LevelFormatter(logging.Formatter):
     def __init__(self, fmt=None, datefmt=None, style='%'):
@@ -58,6 +55,7 @@ class LevelFormatter(logging.Formatter):
 
     def format(self, record):
         original_formatted_log = super().format(record)
+
         level_color = level.get(record.levelname, cmap['reset'])
         colored_log = f"{level_color}{original_formatted_log}{cmap['reset']}"
         return colored_log
@@ -68,19 +66,12 @@ class HeadFormatter(logging.Formatter):
 
     def format(self, record):
         original_formatted_log = super().format(record)
+
         level_color = level.get(record.levelname, cmap['reset'])
         levelname_with_color = f"{level_color}{record.levelname}{cmap['reset']}"
+
         colored_log = original_formatted_log.replace(record.levelname, levelname_with_color)
         return colored_log
-
-class TaskFormatter(logging.Formatter):
-    def format(self, record):
-        global TASK_DICT
-        task = asyncio.current_task()
-        task_name = task.get_name() if task else 'default'
-        color = TASK_DICT.get(task_name, cmap["reset"])
-        record.msg = f"{color}{record.msg}{cmap['reset']}"
-        return super().format(record)
 
 # ---------------------------------------------------------------------------- #
 #                                 CustomLogger                                 #
@@ -101,24 +92,6 @@ class Logger(_Logger):
         elif context == 'async':
             self._method = function._Async()
 
-    # ------------------------------------------------------------------------ #
-    #                                  develop                                 #
-    # ------------------------------------------------------------------------ #
-    def _dev_stream_handler_level(self, log_lev:Literal['DEBUG','INFO','WARNING','ERROR']):
-        """change stream_handler log level"""
-        for handler in self.handlers:
-            if isinstance(handler, logging.StreamHandler):
-                handler.setLevel(log_lev)
-
-    def _dev_formatter_task_color(self, task_color:dict):
-        global TASK_DICT
-        TASK_DICT = {key:cmap[task_color[key]] for key in task_color}
-        formatter = TaskFormatter(fmt=self._log_fmt, datefmt=self._log_ymd)
-        for handler in self.handlers:
-            handler.setFormatter(formatter)
-    # ------------------------------------------------------------------------ #
-    #                                 function                                 #
-    # ------------------------------------------------------------------------ #
     def set_clsname(self, clsname:str):
         self._clsname = clsname
 
@@ -194,11 +167,11 @@ class Logger(_Logger):
 if __name__ == "__main__":
 
     # ------------------------------ base logger ----------------------------- #
-    # logger = _Logger('test', 'head', 'log.ini', msg=True)
-    # logger.debug('debug')
-    # logger.info('info')
-    # logger.warning('warn')
-    # logger.error('error')
+    logger = _Logger('test', 'head', 'log.ini', msg=True)
+    logger.debug('debug')
+    logger.info('info')
+    logger.warning('warn')
+    logger.error('error')
 
     # ----------------------------- custom logger ---------------------------- #
 
@@ -221,49 +194,35 @@ if __name__ == "__main__":
 
 
     # ------------------------------- subclass ------------------------------- #
-    # def child_func():
-    #     logger.info.msg('aa')
+    def child_func():
+        logger.info.msg('aa')
     
-    # logger2 = Logger('tempppppppppppppp','head')
-    # logger2.set_clsname('parent')
+    logger2 = Logger('tempppppppppppppp','head')
+    logger2.set_clsname('parent')
 
 
-    # def parent_func():
-    #     logger2.info.msg('bb')
-    #     logger2.info.msg('bb',fname='myfunc!')
-    #     logger2.set_sublogger(logger)
-    #     child_func()
+    def parent_func():
+        logger2.info.msg('bb')
+        logger2.info.msg('bb',fname='myfunc!')
+        logger2.set_sublogger(logger)
+        child_func()
 
-    # parent_func()
+    parent_func()
 
 
-    # # --------------------------------- Task --------------------------------- #
-    # # task_logger = Logger(clsname='CLS', logname='task', context='sync')
-    # task_logger = Logger(clsname='CLS', logname='task', context='async')
+    # --------------------------------- Task --------------------------------- #
+    # task_logger = Logger(clsname='CLS', logname='task', context='sync')
+    task_logger = Logger(clsname='CLS', logname='task', context='async')
 
-    # async def mytaskkkkkkkkkkkkkkkkkk():
-    #     print(asyncio.current_task().get_name())
-    #     task_logger.info.msg('hi')
+    async def mytaskkkkkkkkkkkkkkkkkk():
+        print(asyncio.current_task().get_name())
+        task_logger.info.msg('hi')
     
-    # async def main():
-    #     await mytaskkkkkkkkkkkkkkkkkk()
-
-
-    # asyncio.run(main())
-
-    task = dict(t1 ='red', t2='green')
-
-    logger._dev_formatter_task_color(task_color=task)
-
-    async def hi():
-        logger.info.msg('hi')
-
-
     async def main():
-        tasks = [
-            asyncio.create_task(hi(), name='t1'),
-            asyncio.create_task(hi(), name='t2'),
-            asyncio.create_task(hi()),
-        ]
+        await mytaskkkkkkkkkkkkkkkkkk()
+
 
     asyncio.run(main())
+
+
+
