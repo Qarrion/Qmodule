@@ -1,9 +1,5 @@
 from typing import Literal
 
-# https://misc.flogisoft.com/bash/tip_colors_and_formatting
-
-# "\033[32m  \033[0m"
-# "\033[31m  \033[0m"
 
 cmap = dict(
 	reset = "\033[0m",
@@ -27,12 +23,22 @@ cmap = dict(
 hint = Literal['red','green','yellow','blue','purple','cyan','white','_']
 
 def cprint(msg, color:hint):
-    print(f"{cmap[color]}{msg}{cmap['reset']}")
+	print(f"{cmap[color]}{msg}{cmap['reset']}")
 
+def dprint(msg, status, debug=True):
+	if debug:
+		if status == 1:
+			print(f"{cmap['green']}[1]->> {msg}{cmap['reset']}")
+		elif status == 0:
+			print(f"{cmap['red']}[0]->> {msg}{cmap['reset']}")
+		else:
+			print(f"   ->> {msg}")
 
-
+eprint = lambda x,n=80: print(f"{"="*n} [{x}]")
 
 if __name__ == "__main__":
-    cprint('hi','green')
-    cprint('hi','red')
-    cprint('gi','blue_')
+    
+	cprint('hi','blue')
+	dprint('hi',0)
+	dprint('hi',1)
+	eprint('hi')

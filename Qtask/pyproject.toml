@@ -1,7 +1,11 @@
 [project]
 name = "Qtask"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = ["ntplib","pytz"]
 
 [tool.setuptools]
 packages = ["Qtask"]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
