@@ -74,8 +74,8 @@ class Pgsql:
 
     def xconnect_pool(self, name='pgsql', num_workers = 5):
         # https://www.psycopg.org/psycopg3/docs/api/pool.html#module-psycopg_pool
+        # pool = AsyncConnectionPool(self.conn_str, name=name, num_workers=num_workers)
         pool = AsyncConnectionPool(self.conn_str,open=False, name=name, num_workers=num_workers)
-        
         return pool
     # ------------------------------------------------------------------------ #
     #                                   utils                                  #
@@ -132,58 +132,59 @@ if __name__ == "__main__":
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
-    def main1():
-        with pgsql.connect() as conn:
-            with conn.cursor() as curs:
-                curs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
-                curs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
-                curs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
-                rows = curs.fetchall()
-                print(rows[0])
+    # def main1():
+    #     with pgsql.connect() as conn:
+    #         with conn.cursor() as curs:
+    #             curs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
+    #             curs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
+    #             curs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
+    #             rows = curs.fetchall()
+    #             print(rows[0])
         
-    a = time.time()
-    main1()
+    # a = time.time()
+    # main1()
 
-    print('main1',time.time() - a )
-    # ---------------------------------------------------------------------------- #
-    # ---------------------------------------------------------------------------- #
-    async def main2():
-        async with await pgsql.xconnect() as xconn:
-            async with xconn.cursor() as xcurs:
-                await xcurs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
-                await xcurs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
-                await xcurs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
-                rows = await xcurs.fetchall()
-                print(rows[0])
-    a = time.time()
-    asyncio.run(main2())
-    print('main2',time.time() - a )
-    # ---------------------------------------------------------------------------- #
-    # ---------------------------------------------------------------------------- #
-    async def main3():
-        async with pgsql.xconnect_pool() as xpool:
-            # xpool.close()
-            # xpool.closed
-            async with xpool.connection() as xconn:
-                async with xconn.cursor() as xcurs:
-                    await xcurs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
-                    await xcurs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
-                    await xcurs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
-                    rows = await xcurs.fetchall()
-                    print(rows[0])
-    a = time.time()
-    asyncio.run(main3())
-    print('main3',time.time() - a )
+    # print('main1',time.time() - a )
+    # # ---------------------------------------------------------------------------- #
+    # # ---------------------------------------------------------------------------- #
+    # async def main2():
+    #     async with await pgsql.xconnect() as xconn:
+    #         async with xconn.cursor() as xcurs:
+    #             await xcurs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
+    #             await xcurs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
+    #             await xcurs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
+    #             rows = await xcurs.fetchall()
+    #             print(rows[0])
+    # a = time.time()
+    # asyncio.run(main2())
+    # print('main2',time.time() - a )
+    # # ---------------------------------------------------------------------------- #
+    # # ---------------------------------------------------------------------------- #
+    # async def main3():
+    #     async with pgsql.xconnect_pool() as xpool:
+    #         # xpool.close()
+    #         # xpool.closed
+    #         async with xpool.connection() as xconn:
+    #             async with xconn.cursor() as xcurs:
+    #                 await xcurs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
+    #                 await xcurs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
+    #                 await xcurs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
+    #                 rows = await xcurs.fetchall()
+    #                 print(rows[0])
+    # a = time.time()
+    # asyncio.run(main3())
+    # print('main3',time.time() - a )
 
     # ---------------------------------------------------------------------------- #
     # ---------------------------------------------------------------------------- #
 
     async def main4():
         xpool = pgsql.xconnect_pool()
-        xpool.open()
-        async with pgsql.xconnect_pool() as xpool:
-            xpool.close()
-            xpool.closed
+        await xpool.open()
+
+        # async with pgsql.xconnect_pool() as xpool:
+            # xpool.close()
+            # xpool.closed
         async with xpool.connection() as xconn:
             async with xconn.cursor() as xcurs:
                 await xcurs.execute("select * from candle_m1 where market='KRW-BTC' and time > '2024-01-01 00:00:00' ")
@@ -196,8 +197,9 @@ if __name__ == "__main__":
     print(time.time() - a )
 
 
-
-
+# ---------------------------------------------------------------------------- #
+    # main1()
+    # asyncio.run(main2())
 
 
 
