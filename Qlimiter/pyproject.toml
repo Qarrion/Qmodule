@@ -1,7 +1,0 @@
-[project]
-name = "Qlimiter"
-version = "0.0.1"
-dependencies = ["httpx"]
-
-[tool.setuptools]
-packages = ["Qlimiter"]

@@ -1,6 +1,11 @@
 [project]
 name = "Qlimiter"
 version = "0.0.1"
+dependencies = []
 
 [tool.setuptools]
 packages = ["Qlimiter"]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"

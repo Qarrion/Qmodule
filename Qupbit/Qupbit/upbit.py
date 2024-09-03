@@ -40,11 +40,10 @@ class Upbit:
 
     async def xget_m1_stable(self, xclient:httpx.AsyncClient, market:str, to:datetime, 
                    count:int=200, msg=False, remain=False):
-        
+        """if remain return(rows, rslt) else return rows"""
         last = self.candle.to_last(dtime=to)
         rslt = await self.candle.xget(xclient=xclient, market=market, to=last.stable, 
                         count=count, payload=False, msg=msg)
-        
         if rslt['time'] < last.trade:
             stime_sv = self.candle._timez.to_str(rslt['time'], 1)
             stime_cl = self.candle._timez.to_str(to, 1)

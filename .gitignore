@@ -1,7 +1,7 @@
 .venv
 .vscode
 *.egg*
-
+backup
 __pycache__
 config
 build
