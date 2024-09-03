@@ -1,3 +1,6 @@
+# -------------------------------- ver 202409 -------------------------------- #
+# _prod_only in 'preset', 'set_xproduce'
+
 import asyncio
 from socket import timeout
 from typing import Literal
@@ -26,9 +29,10 @@ class Pulser:
     
         self._prod_only = False # preset
     
-    def set_config(self,timeout=None, msg_flow=False, msg_adjust=False, msg_item=False):
+    def set_config(self, timeout=None, msg_flow=False, msg_adjust=False, msg_item=False):
         self.cons.set_config(timeout=timeout,msg_flow=msg_flow, msg_adjust=msg_adjust,msg_item=msg_item)
         self.prod.set_config(timeout=timeout,msg_flow=msg_flow, msg_adjust=msg_adjust,msg_item=msg_item)
+        
         
     def now_kst(self, msg=False):
         return self.prod._nowst.now_kst(msg=msg)
@@ -52,8 +56,10 @@ class Pulser:
     def get_partial(self, func, *args, **kwargs):
         return self.prod.get_partial(func, *args, **kwargs)
     
-    def set_xproducer(self,xdef):
+    def set_xproducer(self,xdef, prod_only=False):
         self.prod.set_xwork(xdef=xdef)
+        if prod_only:
+            self._prod_only=True
         
     # ------------------------------------------------------------------------ #
     #                                 consumer                                 #
@@ -77,7 +83,6 @@ class Pulser:
         await asyncio.gather(*tasks)
  
     def pulser_task(self, timeout:int =None, test=False):
-        print(self._prod_only)
         tasks = []
         task_prod = asyncio.create_task(
             self.prod.xproduce(test=test), name=f"prod")
@@ -103,6 +108,9 @@ if __name__ == "__main__":
     
     async def main():
         task = asyncio.create_task(timer.pulser_gather())
-        
         await task
+    async def main():
+        task = timer.pulser_task()
+        await task
+        
     asyncio.run(main()) 

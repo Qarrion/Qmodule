@@ -116,7 +116,7 @@ class Nowst:
     # ------------------------------------------------------------------------ #
     async def xsync_offset(self,msg=False):
         try:
-            await asyncio.wait_for(asyncio.to_thread(self.sync_offset,msg,True),10)
+            await asyncio.wait_for(asyncio.to_thread(self.sync_offset,msg,True),60)
         except Exception as e:
             print(str(e))
             traceback.print_exc()
