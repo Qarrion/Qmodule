@@ -128,7 +128,7 @@ class Xtools:
             cprint(f"{msg_empty} | {"WORKER":<7} | {msg_w:<{width}} |",color='cyan')
         
         if self._pool is not None:
-            cprint(f"{msg_empty} | {"POOL":<7} | {self._pool._str_pool:<{width}} |",color='cyan')
+            cprint(f"{msg_empty} | {"POOL":<7} | {self._pool._str_pool():<{width}} |",color='cyan')
     # | Collect.......[collect] | Task-1.xupdate_candl*() | KRW-BLUR               , 23.06.27 15:05 (to)    , [done - no data]        |
     # ------------------------------------------------------------------------ #
     #                                  message                                 #
