@@ -72,12 +72,12 @@ class Pulser:
     async def pulser_gather(self, timeout:int =None, test=False):
         tasks = []
         task_prod = asyncio.create_task(
-            self.prod.xproduce(test=test), name=f"prod")
+            self.prod.xproduce(test=test), name=f"{self._name}-p")
         tasks.append(task_prod)
         
         if not self._prod_only:
             task_cons = asyncio.create_task(
-                self.cons.xconsume(timeout=timeout), name=f"cons")
+                self.cons.xconsume(timeout=timeout), name=f"{self._name}-c")
             tasks.append(task_cons)
         
         await asyncio.gather(*tasks)
@@ -85,12 +85,12 @@ class Pulser:
     def pulser_task(self, timeout:int =None, test=False):
         tasks = []
         task_prod = asyncio.create_task(
-            self.prod.xproduce(test=test), name=f"prod")
+            self.prod.xproduce(test=test), name=f"{self._name}-p")
         tasks.append(task_prod)
         
         if not self._prod_only:
             task_cons = asyncio.create_task(
-                self.cons.xconsume(timeout=timeout), name=f"cons")
+                self.cons.xconsume(timeout=timeout), name=f"{self._name}-c")
             tasks.append(task_cons)
         
         return asyncio.gather(*tasks)
@@ -109,6 +109,7 @@ if __name__ == "__main__":
     async def main():
         task = asyncio.create_task(timer.pulser_gather())
         await task
+        
     async def main():
         task = timer.pulser_task()
         await task

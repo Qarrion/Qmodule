@@ -39,11 +39,17 @@ class Xtools:
         self._logger = Logger(clsname='Xtools', logname=name)
         self._dtime_init = datetime.now()
 
-        self.worker_to_task = ['pgsql-scheduler']
+        # self.worker_to_task = ['pgsql-scheduler']
+        self.worker_to_task = ['']
+        self.replace = {
+            'pgsql-worker':'pgsql'
+        }
+        self._pool=None
     # ------------------------------------------------------------------------ #
     #                               function_task                              #
     # ------------------------------------------------------------------------ #
-    async def xmonitor(self, tasks:int=60, reapet:int=2):
+    async def xmonitor(self, tasks:int=60, reapet:int=2, pool=None):
+        self._pool = pool
         try:
             while True:
                 for _ in range(int(tasks/reapet)):
@@ -84,14 +90,19 @@ class Xtools:
         taskdict = defaultdict(list)
         tasks = asyncio.all_tasks()
         all_tasks = [task.get_name() for task in tasks]
+        # print(all_tasks)
 
         for name in all_tasks:
             # match = re.match(r'([\w]+)-([\w-]+)', name)
             # match = re.match(r'(.+)-([^-]+)$', name)
             # match = re.match(r'(.+)-(\d+)$', name)
+            if name.startswith('pgsql-worker'):
+                name = name.replace('pgsql-worker','pgsql')
+            
             match = re.match(r'(.+)-(\w+)$', name)
             if name in self.worker_to_task:
                 taskdict['MAIN'].append(name)
+                
             elif match:
                 prefix, suffix = match.groups()
                 taskdict[prefix].append(suffix)
@@ -115,6 +126,9 @@ class Xtools:
         cprint(f"{msg_runtime} | {"TASK":<7} | {msg_main:<{width}} |",color='cyan')
         for msg_w in self._split_long_string(msg_work, chunk_size=width):
             cprint(f"{msg_empty} | {"WORKER":<7} | {msg_w:<{width}} |",color='cyan')
+        
+        if self._pool is not None:
+            cprint(f"{msg_empty} | {"POOL":<7} | {self._pool._str_pool:<{width}} |",color='cyan')
     # | Collect.......[collect] | Task-1.xupdate_candl*() | KRW-BLUR               , 23.06.27 15:05 (to)    , [done - no data]        |
     # ------------------------------------------------------------------------ #
     #                                  message                                 #
@@ -151,8 +165,11 @@ class Xtools:
             str_task= f"[{prefix}]-({', '.join(sorted_suffix_list)})"
     
         elif mode == "number":
-            num_suffix_list=[f"#{len(num_suffix_list)}"]
-            sorted_suffix_list = str_suffix_list + num_suffix_list
+            if len(num_suffix_list) != 0 :
+                num_suffix_list=[f"#{len(num_suffix_list)}"]
+                sorted_suffix_list = str_suffix_list + num_suffix_list
+            else:
+                sorted_suffix_list = str_suffix_list
             str_task= f"[{prefix}]-({', '.join(sorted_suffix_list)})"
 
         return str_task

@@ -51,15 +51,22 @@ class Pooler:
     # ----------------------------- pool_monitor ----------------------------- #
     async def _pool_monitor(self):
         while True:
-            total = len(self._workers)
-            done = len([t for t in self._workers if self._workers[t].done()])
-            print(f'worker({done}/{total-done}/{total}) done({self._work.qsize()}) fail({self._fail.qsize()})')
+            str_pool = self._str_pool()
+            print(str_pool)
+            # total = len(self._workers)
+            # done = len([t for t in self._workers if self._workers[t].done()])
+            # print(f'worker({done}/{total-done}/{total}) done({self._work.qsize()}) fail({self._fail.qsize()})')
             await asyncio.sleep(1)
             
     def pool_monitor(self):
         task =  asyncio.create_task(self._pool_monitor(), name=f'{self._name}-monitor')
         return task 
             
+            
+    def _str_pool(self):
+        total = len(self._workers)
+        done = len([t for t in self._workers if self._workers[t].done()])
+        return f'worker({done}/{total-done}/{total}) done({self._work.qsize()}) fail({self._fail.qsize()})'
     # ------------------------------ pool_start ------------------------------ #
     def pool_start(self):
         task =  asyncio.create_task(self._pool_start(), name=f'{self._name}-pool')
